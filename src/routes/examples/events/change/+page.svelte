@@ -7,10 +7,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(selectedValue) {
+        console.log('You change the svelte select 🤯 ', $state.snapshot(selectedValue));
     }
 </script>
 
-<Select {items} on:change={handle} />
-
+<Select {items} onchange={handle} />

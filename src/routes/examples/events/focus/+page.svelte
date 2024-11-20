@@ -7,10 +7,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(event) {
+        console.log('You focusing svelte select 🧐', event);
     }
 </script>
 
-<Select {items} on:focus={handle} />
-
+<Select {items} onfocus={handle} />

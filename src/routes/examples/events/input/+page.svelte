@@ -7,10 +7,14 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(selectedValue) {
+        console.log('This is selected value :', $state.snapshot(selectedValue));
+    }
+    function handleMultiple(selectedValues) {
+        console.log('This is multi selected values :', $state.snapshot(selectedValues));
     }
 </script>
 
-<Select {items} on:input={handle} />
-
+<Select {items} oninput={handle} />
+<br />
+<Select {items} multiple oninput={handleMultiple} />

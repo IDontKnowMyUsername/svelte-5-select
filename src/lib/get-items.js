@@ -1,16 +1,15 @@
-export default async function getItems({ dispatch, loadOptions, convertStringItemsToObjects, filterText }) {
+export default async function getItems({ loadOptions, convertStringItemsToObjects, filterText, onerror, onloaded }) {
     let res = await loadOptions(filterText).catch((err) => {
-        console.warn('svelte-select loadOptions error :>> ', err);
-        dispatch('error', { type: 'loadOptions', details: err });
+        console.warn('svelte-5-select loadOptions error :>> ', err);
+        onerror(err);
     });
 
-    if (res && !res.cancelled) {        
+    if (res && !res.cancelled) {
         if (res) {
             if (res && res.length > 0 && typeof res[0] !== 'object') {
                 res = convertStringItemsToObjects(res);
             }
-            
-            dispatch('loaded', { items: res });
+            onloaded(res);
         } else {
             res = [];
         }

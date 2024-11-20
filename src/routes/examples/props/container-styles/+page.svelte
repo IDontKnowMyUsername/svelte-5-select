@@ -8,4 +8,4 @@
     ];
 </script>
 
-<Select {items} containerStyles="background: pink !important;" />
+<Select {items} containerStyles="background: skyblue !important;" />

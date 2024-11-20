@@ -6,8 +6,8 @@
         { value: 'two', label: 'Two' },
         { value: 'three', label: 'Three' },
     ];
-
 </script>
 
 <Select {items} clearFilterTextOnBlur={false} />
+<br />
 <Select {items} multiple clearFilterTextOnBlur={false} />

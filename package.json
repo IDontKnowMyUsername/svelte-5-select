@@ -1,76 +1,79 @@
 {
-  "name": "svelte-select",
-  "version": "5.8.3",
-  "repository": "https://rob-balfre@github.com/rob-balfre/svelte-select.git",
-  "description": "A <Select> component for Svelte apps",
-  "scripts": {
-    "dev": "vite dev",
-    "build": "vite build",
-    "preview": "vite preview",
-    "test": "npm run test:dev & npm run test:browser",
-    "test:dev": "rollup -cw",
-    "test:browser": "sirv test/public -p 3000 --dev --open",
-    "gen:docs": "node docs/generate_theming_variables_md.cjs",
-    "preprepare": "node src/remove-styles.cjs",
-    "prepare": "svelte-package",
-    "postprepare": "node src/post-prepare.cjs && npm run gen:docs",
-    "release": "release-it"
-  },
-  "devDependencies": {
-    "@rollup/plugin-alias": "^5.1.1",
-    "@sveltejs/adapter-auto": "3.3.1",
-    "@sveltejs/adapter-static": "3.0.6",
-    "@sveltejs/kit": "2.8.0",
-    "@sveltejs/package": "^2.3.7",
-    "autoprefixer": "^10.4.20",
-    "cross-env": "^7.0.3",
-    "find-in-files": "^0.5.0",
-    "fuse.js": "^7.0.0",
-    "prettier": "~3.3.3",
-    "prettier-plugin-svelte": "^3.2.8",
-    "release-it": "^17.10.0",
-    "rollup": "^4.26.0",
-    "rollup-plugin-cleaner": "^1.0.0",
-    "rollup-plugin-css-only": "^4.5.2",
-    "rollup-plugin-node-resolve": "^5.2.0",
-    "rollup-plugin-postcss": "^4.0.2",
-    "rollup-plugin-replace": "^2.2.0",
-    "rollup-plugin-svelte": "^7.2.2",
-    "sirv-cli": "^3.0.0",
-    "svelte": "^5.1.16",
-    "svelte-highlight": "^7.7.0",
-    "svelte-preprocess": "^6.0.3",
-    "svelte-tiny-virtual-list": "^2.1.2",
-    "svelte2tsx": "^0.7.24",
-    "tape-modern": "^1.1.2",
-    "typescript": "^5.6.3",
-    "vite": "^5.4.11"
-  },
-  "author": "Robert Balfré <rob.balfre@gmail.com> (https://github.com/rob-balfre)",
-  "license": "ISC",
-  "keywords": [
-    "svelte"
-  ],
-  "release-it": {
-    "hooks": {
-      "after:bump": "npm run prepare"
+    "name": "svelte-select",
+    "version": "6.0.0",
+    "repository": "https://kodaicoder@github.com/kodaicoder/svelte-5-select.git",
+    "description": "A <Select> component for Svelte 5 apps",
+    "scripts": {
+        "dev": "vite dev",
+        "build": "vite build",
+        "preview": "vite preview",
+        "test": "npm run test:dev & npm run test:browser",
+        "test:dev": "rollup -cw",
+        "test:browser": "sirv test/public -p 3000 --dev --open",
+        "gen:docs": "node docs/generate_theming_variables_md.cjs",
+        "preprepare": "node src/remove-styles.cjs",
+        "prepare": "svelte-package",
+        "postprepare": "node src/post-prepare.cjs && npm run gen:docs",
+        "release": "release-it"
     },
-    "github": {
-      "release": false
+    "devDependencies": {
+        "@rollup/plugin-alias": "^5.1.1",
+        "@sveltejs/adapter-auto": "3.3.1",
+        "@sveltejs/adapter-static": "3.0.6",
+        "@sveltejs/kit": "2.8.1",
+        "@sveltejs/package": "^2.3.7",
+        "@sveltejs/vite-plugin-svelte": "4.0.0",
+        "autoprefixer": "^10.4.20",
+        "cross-env": "^7.0.3",
+        "find-in-files": "^0.5.0",
+        "fuse.js": "^7.0.0",
+        "prettier": "~3.3.3",
+        "prettier-plugin-svelte": "^3.2.8",
+        "release-it": "^17.10.0",
+        "rollup": "^4.26.0",
+        "rollup-plugin-cleaner": "^1.0.0",
+        "rollup-plugin-css-only": "^4.5.2",
+        "rollup-plugin-node-resolve": "^5.2.0",
+        "rollup-plugin-postcss": "^4.0.2",
+        "rollup-plugin-replace": "^2.2.0",
+        "rollup-plugin-svelte": "^7.2.2",
+        "sirv-cli": "^3.0.0",
+        "svelte": "^5.1.16",
+        "svelte-highlight": "^7.7.0",
+        "svelte-preprocess": "^6.0.3",
+        "svelte-tiny-virtual-list": "^2.1.2",
+        "svelte2tsx": "^0.7.24",
+        "tape-modern": "^1.1.2",
+        "typescript": "^5.6.3",
+        "vite": "^5.4.11"
     },
-    "npm": {
-      "publishPath": "./package"
-    }
-  },
-  "type": "module",
-  "exports": {
-    ".": {
-      "svelte": "./index.js",
-      "types": "./index.d.ts"
-    }
-  },
-  "dependencies": {
-    "svelte-floating-ui": "1.5.9"
-  },
-  "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
+    "author": "Robert Balfré <rob.balfre@gmail.com> (https://github.com/rob-balfre)",
+    "license": "ISC",
+    "keywords": [
+        "svelte"
+    ],
+    "release-it": {
+        "hooks": {
+            "after:bump": "npm run prepare"
+        },
+        "github": {
+            "release": false
+        },
+        "npm": {
+            "publishPath": "./package"
+        }
+    },
+    "type": "module",
+    "exports": {
+        ".": {
+            "svelte": "./index.js",
+            "types": "./index.d.ts"
+        }
+    },
+    "dependencies": {
+        "svelte": "^5.1.16",
+        "svelte-floating-ui": "1.5.9",
+        "@sveltejs/vite-plugin-svelte": "4.0.0"
+    },
+    "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
 }

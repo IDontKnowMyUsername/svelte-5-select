@@ -9,9 +9,9 @@
         });
     }
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(error) {
+        console.log('Load data Error ❌ ', error);
     }
 </script>
 
-<Select on:error={handle} {loadOptions} />
+<Select onerror={handle} {loadOptions} />

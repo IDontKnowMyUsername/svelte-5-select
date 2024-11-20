@@ -7,13 +7,13 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(event) {
+        console.log('You blur the svelte select 😶‍🌫️', event);
     }
 </script>
 
-<Select {items} on:blur={handle} searchable={false} />
+<Select {items} onblur={handle} searchable={false} />
 
 <br />
 
-<Select {items} on:blur={handle} multiple />
+<Select {items} onblur={handle} multiple />

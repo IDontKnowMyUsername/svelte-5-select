@@ -1,7 +1,26 @@
+<script>
+    import { HighlightSvelte } from 'svelte-highlight';
+    import Select from '$lib/Select.svelte';
+
+    let items = [
+        { value: 'one', label: 'One' },
+        { value: 'two', label: 'Two' },
+        { value: 'three', label: 'Three' },
+        { value: 'four', label: 'Four' },
+        { value: 'five', label: 'Five' },
+        { value: 'six', label: 'Six' },
+        { value: 'seven', label: 'Seven' },
+        { value: 'eight', label: 'Eight' },
+        { value: 'nine', label: 'Nine' },
+        { value: 'ten', label: 'Ten' },
+        { value: 'eleven', label: 'Eleven' },
+        { value: 'twelve', label: 'Twelve' },
+    ];
+</script>
+
 <div class="container">
     <header>
         <img src="/svelte-select.png" alt="Svelte Select" />
-
         <aside>
             <h1>Svelte Select /</h1>
             <h2>Examples</h2>
@@ -18,6 +37,32 @@
         <a href="https://github.com/rob-balfre/svelte-select">
             <img src="https://badgen.net/badge/icon/github?icon=github&label" alt="downloads" />
         </a>
+    </div>
+    <div style="width:80%;margin-top:4rem;">
+        <Select {items} />
+        <br />
+        <HighlightSvelte
+            code={`
+<script>
+    import Select from 'svelte-select';
+    let items = [
+        { value: 'one', label: 'One' },
+        { value: 'two', label: 'Two' },
+        { value: 'three', label: 'Three' },
+        { value: 'four', label: 'Four' },
+        { value: 'five', label: 'Five' },
+        { value: 'six', label: 'Six' },
+        { value: 'seven', label: 'Seven' },
+        { value: 'eight', label: 'Eight' },
+        { value: 'nine', label: 'Nine' },
+        { value: 'ten', label: 'Ten' },
+        { value: 'eleven', label: 'Eleven' },
+        { value: 'twelve', label: 'Twelve' },
+    ];
+</script>
+
+<Select {items} />
+`} />
     </div>
 </div>
 
@@ -60,9 +105,8 @@
     }
 
     @media (min-width: 800px) {
-        
         header img {
-            width:93px;
+            width: 93px;
             margin: 0;
         }
 

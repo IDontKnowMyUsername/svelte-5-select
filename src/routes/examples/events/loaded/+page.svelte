@@ -15,9 +15,9 @@
         });
     }
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(response) {
+        console.log('This is loaded response ✅:', $state.snapshot(response));
     }
 </script>
 
-<Select on:loaded={handle} {loadOptions} />
+<Select onloaded={handle} {loadOptions} />
