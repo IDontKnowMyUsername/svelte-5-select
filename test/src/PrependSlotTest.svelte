@@ -6,9 +6,7 @@
 </script>
 
 <Select bind:items bind:value>
-    {#snippet prepend()}
-        <div class="before" >
-            Before it all
-        </div>
+    {#snippet prependSnippet()}
+        <div class="before">Before it all</div>
     {/snippet}
 </Select>

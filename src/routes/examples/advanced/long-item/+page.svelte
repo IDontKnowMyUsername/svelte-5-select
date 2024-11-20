@@ -13,11 +13,11 @@
 
 <div class="container">
     <Select items={collection} --item-height="auto" --item-line-height="auto">
-        {#snippet item({ item })}
-                <div  class="item" >
+        {#snippet itemSnippet(item)}
+            <div class="item">
                 {item.label}
             </div>
-            {/snippet}
+        {/snippet}
     </Select>
 </div>
 

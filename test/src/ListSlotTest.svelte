@@ -6,11 +6,9 @@
 </script>
 
 <Select bind:items bind:value listOpen>
-    {#snippet list({ filteredItems })}
-    
-            {#each filteredItems as item}
-                {item.label}
-            {/each}
-        
+    {#snippet listSnippet({ filteredItems })}
+        {#each filteredItems as item}
+            {item.label}
+        {/each}
     {/snippet}
 </Select>

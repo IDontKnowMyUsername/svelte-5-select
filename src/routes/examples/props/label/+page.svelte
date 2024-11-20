@@ -12,4 +12,4 @@
 
 <Select items={collection} label="foo" bind:value />
 
-<p>value: {value?.['foo']}</p>
+<p>label: {value?.['foo']}</p>

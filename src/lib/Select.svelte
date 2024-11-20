@@ -77,7 +77,7 @@
         listAutoWidth = true,
         showChevron = false,
         listOffset = 5,
-        hoverItemIndex = 0,
+        hoverItemIndex = $bindable(0),
         floatingConfig = {},
         debounce = (fn, wait = 1) => {
             clearTimeout(timeout);
@@ -147,7 +147,6 @@
         if (focused && input) input.focus();
     });
     $effect.pre(() => {
-        console.log('EFFECT placeholder CALLED');
         placeholderText =
             placeholderAlwaysShow && multiple
                 ? placeholder
@@ -161,7 +160,6 @@
         filterText;
         value;
         items;
-        console.log('EFFECT filter CALLED');
         untrack(
             () =>
                 (filteredItems = filter({
@@ -181,89 +179,69 @@
         );
     });
     $effect.pre(() => {
-        console.log('EFFECT multiple CALLED');
         prev_multiple = multiple;
     });
-    // $effect(() => {
-    //         if ((items, value)) setValue();
-    // });
     $effect(() => {
-        console.log('EFFECT setValue CALLED');
         hasValue;
         untrack(() => {
             if (items) setValue(items);
         });
     });
     $effect(() => {
-        console.log('EFFECT assignInputAttributes CALLED');
         searchable;
         untrack(() => {
             if (inputAttributes || !searchable) assignInputAttributes();
         });
     });
     $effect(() => {
-        console.log('EFFECT setupMulti CALLED');
         untrack(() => {
             if (multiple) setupMulti();
         });
     });
     $effect(() => {
-        console.log('EFFECT setupSingle CALLED');
         if (prev_multiple && !multiple) setupSingle();
     });
     $effect(() => {
-        console.log('EFFECT checkValueForDuplicates CALLED');
         if (multiple && value && value.length > 1) checkValueForDuplicates();
     });
     $effect(() => {
-        console.log('EFFECT dispatchSelectedItem CALLED');
         if (value) dispatchSelectedItem();
     });
     $effect(() => {
-        console.log('EFFECT oninput CALLED');
         if (prev_value && !value) {
             oninput(value || []);
         }
     });
     $effect(() => {
-        console.log('EFFECT closeList CALLED');
         if (!focused && input) closeList();
     });
     $effect(() => {
-        console.log('EFFECT setupFilterText CALLED');
         filterText;
         untrack(() => {
             if (filterText !== prev_filterText) setupFilterText();
         });
     });
     $effect(() => {
-        console.log('EFFECT setValueIndexAsHoverIndex CALLED');
         if (!multiple && listOpen && value && filteredItems) setValueIndexAsHoverIndex();
     });
     $effect(() => {
-        console.log('EFFECT dispatchHover CALLED');
         dispatchHover(hoverItemIndex);
     });
     $effect(() => {
-        console.log('EFFECT hasValue CALLED');
         multiple;
         value;
         untrack(() => (hasValue = multiple ? value && value?.length > 0 : !!value));
     });
     $effect(() => {
-        console.log('EFFECT hideSelectedItem CALLED');
         hideSelectedItem = hasValue && filterText.length > 0;
     });
     $effect(() => {
-        console.log('EFFECT showClear CALLED');
         showClear = hasValue && clearable && !disabled && !loading;
     });
     $effect(() => {
-        console.log('EFFECT ariaSelection CALLED');
         ariaSelection = value ? handleAriaSelection(multiple) : '';
     });
     $effect(() => {
-        console.log('EFFECT ariaContext CALLED');
         ariaContext = handleAriaContent({ filteredItems, hoverItemIndex, focused, listOpen });
     });
     $effect(() => {
@@ -276,51 +254,41 @@
     });
 
     $effect(() => {
-        console.log('EFFECT checkHoverSelectable CALLED');
         filteredItems;
         value;
+        multiple;
         untrack(() => {
             if (listOpen && filteredItems && !multiple && !value) checkHoverSelectable();
         });
     });
     $effect(() => {
-        console.log('EFFECT handleFilterEvent CALLED');
-        // && filteredItems.length > 0
         if (filteredItems) handleFilterEvent(filteredItems);
     });
     $effect(() => {
-        console.log('EFFECT floatingUpdate CALLED');
         if (container && floatingConfig) floatingUpdate(Object.assign(_floatingConfig, floatingConfig));
     });
     $effect(() => {
-        console.log('EFFECT listDom CALLED');
         list;
         untrack(() => (listDom = !!list));
     });
     $effect(() => {
-        console.log('EFFECT listMounted CALLED');
         listOpen;
         untrack(() => listMounted(list, listOpen));
     });
     $effect(() => {
-        console.log('EFFECT setListWidth CALLED');
         if (listOpen && container && list) setListWidth();
     });
     $effect(() => {
-        console.log('EFFECT scrollToHoverItem CALLED');
         scrollToHoverItem = hoverItemIndex;
     });
     $effect(() => {
-        console.log('EFFECT handleFocus CALLED');
         if (input && listOpen && !focused) handleFocus();
     });
     $effect(() => {
-        console.log('EFFECT hoverItemIndex CALLED');
         if (filterText) hoverItemIndex = 0;
     });
 
     $effect(() => {
-        console.log('EFFECT _floatingConfig CALLED');
         if (container && floatingConfig?.autoUpdate === undefined) {
             _floatingConfig.autoUpdate = true;
         }
@@ -342,7 +310,6 @@
         }
     }
     function setValue() {
-        console.log('SET VALUE CALLED');
         prev_value = value;
         if (typeof value === 'string') {
             let item = (items || []).find((item) => item[itemId] === value);
@@ -531,11 +498,9 @@
         clearState = false;
         if (multiple) {
             let jValue = value ? value.map((item) => item[itemId]) : null;
-            console.log('JUST VALUE:', jValue);
             return jValue;
         }
         let jValue = value ? value[itemId] : value;
-        console.log('JUST VALUE:', jValue);
         return jValue;
     }
 
@@ -823,25 +788,10 @@
     }
 
     function handleInput(ev) {
+        listOpen = true;
         prev_filterText = filterText;
-        console.log('PREV FILTER TEXT SET !!!');
         filterText = ev.target.value;
-        console.log('FILTER TEXT SET');
     }
-    // $inspect('USE JUSTVALUE:', useJustValue);
-    // $inspect('VALUE', value);
-    // $inspect('ITEM ID', itemId);
-    $inspect('MULTIPLE', multiple);
-    $inspect('ITEMS:', items);
-    $inspect('FILTERTEXT', filterText);
-    $inspect('FILTEREDITEMS', filteredItems);
-    $inspect('VALUE', value);
-    $inspect('JUSTVALUE:', justValue);
-    // $inspect('HOVERITEMINDEX', hoverItemIndex);
-    // $inspect('SCROLLTOHOVERITEM', scrollToHoverItem);
-    // $inspect('LISTELEMENT', list);
-    // $inspect('LISTDOM', listDom);
-    // $inspect('PREVFILTERTEXT', prev_filterText);
 </script>
 
 <svelte:window onclick={handleClickOutside} onkeydown={handleKeyDown} />

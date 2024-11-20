@@ -11,17 +11,16 @@
     ];
 
     let value = $state();
-    
+
     let maxItems = $derived(value?.length === 4);
     let items = $derived(maxItems ? [] : [..._items]);
 </script>
 
 <Select {items} multiple bind:value>
-    {#snippet empty()}
-        <div class="empty" >{maxItems ? 'Max 4 items' : 'No options'}</div>
+    {#snippet emptySnippet()}
+        <div class="empty">{maxItems ? 'Max 4 items' : 'No options'}</div>
     {/snippet}
 </Select>
-
 
 <style>
     .empty {

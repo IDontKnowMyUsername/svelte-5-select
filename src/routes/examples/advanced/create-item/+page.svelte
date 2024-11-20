@@ -11,14 +11,14 @@
         { value: 5, label: 'name 5' },
     ]);
 
-    function handleFilter(e) {        
-        if (e.detail.length === 0 && filterText.length > 0) {
+    function handleFilter(foundedItems) {
+        if (foundedItems.length === 0 && filterText.length > 0) {
             const prev = items.filter((i) => !i.created);
             items = [...prev, { value: filterText, label: filterText, created: true }];
         }
     }
-    
-    function handleChange(e) {
+
+    function handleChange(selectedValue) {
         items = items.map((i) => {
             delete i.created;
             return i;
@@ -26,9 +26,9 @@
     }
 </script>
 
-<Select on:change={handleChange} on:filter={handleFilter} bind:filterText {items}>
+<Select onchange={handleChange} onfilter={handleFilter} bind:filterText {items}>
     {#snippet item({ item })}
-        <div  >
+        <div>
             {item.created ? 'Add new: ' : ''}
             {item.label}
         </div>

@@ -9,6 +9,6 @@
     bind:listOpen
     {items}
     listOffset={0}
-    --list-border-radius="0 0 5px 5px"
+    --list-border-radius="0 0 10px 10px"
     --item-first-border-radius="0"
-    --border-radius={listOpen ? '5px 5px 0 0' : '5px'} />
+    --border-radius={listOpen ? '10px 10px 0 0' : '5px'} />
