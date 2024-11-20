@@ -5,9 +5,7 @@
 </script>
 
 <Select bind:items listOpen>
-    {#snippet item({ item })}
-    
-            * {item.label} *
-        
+    {#snippet itemSnippet({ item })}
+        * {item.label} *
     {/snippet}
 </Select>

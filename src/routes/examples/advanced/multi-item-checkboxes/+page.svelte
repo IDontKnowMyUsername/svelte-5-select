@@ -11,6 +11,13 @@
     let checked = $state([]);
     let isChecked = $state({});
 
+    $effect(() => {
+        computeValue(checked);
+    });
+    $effect(() => {
+        computeIsChecked(checked);
+    });
+
     function computeIsChecked() {
         isChecked = {};
         checked.forEach((c) => (isChecked[c] = true));
@@ -20,33 +27,29 @@
         value = checked.map((c) => items.find((i) => i.value === c));
     }
 
-    function handleChange(e) {
-        if (e.type === 'clear' && Array.isArray(e.detail)) checked = [];
-        else
-            checked.includes(e.detail.value)
-                ? (checked = checked.filter((i) => i != e.detail.value))
-                : (checked = [...checked, e.detail.value]);
+    function handleChange(selectedItem) {
+        if (Array.isArray(selectedItem)) checked = [];
+        checked.includes(selectedItem.value)
+            ? (checked = checked.filter((i) => i != selectedItem.value))
+            : (checked = [...checked, selectedItem.value]);
     }
-    $effect(() => {
-        computeValue(checked);
-    });
-    $effect(() => {
-        computeIsChecked(checked);
-    });
+
+    $inspect('PARENT VALUE', value);
+    $inspect('PARENT CHECKED', checked);
 </script>
 
 <Select
     {items}
     {value}
+    onselect={handleChange}
+    onclear={handleChange}
     multiple={true}
     filterSelectedItems={false}
-    closeListOnChange={false}
-    on:select={handleChange}
-    on:clear={handleChange}>
-    {#snippet item({ item })}
+    closeListOnChange={false}>
+    {#snippet itemSnippet(item, index)}
         <div class="item">
             <label for={item.value}>
-                <input type="checkbox" id={item.value} bind:checked={isChecked[item.value]} />
+                <input type="checkbox" id={`${item.value}${index}`} bind:checked={isChecked[item.value]} />
                 {item.label}
             </label>
         </div>

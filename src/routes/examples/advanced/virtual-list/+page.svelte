@@ -3,9 +3,8 @@
     import { tick } from 'svelte';
     import Select from '$lib/Select.svelte';
 
-    const items = [];
-
-    for (let i = 0; i < 8000; i++) {
+    let items = $state([]);
+    for (let i = 0; i < 1000; i++) {
         items.push(i.toString());
     }
 
@@ -36,6 +35,7 @@
     });
 </script>
 
+<p style="color:red">** wait for "svelte-tiny-virtual-list" updated to svelte 5 support **</p>
 <Select
     --list-max-height="300px"
     {items}
@@ -43,17 +43,14 @@
     bind:value
     bind:justValue
     bind:hoverItemIndex
-    on:hoverItem={(e) => handleHover(e.detail)}>
-    {#snippet list({ filteredItems })}
-        {#if filteredItems.length > 0}
-            <VirtualList
-                width="100%"
-                height={300}
-                itemCount={filteredItems?.length}
-                itemSize={50}
-                scrollToIndex={hoverItemIndex}>
-                {#snippet item({ index, style })}
+    onhoverItem={(e) => handleHover(e.detail)}>
+    {#snippet listSnippet(filteredItems)}
+        {#if filteredItems && filteredItems.length > 0}
+            <VirtualList width="100%" height={200} itemCount={filteredItems.length} itemSize={30}>
+                {#snippet itemSnippet(item, index)}
+                    <div>Item: {filteredItems[index].label}, Index: #{index}</div>
                     <div
+                        role="button"
                         class="item"
                         class:active={activeIndex === index}
                         class:hover={hoverItemIndex === index}

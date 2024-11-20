@@ -8,7 +8,7 @@
         { foo: 'value of Three with value key foo', label: 'Three' },
     ];
 
-    let justValue = $state(3);
+    let justValue = $state();
 </script>
 
 <Select {items} itemId="foo" bind:justValue />

@@ -1,7 +1,7 @@
 {
     "name": "svelte-select",
     "version": "6.0.0",
-    "repository": "https://kodaicoder@github.com/kodaicoder/svelte-5-select.git",
+    "repository": "https://rob-balfre@github.com/rob-balfre/svelte-select.git",
     "description": "A <Select> component for Svelte 5 apps",
     "scripts": {
         "dev": "vite dev",

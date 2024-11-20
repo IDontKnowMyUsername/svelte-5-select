@@ -6,9 +6,7 @@
 </script>
 
 <Select bind:items bind:value>
-    {#snippet selection({ selection })}
-    
-            Slot: {selection.label}
-        
+    {#snippet selectionSnippet({ selection })}
+        Slot: {selection.label}
     {/snippet}
 </Select>
