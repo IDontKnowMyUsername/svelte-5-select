@@ -9,10 +9,11 @@
         { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' },
     ];
 
-    let value;
+    let value = $state();
 </script>
 
 <Select {items} groupHeaderSelectable groupBy={(item) => item.group} bind:value />
+
 <p>
     {value?.label}
 </p>

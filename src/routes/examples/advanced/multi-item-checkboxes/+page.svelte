@@ -7,12 +7,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    let value = [];
-    let checked = [];
-    let isChecked = {};
-
-    $: computeValue(checked);
-    $: computeIsChecked(checked);
+    let value = $state([]);
+    let checked = $state([]);
+    let isChecked = $state({});
 
     function computeIsChecked() {
         isChecked = {};
@@ -30,6 +27,12 @@
                 ? (checked = checked.filter((i) => i != e.detail.value))
                 : (checked = [...checked, e.detail.value]);
     }
+    $effect(() => {
+        computeValue(checked);
+    });
+    $effect(() => {
+        computeIsChecked(checked);
+    });
 </script>
 
 <Select
@@ -40,12 +43,14 @@
     closeListOnChange={false}
     on:select={handleChange}
     on:clear={handleChange}>
-    <div class="item" slot="item" let:item>
-        <label for={item.value}>
-            <input type="checkbox" id={item.value} bind:checked={isChecked[item.value]} />
-            {item.label}
-        </label>
-    </div>
+    {#snippet item({ item })}
+        <div class="item">
+            <label for={item.value}>
+                <input type="checkbox" id={item.value} bind:checked={isChecked[item.value]} />
+                {item.label}
+            </label>
+        </div>
+    {/snippet}
 </Select>
 
 <style>

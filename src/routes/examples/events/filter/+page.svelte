@@ -7,10 +7,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(foundedItems) {
+        console.log('Filtered items 🔍: ', $state.snapshot(foundedItems));
     }
 </script>
 
-<Select {items} on:filter={handle} />
-
+<Select {items} onfilter={handle} />

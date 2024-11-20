@@ -1,11 +1,11 @@
 <script>
     import Select from '$lib/Select.svelte';
 
-    export let form;
+    let { form } = $props();
 
     const items = ['Foo', 'Bar'];
-    let value = null;
-    let multiple = false;
+    let value = $state(null);
+    let multiple = $state(false);
 </script>
 
 <label for="toggle"><input id="toggle" type="checkbox" bind:checked={multiple} />Multiple</label>

@@ -4,9 +4,9 @@
     let items = ['One', 'Two', 'Three'];
 
     let collection = [
-        { value: 'one', label: 'One' },
-        { value: 'two', label: 'Two' },
-        { value: 'three', label: 'Three' },
+        { value: 'oneCollection', label: 'One From Collection' },
+        { value: 'twoCollection', label: 'Two From Collection' },
+        { value: 'threeCollection', label: 'Three From Collection' },
     ];
 </script>
 

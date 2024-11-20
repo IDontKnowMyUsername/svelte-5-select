@@ -1,11 +1,13 @@
 <script>
     import Select from '../../src/lib/Select.svelte';
 
-    let items = ['one', 'two'];
+    let items = $state(['one', 'two']);
 </script>
 
 <Select bind:items listOpen>
-    <svelte:fragment slot="item" let:item>
-        * {item.label} *
-    </svelte:fragment>
+    {#snippet item({ item })}
+    
+            * {item.label} *
+        
+    {/snippet}
 </Select>

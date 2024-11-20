@@ -7,10 +7,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(e) {
-        console.log(e.detail);
+    function handle(hoverItemIndex) {
+        console.log('Hover item index :', hoverItemIndex);
     }
 </script>
 
-<Select {items} on:hoverItem={handle} />
-
+<Select {items} onhoveritem={handle} />

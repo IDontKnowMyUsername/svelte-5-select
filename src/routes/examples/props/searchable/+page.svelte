@@ -7,10 +7,10 @@
         { value: 'three', label: 'Three' },
     ];
 
-    let searchable = true;
+    let searchable = $state(true);
 </script>
 
-<button on:click={() => searchable = !searchable}>Searchable: {searchable}</button>
+<button onclick={() => searchable = !searchable}>Searchable: {searchable}</button>
 
 <Select {items} {searchable} />
 

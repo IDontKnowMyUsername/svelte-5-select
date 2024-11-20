@@ -243,7 +243,7 @@ export let createGroupHeaderItem = groupValue => {
 export function handleClear() {
   value = undefined;
   listOpen = false;
-  dispatch("clear", value);
+  onClear(value);
   handleFocus();
 }
 ```

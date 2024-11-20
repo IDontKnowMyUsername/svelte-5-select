@@ -1,6 +1,6 @@
 export default function filter({
     loadOptions,
-    filterText,
+    filterText = '',
     items,
     multiple,
     value,
@@ -12,8 +12,10 @@ export default function filter({
     filterGroupedItems,
     label,
 }) {
+
     if (items && loadOptions) return items;
     if (!items) return [];
+
 
     if (items && items.length > 0 && typeof items[0] !== 'object') {
         items = convertStringItemsToObjects(items);
@@ -26,7 +28,6 @@ export default function filter({
                 return filterSelectedItems ? x[itemId] === item[itemId] : false;
             });
         }
-
         return matchesFilter;
     });
 

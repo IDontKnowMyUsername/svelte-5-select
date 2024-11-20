@@ -8,8 +8,11 @@
     ];
 </script>
 
+not show
+<Select {items} />
+<br />
+show
 <Select {items} showChevron />
 
 <style>
-
 </style>

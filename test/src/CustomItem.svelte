@@ -1,12 +1,18 @@
 <script>
-    export let active = false;
-    export let first = false;
-    export let hover = false;
-    export let item = undefined;
+    /**
+     * @typedef {Object} Props
+     * @property {boolean} [active]
+     * @property {boolean} [first]
+     * @property {boolean} [hover]
+     * @property {any} [item]
+     */
 
-    let itemClasses = '';
+    /** @type {Props} */
+    let { active = false, first = false, hover = false, item = undefined } = $props();
 
-    $: {
+    let itemClasses = $state('');
+
+    $effect(() => {
         const classes = [];
         if (active) {
             classes.push('active');
@@ -18,7 +24,7 @@
             classes.push('hover');
         }
         itemClasses = classes.join(' ');
-    }
+    });
 </script>
 
 <div class="customItem {itemClasses}">

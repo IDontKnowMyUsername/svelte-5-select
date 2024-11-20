@@ -1,16 +1,20 @@
 <script>
     import Select from '$lib/Select.svelte';
 
-    let collection = [
-        { value: 'one', label: 'One' },
-        { value: 'two', label: 'Two' },
-        { value: 'three', label: 'Three' },
+    let items = [
+        { value: 'value-of-one', label: 'One' },
+        { value: 'value-of-two', label: 'Two' },
+        { value: 'value-of-three', label: 'Three' },
     ];
 
-    let justValue;
+    let justValue = $state();
+    let justValueMultiple = $state();
 </script>
 
-
-<Select items={collection} bind:justValue />
+<Select {items} bind:justValue />
 
 <p>justValue: {justValue}</p>
+
+<Select {items} bind:justValue={justValueMultiple} multiple />
+
+<p>justValueMultiple: {justValueMultiple}</p>

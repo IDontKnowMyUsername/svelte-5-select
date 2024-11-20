@@ -9,9 +9,7 @@
 </script>
 
 <div>
-    <Select {items} listOffset={10}></Select>
-
-    
+    <Select {items} listOffset={20}></Select>
 </div>
 
 <style>
