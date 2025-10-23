@@ -1,44 +1,37 @@
-<div align="center">
+<div style="text-align: center;">
   <img src="https://raw.githubusercontent.com/rob-balfre/svelte-select/master/svelte-select.png" alt="Svelte Select" width="150" />
-  <h1>Svelte Select</h1>
+  <h1>Svelte 5 Select</h1>
 </div>
-
-<div align="center">
-  <a href="https://npmjs.org/package/svelte-select">
-    <img src="https://badgen.now.sh/npm/v/svelte-select" alt="version" />
+<div style="text-align: center;">
+  <a href="https://npmjs.org/package/svelte-5-select">
+    <img src="https://badgen.now.sh/npm/v/svelte-5-select" alt="version" />
   </a>
-  <a href="https://npmjs.org/package/svelte-select">
-    <img src="https://badgen.now.sh/npm/dm/svelte-select" alt="downloads" />
+  <a href="https://npmjs.org/package/svelte-5-select">
+    <img src="https://badgen.now.sh/npm/dm/svelte-5-select" alt="downloads" />
   </a>
 </div>
-<div align="center">A select/autocomplete/typeahead Svelte component.</div>
+<div style="text-align: center;">A select/autocomplete/typeahead Svelte 5 component.</div>
 
 ## Demos
 
-[💥 Examples of every prop, event, slot and more 💥](https://svelte-select-examples.vercel.app)
+[💥 Examples of every prop, event, slot and more 💥](https://svelte-5-select-examples.vercel.app)
 
-[✨ REPL: Simple ✨](https://svelte.dev/repl/c3bbe052fdfc4e87a46ccd9091ee002b)
+[✨ REPL: Simple ✨] Doesn't exist yet
 
-[💃 REPL: Show me everything 🕺](https://svelte.dev/repl/3df87e32340e4e9e85bf371becae2af0)
+[💃 REPL: Show me everything 🕺]Doesn't exist yet
 
 ## Installation
 
 ```bash
-npm install svelte-select
+npm install svelte-5-select
 ```
 
 ## Svelte 5
-I'm not currently using Svelte 5 in my day job or personal projects so might be a while before I tackle porting / upgrading to Svelte 5. Looking forward to it though, just need to find the time!
-
-
-## Upgrading Svelte Select
-See [migration guide](/MIGRATION_GUIDE.md) if upgrading
+This work is forked from <a href="https://github.com/kodaicoder/svelte-5-select">kodaicoder/svelte-5-select</a> which itself was forked from <a href="https://github.com/rob-balfre/svelte-select">rob-balfre/svelte-select</a>
 
 
 ## Rollup and low/no-build setups
-
 List position and floating is powered by `floating-ui`, see their [package-entry-points](https://github.com/floating-ui/floating-ui#package-entry-points) docs if you encounter build errors.
-
 
 
 ## Props
@@ -122,7 +115,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   let simple = ['one', 'two', 'three'];
 
@@ -142,7 +135,7 @@ They can also be grouped and include non-selectable items.
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   const items = [
     {value: 'chocolate', label: 'Chocolate', group: 'Sweet'},
@@ -162,7 +155,7 @@ You can also use custom collections.
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   const itemId = 'id';
   const label = 'title';
@@ -182,7 +175,7 @@ To load items asynchronously then `loadOptions` is the simplest solution. Supply
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   import { someApiCall } from './services';
 
@@ -201,11 +194,11 @@ To load items asynchronously then `loadOptions` is the simplest solution. Supply
 
 ### Advanced List Positioning / Floating 
 
-`svelte-select` uses [floating-ui](https://floating-ui.com/) to control the list floating. See their docs and pass in your config via the `floatingConfig` prop.
+`svelte-5-select` uses [floating-ui](https://floating-ui.com/) to control the list floating. See their docs and pass in your config via the `floatingConfig` prop.
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   let floatingConfig = {
     strategy: 'fixed'
@@ -300,7 +293,7 @@ You can style a component by overriding [the available CSS custom properties](/d
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 </script>
 
 <Select --border-radius= "10px" --placeholder-color="blue" />
@@ -310,7 +303,7 @@ You can also use the `inputStyles` prop to write in any override styles needed f
 
 ```html
 <script>
-  import Select from 'svelte-select';
+  import Select from 'svelte-5-select';
 
   const items = ['One', 'Two', 'Three'];
 </script>
@@ -319,7 +312,7 @@ You can also use the `inputStyles` prop to write in any override styles needed f
 ```
 
 ### 🧪 Experimental: Replace styles (Tailwind, Bootstrap, Bulma etc)
-If you'd like to supply your own styles use: `import Select from 'svelte-select/no-styles/Select.svelte'`. Then somewhere in your code or build pipeline add your own. There is a tailwind stylesheet via `import 'svelte-select/tailwind.css'`. It uses `@extend` so PostCSS is required.
+If you'd like to supply your own styles use: `import Select from 'svelte-5-select/no-styles/Select.svelte'`. Then somewhere in your code or build pipeline add your own. There is a tailwind stylesheet via `import 'svelte-5-select/tailwind.css'`. It uses `@extend` so PostCSS is required.
 
 
 ## License

@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { SelectItem } from '$lib';
 
     let items = [
         { value: 'one', label: 'One' },
@@ -7,9 +8,9 @@
         { value: 'three', label: 'Three' },
     ];
 
-    let value = $state([]);
+    let value = $state<SelectItem[]>([]);
 
-    function handleClick(item) {
+    function handleClick(item: SelectItem) {
         if (!value) value = [item];
         else value = [...value, item];
     }

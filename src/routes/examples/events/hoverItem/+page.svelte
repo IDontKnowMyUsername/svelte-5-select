@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [
@@ -7,7 +7,7 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(hoverItemIndex) {
+    function handle(hoverItemIndex: number) {
         console.log('Hover item index :', hoverItemIndex);
     }
 </script>

@@ -1,5 +1,5 @@
 <script>
-    import { page, navigating } from '$app/stores';
+    import { page, navigating } from '$app/state';
 
     import { HighlightSvelte } from 'svelte-highlight';
     import highlightStyles from 'svelte-highlight/styles/atom-one-dark';
@@ -11,14 +11,18 @@
     /** @type {Props} */
     let { children } = $props();
 
-    const _props = import.meta.glob('./examples/props/*/*.svelte', { as: 'raw' });
-    const _snippets = import.meta.glob('./examples/snippets/*/*.svelte', { as: 'raw' });
-    const _events = import.meta.glob('./examples/events/*/*.svelte', { as: 'raw' });
-    const _advanced = import.meta.glob('./examples/advanced/*/*.svelte', { as: 'raw' });
+    const _props = import.meta.glob('./examples/props/*/*.svelte', { query: '?raw', import: 'default' });
+    const _snippets = import.meta.glob('./examples/snippets/*/*.svelte', { query: '?raw', import: 'default' });
+    const _events = import.meta.glob('./examples/events/*/*.svelte', { query: '?raw', import: 'default' });
+    const _advanced = import.meta.glob('./examples/advanced/*/*.svelte', { query: '?raw', import: 'default' });
 
     let source = $state();
     let showNav = $state(false);
 
+    /**
+     * @param {Record<string, () => Promise<any>>} obj
+     * @returns {Array<{href: string, name: string, source: () => Promise<any>}>}
+     */
     function buildLinks(obj) {
         return Object.keys(obj).map((key) => {
             const sp = key.split('/');
@@ -31,10 +35,17 @@
         });
     }
 
+    /**
+     * @param {string} s
+     * @returns {string}
+     */
     const pascalToSpaced = (s) => {
         return s.replace(/([A-Z])/g, ' $1').replace(/^./, (str) => str.toUpperCase());
     };
 
+    /**
+     * @param {any} newPage
+     */
     async function handleExampleCode(newPage) {
         source = null;
 
@@ -42,9 +53,14 @@
 
         if (newPage?.route?.id?.includes('examples/')) {
             const s = newPage.route.id.split('/');
-            const file = setup[s[2]].find((i) => i.href.split('/').pop() === s[3]);
+            const category = s[2];
+
+            const categorySetup = /** @type {any} */ (setup)[category];
+            if (!categorySetup) return;
+
+            const file = categorySetup.find((/** @type {any} */ i) => i.href.split('/').pop() === s[3]);
             const raw = await file.source();
-            source = raw.replace('$lib/Select.svelte', 'svelte-select');
+            source = raw.replace('$lib/Select.svelte', 'svelte-5-select');
         }
     }
 
@@ -59,11 +75,11 @@
         advanced: buildLinks(_advanced),
     });
     $effect(() => {
-        if ($navigating) showNav = false;
+        if (navigating?.to) showNav = false;
     });
-    let route = $derived($page.route.id.substring(1));
+    let route = $derived(page.route.id?.substring(1) ?? '');
     $effect(() => {
-        handleExampleCode($page);
+        handleExampleCode(page);
     });
 </script>
 
@@ -79,9 +95,9 @@
                 fill="currentcolor" /></svg>
     </button>
 
-    <nav class:show={showNav} class:navigating={$navigating}>
-        <ul>
-            <li><a <a class:active={$page.route.id === 'examples'} href="/">Home</a></li>
+    <nav class:show={showNav} class:navigating={!!navigating?.to}>
+    <ul>
+            <li><a class:active={page.route.id === 'examples'} href="/">Home</a></li>
         </ul>
 
         <h2>Props</h2>
@@ -113,10 +129,10 @@
         </ul>
     </nav>
 
-    <div class="content" class:spinning={$navigating}>
+    <div class="content" class:spinning={!!navigating?.to}>
         <img src="/svelte-select.png" alt="Svelte Select Logo" class="spinner" />
 
-        {#if !$navigating}
+        {#if !navigating?.to}
             {@render children?.()}
 
             {#if source}

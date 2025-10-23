@@ -1,9 +1,9 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let { form } = $props();
 
-    let value = $state();
+    let value = $state('');
     let items = ['pizza', 'crisps', 'ice-cream'];
 </script>
 

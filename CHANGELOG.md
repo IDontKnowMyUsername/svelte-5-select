@@ -1,4 +1,8 @@
-# svelte-select changelog
+# svelte-5-select changelog
+
+## 1.0.0-beta
+* Forked from which was forked from
+* Updated dependencies and associated code to Typescript
 
 ## 5.8.3
 

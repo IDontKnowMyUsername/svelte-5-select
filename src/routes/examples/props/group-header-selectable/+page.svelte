@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { SelectItem } from '$lib';
 
     let items = [
         { value: 'chocolate', label: 'Chocolate', group: 'Sweet' },
@@ -9,11 +10,12 @@
         { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' },
     ];
 
-    let value = $state();
+    let value = $state<any>();
+    let selectedLabel = $derived((value as SelectItem)?.label);
 </script>
 
-<Select {items} groupHeaderSelectable groupBy={(item) => item.group} bind:value />
+<Select {items} groupHeaderSelectable groupBy={(item) => item.group ?? ''} bind:value />
 
 <p>
-    {value?.label}
+    {selectedLabel}
 </p>

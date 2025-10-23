@@ -1,10 +1,11 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
     import Fuse from 'fuse.js';
+    import type { SelectItem } from '$lib';
 
     let items = ['one', 'two', 'three', 'four', 'five'];
 
-    async function handleOptions(filterText) {
+    async function handleOptions(filterText: string): Promise<SelectItem[] | string[]> {
         if (filterText.length === 0) return [...items];
 
         const fuse = new Fuse([...items]);
@@ -20,4 +21,4 @@
 <p>you can try type "on" the list will provide a "one" as first data but will approximate a string</p>
 <p>then it will provide "four" and "two" in the list</p>
 
-<Select loadOptions={handleOptions} debounceWait="0" />
+<Select loadOptions={handleOptions} debounceWait={0} />

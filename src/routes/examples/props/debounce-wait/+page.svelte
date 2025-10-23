@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [
@@ -16,4 +16,4 @@
 </script>
 
 <p>loadOptions called: {loadOptionsCalled}</p>
-<Select {loadOptions} debounceWait="2000" />
+<Select {loadOptions} debounceWait={2000} />
