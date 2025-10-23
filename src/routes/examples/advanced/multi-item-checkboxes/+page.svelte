@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [
@@ -7,27 +7,14 @@
         { value: 'three', label: 'Three' },
     ];
 
-    let value = $state([]);
-    let checked = $state([]);
-    let isChecked = $state({});
+    let checked = $state<string[]>([]);
+    let value = $derived(checked.map((c) => items.find((i) => i.value === c)));
 
-    $effect(() => {
-        computeValue(checked);
-    });
-    $effect(() => {
-        computeIsChecked(checked);
-    });
-
-    function computeIsChecked() {
-        isChecked = {};
-        checked.forEach((c) => (isChecked[c] = true));
+    function isItemChecked(itemValue: string): boolean {
+        return checked.includes(itemValue);
     }
 
-    function computeValue() {
-        value = checked.map((c) => items.find((i) => i.value === c));
-    }
-
-    function handleChange(selectedItem) {
+    function handleChange(selectedItem: any) {
         if (Array.isArray(selectedItem)) checked = [];
         checked.includes(selectedItem.value)
             ? (checked = checked.filter((i) => i != selectedItem.value))
@@ -49,7 +36,12 @@
     {#snippet itemSnippet(item, index)}
         <div class="item">
             <label for={item.value}>
-                <input type="checkbox" id={`${item.value}${index}`} bind:checked={isChecked[item.value]} />
+                <input
+                    type="checkbox"
+                    id={`${item.value}${index}`}
+                    checked={isItemChecked(item.value)}
+                    onchange={() => handleChange(item)}
+                />
                 {item.label}
             </label>
         </div>

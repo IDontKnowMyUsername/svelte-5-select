@@ -1,7 +1,8 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { SelectItem } from '$lib';
 
-    let items = [];
+    let items: SelectItem[] = [];
 </script>
 
 <p>using <code>emptySnippet</code></p>

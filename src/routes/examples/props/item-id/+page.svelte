@@ -1,5 +1,4 @@
-<script>
-    import { LineNumbers } from 'svelte-highlight';
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [

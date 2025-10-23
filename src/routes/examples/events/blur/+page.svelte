@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [
@@ -7,7 +7,7 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(event) {
+    function handle(event: FocusEvent) {
         console.log('You blur the svelte select 😶‍🌫️', event);
     }
 </script>

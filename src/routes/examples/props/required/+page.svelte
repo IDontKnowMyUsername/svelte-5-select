@@ -1,7 +1,4 @@
-<script>
-    import { createBubbler, preventDefault } from 'svelte/legacy';
-
-    const bubble = createBubbler();
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [
@@ -9,9 +6,15 @@
         { value: 'two', label: 'Two' },
         { value: 'three', label: 'Three' },
     ];
+
+    function handleSubmit(event: SubmitEvent) {
+        event.preventDefault();
+        console.log('Form submitted!');
+        // Your form logic here
+    }
 </script>
 
-<form onsubmit={preventDefault(bubble('submit'))}>
+<form onsubmit={handleSubmit}>
     <Select {items} required />
     <button type="submit">Submit</button>
 </form>

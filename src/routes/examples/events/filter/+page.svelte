@@ -1,5 +1,6 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { SelectItem } from '$lib';
 
     let items = [
         { value: 'one', label: 'One' },
@@ -7,7 +8,7 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(foundedItems) {
+    function handle(foundedItems: SelectItem[]) {
         console.log('Filtered items 🔍: ', $state.snapshot(foundedItems));
     }
 </script>

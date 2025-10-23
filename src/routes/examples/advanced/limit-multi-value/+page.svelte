@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     const _items = [
@@ -10,7 +10,7 @@
         { value: 'six', label: 'Six' },
     ];
 
-    let value = $state();
+    let value = $state([]);
 
     let maxItems = $derived(value?.length === 4);
     let items = $derived(maxItems ? [] : [..._items]);

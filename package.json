@@ -1,79 +1,86 @@
 {
-    "name": "svelte-select",
-    "version": "6.0.0",
-    "repository": "https://rob-balfre@github.com/rob-balfre/svelte-select.git",
+    "name": "svelte-5-select",
+    "version": "1.0.0-beta.0",
+    "publishConfig": {
+      "access": "public"
+    },
+    "repository": "https://github.com/IDontKnowMyUsername/svelte-5-select.git",
     "description": "A <Select> component for Svelte 5 apps",
     "scripts": {
+        "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
         "dev": "vite dev",
         "build": "vite build",
+        "build:lib": "vite build --config vite.lib.config.ts",
+        "coverage": "vitest run --coverage",
         "preview": "vite preview",
-        "test": "npm run test:dev & npm run test:browser",
-        "test:dev": "rollup -cw",
-        "test:browser": "sirv test/public -p 3000 --dev --open",
+        "test": "vitest",
+        "test:ui": "vitest --ui",
+        "test:run": "vitest run",
         "gen:docs": "node docs/generate_theming_variables_md.cjs",
-        "preprepare": "node src/remove-styles.cjs",
+        "package": "svelte-kit sync && svelte-package",
+        "preprepare": "tsx src/remove-styles.ts",
         "prepare": "svelte-package",
-        "postprepare": "node src/post-prepare.cjs && npm run gen:docs",
+        "postprepare": "tsx src/post-prepare.ts && npm run gen:docs",
         "release": "release-it"
     },
     "devDependencies": {
-        "@rollup/plugin-alias": "^5.1.1",
-        "@sveltejs/adapter-auto": "3.3.1",
-        "@sveltejs/adapter-static": "3.0.6",
-        "@sveltejs/kit": "2.8.1",
-        "@sveltejs/package": "^2.3.7",
-        "@sveltejs/vite-plugin-svelte": "4.0.0",
-        "autoprefixer": "^10.4.20",
-        "cross-env": "^7.0.3",
+        "@sveltejs/adapter-auto": "7.0.0",
+        "@sveltejs/adapter-static": "3.0.10",
+        "@sveltejs/kit": "2.47.3",
+        "@sveltejs/package": "^2.5.4",
+        "@sveltejs/vite-plugin-svelte": "6.2.1",
+        "@testing-library/svelte": "^5.2.8",
+        "@testing-library/user-event": "^14.6.1",
+        "@vitest/coverage-v8": "^3.2.4",
+        "@vitest/ui": "^3.2.4",
+        "autoprefixer": "^10.4.21",
+        "cross-env": "^10.1.0",
         "find-in-files": "^0.5.0",
-        "fuse.js": "^7.0.0",
-        "prettier": "~3.3.3",
-        "prettier-plugin-svelte": "^3.2.8",
-        "release-it": "^17.10.0",
-        "rollup": "^4.26.0",
-        "rollup-plugin-cleaner": "^1.0.0",
-        "rollup-plugin-css-only": "^4.5.2",
-        "rollup-plugin-node-resolve": "^5.2.0",
-        "rollup-plugin-postcss": "^4.0.2",
-        "rollup-plugin-replace": "^2.2.0",
-        "rollup-plugin-svelte": "^7.2.2",
-        "sirv-cli": "^3.0.0",
-        "svelte": "^5.1.16",
-        "svelte-highlight": "^7.7.0",
+        "fuse.js": "^7.1.0",
+        "happy-dom": "^20.0.8",
+        "npm-check-updates": "^19.1.1",
+        "prettier": "~3.6.2",
+        "prettier-plugin-svelte": "^3.4.0",
+        "release-it": "^19.0.5",
+        "svelte-check": "^4.3.3",
+        "svelte-highlight": "^7.9.0",
         "svelte-preprocess": "^6.0.3",
-        "svelte-tiny-virtual-list": "^2.1.2",
-        "svelte2tsx": "^0.7.24",
-        "tape-modern": "^1.1.2",
-        "typescript": "^5.6.3",
-        "vite": "^5.4.11"
+        "svelte-virtual-list": "^3.0.1",
+        "svelte2tsx": "^0.7.45",
+        "tsx": "^4.20.6",
+        "typescript": "^5.9.3",
+        "vite": "^7.1.12",
+        "vitest": "^3.2.4"
     },
-    "author": "Robert Balfré <rob.balfre@gmail.com> (https://github.com/rob-balfre)",
+    "author": "https://github.com/IDontKnowMyUsername/svelte-5-select, https://github.com/kodaicoder, Robert Balfré <rob.balfre@gmail.com> (https://github.com/rob-balfre)",
     "license": "ISC",
-    "keywords": [
-        "svelte"
-    ],
-    "release-it": {
-        "hooks": {
-            "after:bump": "npm run prepare"
-        },
-        "github": {
-            "release": false
-        },
-        "npm": {
-            "publishPath": "./package"
-        }
+    "homepage": "https://github.com/IDontKnowMyUsername/svelte-5-select#readme",
+    "bugs": {
+      "url": "https://github.com/IDontKnowMyUsername/svelte-5-select/issues"
     },
+    "keywords": [
+      "svelte",
+      "svelte5",
+      "select",
+      "dropdown",
+      "component",
+      "select-component"
+    ],
     "type": "module",
     "exports": {
-        ".": {
-            "svelte": "./index.js",
-            "types": "./index.d.ts"
-        }
+      ".": {
+        "types": "./dist/index.d.ts",
+        "svelte": "./dist/index.js"
+      }
+    },
+    "svelte": "./dist/index.js",
+    "files": ["dist"],
+    "peerDependencies": {
+      "svelte": "^5.41.2"
     },
     "dependencies": {
-        "svelte": "^5.1.16",
-        "svelte-floating-ui": "1.5.9",
-        "@sveltejs/vite-plugin-svelte": "4.0.0"
+        "@floating-ui/dom": "^1.7.4",
+        "svelte-floating-ui": "1.6.2"
     },
-    "packageManager": "pnpm@9.12.3+sha512.cce0f9de9c5a7c95bef944169cc5dfe8741abfb145078c0d508b868056848a87c81e626246cb60967cbd7fd29a6c062ef73ff840d96b3c86c40ac92cf4a813ee"
+    "packageManager": "pnpm@10.19.0"
 }

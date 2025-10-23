@@ -1,6 +1,5 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
-    import { tick } from 'svelte';
 
     let items = [
         { value: 'one', label: 'One' },

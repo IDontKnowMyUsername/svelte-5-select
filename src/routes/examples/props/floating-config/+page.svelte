@@ -1,5 +1,7 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { Strategy, Placement } from '@floating-ui/dom';
+
 
     let items = [
         { value: 'one', label: 'One' },
@@ -8,11 +10,11 @@
     ];
 
     let floatingConfig = {
-        strategy: 'fixed',
+        strategy: 'fixed' as Strategy,
     };
 
     let topConfig = {
-        placement: 'top-start',
+        placement: 'top-start' as Placement,
     };
 </script>
 

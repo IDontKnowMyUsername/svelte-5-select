@@ -1,6 +1,4 @@
-<script>
-    import { preventDefault } from 'svelte/legacy';
-
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = [

@@ -1,36 +1,44 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
+    import type { SelectItem } from '$lib';
 
     let filterText = $state('');
 
-    let value = $state(null);
+    let value = $state<SelectItem[]>([]);
+
+    type Item = {
+        value: number;
+        label: string;
+        created: boolean;
+    };
 
     let items = $state([
-        { value: 1, label: 'name 1' },
-        { value: 2, label: 'name 2' },
-        { value: 3, label: 'name 3' },
-        { value: 4, label: 'name 4' },
-        { value: 5, label: 'name 5' },
+        { value: 1, label: 'name 1', created: false },
+        { value: 2, label: 'name 2', created: false },
+        { value: 3, label: 'name 3', created: false },
+        { value: 4, label: 'name 4', created: false },
+        { value: 5, label: 'name 5', created: false },
     ]);
 
-    function handleFilter(foundedItems) {
-        if (value?.find((i) => i.label === filterText)) return;
+    function handleFilter(foundedItems: SelectItem[]) {
+        if (value?.find((i: any) => i.label === filterText)) return;
         if (foundedItems.length === 0 && filterText.length > 0) {
             const prev = items.filter((i) => !i.created);
-            items = [...prev, { value: filterText, label: filterText, created: true }];
+            const maxValue = Math.max(...items.map(i => i.value), 0);
+            items = [...prev, { value: maxValue + 1, label: filterText, created: true }];
         }
     }
 
-    function handleChange(selectedValue) {
+    function handleChange(selectedValue: Number) {
         items = items.map((i) => {
-            delete i.created;
+            i.created = false;
             return i;
         });
     }
 </script>
 
 <Select onchange={handleChange} multiple onfilter={handleFilter} bind:filterText bind:value {items}>
-    {#snippet item({ item })}
+    {#snippet itemSnippet(item)}
         <div>
             {item.created ? 'Add new: ' : ''}
             {item.label}

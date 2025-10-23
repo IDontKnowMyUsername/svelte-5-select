@@ -1,8 +1,8 @@
 node_modules
 .DS_Store
-/test/public/tests.js
-/test/public/tests.css
-/test/public/assets
+/tests/public/tests.js
+/tests/public/tests.css
+/tests/public/assets
 /spec/page/public/build
 /.svelte-kit
 /package

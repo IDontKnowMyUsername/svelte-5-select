@@ -1,4 +1,4 @@
-<script>
+<script lang="ts">
     import Select from '$lib/Select.svelte';
 
     let items = ['One', 'Two', 'Three'];
@@ -9,6 +9,6 @@
     bind:listOpen
     {items}
     listOffset={0}
-    --list-border-radius="0 0 10px 10px"
+    --list-border-radius="0 0 30px 30px"
     --item-first-border-radius="0"
-    --border-radius={listOpen ? '10px 10px 0 0' : '5px'} />
+    --border-radius={listOpen ? '30px 30px 0 0' : '5px'} />
