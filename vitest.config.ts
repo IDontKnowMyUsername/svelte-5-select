@@ -44,6 +44,7 @@ export default defineConfig({
                 'src/lib/ChevronIcon.svelte',
                 'src/lib/ClearIcon.svelte',
                 'src/lib/LoadingIcon.svelte',
+                'src/lib-example/**',
                 'src/routes/**/*'
             ],
         }
