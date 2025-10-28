@@ -2,7 +2,7 @@
     "name": "svelte-5-select",
     "version": "1.0.0-beta.0",
     "publishConfig": {
-      "access": "public"
+        "access": "public"
     },
     "repository": "https://github.com/IDontKnowMyUsername/svelte-5-select.git",
     "description": "A <Select> component for Svelte 5 apps",
@@ -39,6 +39,8 @@
         "fuse.js": "^7.1.0",
         "happy-dom": "^20.0.8",
         "npm-check-updates": "^19.1.1",
+        "postcss": "^8.5.6",
+        "postcss-load-config": "^6.0.1",
         "prettier": "~3.6.2",
         "prettier-plugin-svelte": "^3.4.0",
         "release-it": "^19.0.5",
@@ -56,27 +58,33 @@
     "license": "ISC",
     "homepage": "https://github.com/IDontKnowMyUsername/svelte-5-select#readme",
     "bugs": {
-      "url": "https://github.com/IDontKnowMyUsername/svelte-5-select/issues"
+        "url": "https://github.com/IDontKnowMyUsername/svelte-5-select/issues"
     },
     "keywords": [
-      "svelte",
-      "svelte5",
-      "select",
-      "dropdown",
-      "component",
-      "select-component"
+        "svelte",
+        "svelte5",
+        "select",
+        "dropdown",
+        "component",
+        "select-component"
     ],
     "type": "module",
     "exports": {
-      ".": {
-        "types": "./dist/index.d.ts",
-        "svelte": "./dist/index.js"
-      }
+        ".": {
+            "types": "./dist/index.d.ts",
+            "svelte": "./dist/index.js"
+        }
     },
     "svelte": "./dist/index.js",
     "files": ["dist"],
     "peerDependencies": {
-      "svelte": "^5.41.2"
+        "svelte": "^5.41.2",
+        "tailwindcss": "^4.1.16"
+    },
+    "peerDependenciesMeta": {
+        "tailwindcss": {
+            "optional": true
+        }
     },
     "dependencies": {
         "@floating-ui/dom": "^1.7.4",
