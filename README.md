@@ -1,5 +1,5 @@
 <div style="text-align: center;">
-  <img src="https://raw.githubusercontent.com/rob-balfre/svelte-select/master/svelte-select.png" alt="Svelte Select" width="150" />
+  <img src="https://raw.githubusercontent.com/IDontKnowMyUsername/svelte-5-select/master/svelte-select.png" alt="Svelte 5 Select" width="150" />
   <h1>Svelte 5 Select</h1>
 </div>
 <div style="text-align: center;">
