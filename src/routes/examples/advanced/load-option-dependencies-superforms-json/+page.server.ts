@@ -5,12 +5,14 @@ import { superValidate } from "sveltekit-superforms/server";
 import { orderSchema } from '../../../../lib-example/order';
 
 export const load: PageServerLoad = async ({ fetch }) => {
+    // @ts-expect-error - Type mismatch between Zod schema and SuperForms adapter
     const form = await superValidate({ category: [], item: [] }, zod(orderSchema));
     return { form };
 };
 
 export const actions = {
     default: async (event) => {
+        // @ts-expect-error - Type mismatch between Zod schema and SuperForms adapter
         const form = await superValidate(event, zod(orderSchema));
 
         if (!form.valid) {

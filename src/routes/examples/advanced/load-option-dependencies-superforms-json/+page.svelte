@@ -10,6 +10,7 @@
     let { data } = $props();
     const { form, errors, constraints, enhance, tainted, submitting, allErrors } = superForm(data.form, {
         dataType: 'json',
+        // @ts-expect-error - Type mismatch between Zod schema and SuperForms adapter
         validators: zodClient(orderSchema),
         validationMethod: 'oninput',
         customValidity: true
@@ -26,10 +27,11 @@
 
     async function getCategoryItems(): Promise<SelectItem[] | string[]> {
         let result: SelectItem[] = [];
-        console.log('Select 1:', $form.category?.value);
-        if ($form.category?.value == 1) {
+        const category = $form.category as SelectItem | undefined;
+        console.log('Select 1:', category?.value);
+        if (category?.value == 1) {
             result = drinkItems;
-        } else if ($form.category?.value === 2) {
+        } else if (category?.value === 2) {
             result = foodItems;
         }
         console.log('Returning items:', result);
@@ -41,7 +43,7 @@
     <div style="padding: 20px;">
         <h2>Category Select</h2>
         <Select
-            bind:value={$form.category}
+            bind:value={$form.category as any}
             items={categories}
         />
 
@@ -51,8 +53,8 @@
 
         <h2 style="margin-top: 30px;">Items Select</h2>
         <Select
-            bind:value={$form.item}
-            isDisabled={!select1Valid}
+            bind:value={$form.item as any}
+            disabled={!select1Valid}
             loadOptions={getCategoryItems}
             loadOptionsDeps={[$form.category]}
         />
