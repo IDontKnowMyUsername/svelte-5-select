@@ -401,7 +401,8 @@
     $effect(() => {
         // Watch both filterText and loadOptionsDeps for changes
         const currentFilterText = filterText;
-        loadOptionsDeps.forEach(dep => dep);
+        // Properly track loadOptionsDeps by creating a new array (forces reading each value)
+        const currentDeps = [...loadOptionsDeps];
 
         if (loadOptions && !disabled) {
             // Use untrack to prevent infinite loops when setting items/value/loading
@@ -437,6 +438,10 @@
 
                             if (!valueExists) {
                                 value = multiple ? [] : undefined;
+                                // Also clear justValue when using useJustValue mode
+                                if (useJustValue) {
+                                    justValue = multiple ? [] : '';
+                                }
                             }
                         } else if (value && (!items || items.length === 0)) {
                             // Clear value if items is empty
@@ -467,6 +472,17 @@
             if (currentFilterText.length > 0 && !listOpen) {
                 listOpen = true;
             }
+        } else if (loadOptions && disabled) {
+            // When disabled and using loadOptions, clear the value and items
+            untrack(() => {
+                if (value || (useJustValue && justValue)) {
+                    value = multiple ? [] : undefined;
+                    if (useJustValue) {
+                        justValue = multiple ? [] : '';
+                    }
+                }
+                items = null;
+            });
         }
     });
 
@@ -653,26 +669,37 @@
     }
 
     function computeJustValue(): any {
-        if (useJustValue && !value && !clearState) {  // Change back to value
+        const hasJustValue = multiple
+            ? (Array.isArray(justValue) && justValue.length > 0)
+            : (justValue !== '' && justValue != null);
+
+        if (useJustValue && !value && !clearState && hasJustValue) {
+            // Lookup justValue in items and set value
             const typedItems = (items as SelectItem[]) || [];
             if (multiple) {
                 value = typedItems.filter((item: SelectItem) =>
                     justValue.includes((item as Record<string, any>)[itemId])
                 );
             } else {
-                value = typedItems.filter((item: SelectItem) =>  // Change back to value
+                value = typedItems.filter((item: SelectItem) =>
                     (item as Record<string, any>)[itemId] === justValue
                 )[0];
             }
         }
 
+        // Capture clearState before resetting it
+        const wasClearing = clearState;
         clearState = false;
+
+        // Preserve justValue when in useJustValue mode with no value
+        // BUT allow clearing when user clicked clear button
+        if (useJustValue && !value && !wasClearing) {
+            return justValue;
+        }
 
         // Handle multiple selection
         if (multiple && Array.isArray(value)) {
-            return value ? value.map((item: SelectItem) =>
-                (item as Record<string, any>)[itemId]
-            ) : null;
+            return value.map((item: SelectItem) => item[itemId]);
         }
 
         // Handle single selection
@@ -680,7 +707,7 @@
             return value;
         }
 
-        return (value as Record<string, any>)[itemId];
+        return value[itemId];
     }
 
     function checkValueForDuplicates(): boolean {
