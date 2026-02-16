@@ -1,6 +1,6 @@
 {
     "name": "svelte-5-select",
-    "version": "1.0.0",
+    "version": "1.0.1",
     "publishConfig": {
         "access": "public"
     },
@@ -78,7 +78,9 @@
         }
     },
     "svelte": "./dist/index.js",
-    "files": ["dist"],
+    "files": [
+        "dist"
+    ],
     "peerDependencies": {
         "svelte": "^5.41.2",
         "tailwindcss": "^4.1.16"
