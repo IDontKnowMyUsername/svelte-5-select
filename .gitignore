@@ -9,3 +9,6 @@ node_modules
 /src/lib/no-styles
 .env
 .idea/
+/dist
+.claude/
+/docs
