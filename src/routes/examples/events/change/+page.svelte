@@ -1,6 +1,6 @@
 <script lang="ts">
     import Select from '$lib/Select.svelte';
-    import type { SelectItem } from '$lib';
+    import type { SelectValue } from '$lib/types';
 
     let items = [
         { value: 'one', label: 'One' },
@@ -8,7 +8,7 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(selectedValue: SelectItem) {
+    function handle(selectedValue: SelectValue) {
         console.log('You change the svelte select 🤯 ', $state.snapshot(selectedValue));
     }
 </script>

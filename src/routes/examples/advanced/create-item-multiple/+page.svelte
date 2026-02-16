@@ -1,6 +1,6 @@
 <script lang="ts">
     import Select from '$lib/Select.svelte';
-    import type { SelectItem } from '$lib';
+    import type { SelectItem, SelectValue } from '$lib/types';
 
     let filterText = $state('');
 
@@ -29,7 +29,7 @@
         }
     }
 
-    function handleChange(selectedValue: Number) {
+    function handleChange(selectedValue: SelectValue) {
         items = items.map((i) => {
             i.created = false;
             return i;

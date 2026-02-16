@@ -17,7 +17,7 @@ import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
-import type { SelectItem } from '$lib';
+import type { SelectItem, SelectValue } from '$lib/types';
 import { tick } from 'svelte';
 import userEvent from '@testing-library/user-event';
 
@@ -26,6 +26,7 @@ type SelectInstance = {
     value?: any;
     filterText?: string;
     listOpen?: boolean;
+    reset?: () => void;
 };
 
 async function querySelectorClick(selector: string): Promise<void> {
@@ -309,7 +310,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithIndex,
-                    onchange: (selectedValue: SelectItem) => {
+                    onchange: (selectedValue: SelectValue) => {
                         value = JSON.stringify(selectedValue);
                     }
                 }
@@ -2106,7 +2107,7 @@ describe('Select Component', () => {
                     loadOptions: rejectPromise,
                     onloaded: () => { },
                     onerror: (error: any) => {
-                        errorEventData = { detail: error };
+                        errorEventData = error;
                     }
                 }
             });
@@ -2117,7 +2118,8 @@ describe('Select Component', () => {
             await wait(300);
             await tick();
 
-            expect(errorEventData.detail).toBe('error 123');
+            expect(errorEventData.type).toBe('loadOptions');
+            expect(errorEventData.details).toBe('error 123');
         });
 
         it('shows items on promise resolve with value', async () => {
@@ -3337,7 +3339,7 @@ describe('Select Component', () => {
             expect(parsedValue.value).toBe('cake');
         });
 
-        it('has no value when multiple and no value', () => {
+        it('has no hidden input when multiple and no value', () => {
             render(Select, {
                 props: {
                     multiple: true,
@@ -3345,10 +3347,9 @@ describe('Select Component', () => {
                 }
             });
 
-            const hiddenInput = document.querySelector('input[type="hidden"]') as HTMLInputElement;
+            const hiddenInput = document.querySelector('input[type="hidden"]');
 
-            expect(hiddenInput).toBeTruthy();
-            expect(hiddenInput.value).toBeFalsy();
+            expect(hiddenInput).toBeNull();
         });
 
         it('lists value items when multiple and value exists', () => {
@@ -3360,16 +3361,28 @@ describe('Select Component', () => {
                 }
             });
 
-            const hiddenInput = document.querySelector('input[type="hidden"]') as HTMLInputElement;
+            const hiddenInputs = document.querySelectorAll('input[type="hidden"]') as NodeListOf<HTMLInputElement>;
 
-            expect(hiddenInput).toBeTruthy();
-            expect(hiddenInput.value).toBeTruthy();
+            expect(hiddenInputs.length).toBe(2);
+            expect(JSON.parse(hiddenInputs[0].value).value).toBe('cake');
+            expect(JSON.parse(hiddenInputs[1].value).value).toBe('pizza');
+        });
 
-            const hidden = JSON.parse(hiddenInput.value);
-            expect(Array.isArray(hidden)).toBeTruthy();
-            expect(hidden.length).toBe(2);
-            expect(hidden[0].value).toBe('cake');
-            expect(hidden[1].value).toBe('pizza');
+        it('renders per-item hidden inputs with useJustValue when multiple', () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items: items,
+                    useJustValue: true,
+                    value: [{ value: 'cake', label: 'Cake' }, { value: 'pizza', label: 'Pizza' },],
+                }
+            });
+
+            const hiddenInputs = document.querySelectorAll('input[type="hidden"]') as NodeListOf<HTMLInputElement>;
+
+            expect(hiddenInputs.length).toBe(2);
+            expect(hiddenInputs[0].value).toBe('cake');
+            expect(hiddenInputs[1].value).toBe('pizza');
         });
     });
 
@@ -3456,6 +3469,107 @@ describe('Select Component', () => {
 
             let aria = document.querySelector('#aria-context');
             expect(aria!.innerHTML).toBe('nothing to see here.');
+        });
+
+        it('list has role="listbox" when open', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    id: 'test'
+                }
+            });
+
+            let listbox = document.querySelector('[role="listbox"]');
+            expect(listbox).toBeTruthy();
+            expect(listbox!.id).toBe('listbox-test');
+        });
+
+        it('items have role="option" with aria-selected', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    value: { value: 'pizza', label: 'Pizza' }
+                }
+            });
+
+            let options = document.querySelectorAll('[role="option"]');
+            expect(options.length).toBe(5);
+            expect(options[0].getAttribute('aria-selected')).toBe('false');
+            expect(options[1].getAttribute('aria-selected')).toBe('true');
+        });
+
+        it('input has aria-activedescendant pointing to hovered item', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    id: 'test'
+                }
+            });
+
+            let input = document.querySelector('input[type="text"]');
+            expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-0');
+            await handleKeyboard('ArrowDown');
+            expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
+        });
+
+        it('group headers have role="group" with aria-label', () => {
+            render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    listOpen: true,
+                    groupBy: (item: SelectItem) => item.group as string
+                }
+            });
+
+            let groups = document.querySelectorAll('[role="group"]');
+            expect(groups.length).toBe(2);
+            expect(groups[0].getAttribute('aria-label')).toBe('Sweet');
+            expect(groups[1].getAttribute('aria-label')).toBe('Savory');
+        });
+
+        it('group header list-items have role="presentation"', () => {
+            render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    listOpen: true,
+                    groupBy: (item: SelectItem) => item.group as string
+                }
+            });
+
+            let presentations = document.querySelectorAll('[role="presentation"]');
+            expect(presentations.length).toBe(2);
+        });
+
+        it('ariaLabel prop sets aria-label on input', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    ariaLabel: 'Select a food'
+                }
+            });
+
+            let input = document.querySelector('input[type="text"]');
+            expect(input!.getAttribute('aria-label')).toBe('Select a food');
+        });
+
+        it('generates stable ARIA IDs when no id prop provided', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                }
+            });
+
+            let listbox = document.querySelector('[role="listbox"]');
+            let input = document.querySelector('input[type="text"]');
+            expect(listbox!.id).toMatch(/^listbox-svelte-select-/);
+            let activedescendant = input!.getAttribute('aria-activedescendant');
+            expect(activedescendant).toMatch(/^listbox-svelte-select-.*-item-0$/);
+            // aria-controls should match the listbox id
+            expect(input!.getAttribute('aria-controls')).toBe(listbox!.id);
         });
     });
 
@@ -3884,5 +3998,560 @@ describe('Select Component', () => {
 
         // The handler should have prevented default and stopped propagation
         expect(multiItem).toBeTruthy();
+    });
+
+    describe('Required prop', () => {
+        it('renders hidden required select when no value', () => {
+            const { container } = render(Select, {
+                props: {
+                    items: items,
+                    required: true,
+                }
+            });
+
+            const requiredSelect = container.querySelector('select.required') as HTMLSelectElement;
+            expect(requiredSelect).toBeTruthy();
+            expect(requiredSelect.required).toBe(true);
+            expect(requiredSelect.tabIndex).toBe(-1);
+            expect(requiredSelect.getAttribute('aria-hidden')).toBe('true');
+        });
+
+        it('removes hidden required select when value is set', async () => {
+            const { container, rerender } = render(Select, {
+                props: {
+                    items: items,
+                    required: true,
+                }
+            });
+
+            expect(container.querySelector('select.required')).toBeTruthy();
+
+            await rerender({
+                items: items,
+                required: true,
+                value: { value: 'chocolate', label: 'Chocolate' },
+            });
+
+            await tick();
+
+            expect(container.querySelector('select.required')).toBeFalsy();
+        });
+
+        it('does not render hidden required select when required is false', () => {
+            const { container } = render(Select, {
+                props: {
+                    items: items,
+                    required: false,
+                }
+            });
+
+            expect(container.querySelector('select.required')).toBeFalsy();
+        });
+
+        it('shows hidden required select when multiple value is empty array', () => {
+            const { container } = render(Select, {
+                props: {
+                    items: items,
+                    required: true,
+                    multiple: true,
+                    value: [],
+                }
+            });
+
+            expect(container.querySelector('select.required')).toBeTruthy();
+        });
+
+        it('hides hidden required select when multiple has values', async () => {
+            const { container } = render(Select, {
+                props: {
+                    items: items,
+                    required: true,
+                    multiple: true,
+                    value: [{ value: 'chocolate', label: 'Chocolate' }],
+                }
+            });
+
+            await tick();
+
+            expect(container.querySelector('select.required')).toBeFalsy();
+        });
+    });
+
+    describe('Keyboard navigation integration', () => {
+        it('opens list when ArrowDown pressed while focused', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    focused: true,
+                }
+            });
+
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            await handleKeyboard('ArrowDown');
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
+        it('opens list when ArrowUp pressed while focused', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    focused: true,
+                }
+            });
+
+            await tick();
+
+            await handleKeyboard('ArrowUp');
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
+        it('closes list on Escape key', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                }
+            });
+
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            await handleKeyboard('Escape');
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('navigates through items with ArrowDown and wraps around', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                }
+            });
+
+            await tick();
+
+            // Start at first item (Chocolate), navigate down through all 5 items
+            for (let i = 0; i < 5; i++) {
+                await handleKeyboard('ArrowDown');
+            }
+
+            // Should wrap back to first item
+            const hoverItem = document.querySelector('.list-item .hover');
+            expect(hoverItem?.textContent?.trim()).toBe('Chocolate');
+        });
+
+        it('navigates up with ArrowUp', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                }
+            });
+
+            await tick();
+
+            // ArrowUp from first item should wrap to last item
+            await handleKeyboard('ArrowUp');
+
+            const hoverItem = document.querySelector('.list-item .hover');
+            expect(hoverItem?.textContent?.trim()).toBe('Ice Cream');
+        });
+
+        it('selects item with Enter and closes list', async () => {
+            let selectedValue: any;
+
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    onchange: (val: any) => { selectedValue = val; },
+                }
+            });
+
+            await tick();
+
+            // Navigate to Pizza (second item)
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard('Enter');
+            await tick();
+
+            expect(selectedValue).toEqual({ value: 'pizza', label: 'Pizza' });
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('selects item with Tab', async () => {
+            let selectedValue: any;
+
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    onchange: (val: any) => { selectedValue = val; },
+                }
+            });
+
+            await tick();
+
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard('Tab');
+            await tick();
+
+            expect(selectedValue).toEqual({ value: 'pizza', label: 'Pizza' });
+        });
+
+        it('skips non-selectable items when navigating', async () => {
+            render(Select, {
+                props: {
+                    items: itemsWithSelectable,
+                    listOpen: true,
+                }
+            });
+
+            await tick();
+
+            // ArrowDown from initial position navigates to first selectable item
+            await handleKeyboard('ArrowDown');
+            await tick();
+
+            let hoverItem = document.querySelector('.list-item .hover');
+            expect(hoverItem?.textContent?.trim()).toBe('SelectableDefault');
+
+            // ArrowDown again goes to next selectable item
+            await handleKeyboard('ArrowDown');
+            await tick();
+
+            hoverItem = document.querySelector('.list-item .hover');
+            expect(hoverItem?.textContent?.trim()).toBe('SelectableTrue');
+
+            // ArrowDown again should wrap back to SelectableDefault, skipping NotSelectable2
+            await handleKeyboard('ArrowDown');
+            await tick();
+
+            hoverItem = document.querySelector('.list-item .hover');
+            expect(hoverItem?.textContent?.trim()).toBe('SelectableDefault');
+        });
+
+        it('navigates multiple selection values with ArrowLeft and ArrowRight', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    multiple: true,
+                    focused: true,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                        { value: 'cake', label: 'Cake' },
+                    ],
+                }
+            });
+
+            await tick();
+
+            // ArrowLeft should activate the last multi-item
+            await handleKeyboard('ArrowLeft');
+            await tick();
+
+            const activeItems = document.querySelectorAll('.multi-item.active');
+            expect(activeItems.length).toBe(1);
+        });
+
+        it('removes active multi-item with Backspace', async () => {
+            let currentValue: any;
+
+            render(Select, {
+                props: {
+                    items: items,
+                    multiple: true,
+                    focused: true,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    oninput: (val: any) => { currentValue = val; },
+                }
+            });
+
+            await tick();
+
+            // ArrowLeft to activate last item, then Backspace to remove it
+            await handleKeyboard('ArrowLeft');
+            await tick();
+            await handleKeyboard('Backspace');
+            await tick();
+
+            const multiItems = document.querySelectorAll('.multi-item');
+            expect(multiItems.length).toBe(1);
+        });
+    });
+
+    describe('LoadOptions integration', () => {
+        it('shows loading state while loadOptions is pending', async () => {
+            const user = userEvent.setup();
+
+            let resolveLoad: (items: SelectItem[]) => void;
+            const slowLoad = () => new Promise<SelectItem[]>((resolve) => {
+                resolveLoad = resolve;
+            });
+
+            render(Select, {
+                props: {
+                    loadOptions: slowLoad,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'test');
+            await wait(300);
+            await tick();
+
+            expect(document.querySelector('.loading')).toBeTruthy();
+
+            resolveLoad!([{ value: 'a', label: 'A' }]);
+            await tick();
+            await tick();
+
+            expect(document.querySelector('.loading')).toBeFalsy();
+        });
+
+        it('debounces loadOptions calls on rapid typing', async () => {
+            const user = userEvent.setup();
+            const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    debounceWait: 200,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'abc');
+            await wait(300);
+            await tick();
+
+            // Should have been debounced - not called once per character
+            expect(loadSpy.mock.calls.length).toBeLessThan(4);
+        });
+
+        it('clears value when disabled with loadOptions', async () => {
+            const { rerender } = render(Select, {
+                props: {
+                    loadOptions: getPosts,
+                    value: { value: 1, label: 'Amber Ale' },
+                }
+            });
+
+            await tick();
+
+            await rerender({
+                loadOptions: getPosts,
+                disabled: true,
+            });
+
+            await tick();
+            await tick();
+
+            const selectedItem = document.querySelector('.selected-item');
+            expect(selectedItem).toBeFalsy();
+        });
+
+        it('opens list when typing with loadOptions', async () => {
+            const user = userEvent.setup();
+
+            render(Select, {
+                props: {
+                    loadOptions: getPosts,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'Pil');
+            await wait(300);
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
+        it('populates list items from loadOptions result', async () => {
+            const user = userEvent.setup();
+            const loadFn = vi.fn().mockResolvedValue([
+                { value: 'one', label: 'One' },
+                { value: 'two', label: 'Two' },
+            ]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadFn,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'On');
+            await wait(300);
+            await tick();
+
+            expect(loadFn).toHaveBeenCalled();
+            const listItems = document.querySelectorAll('.list-item');
+            expect(listItems.length).toBe(1);
+            expect(listItems[0].textContent?.trim()).toBe('One');
+        });
+
+        it('handles loadOptions with string array results', async () => {
+            const user = userEvent.setup();
+            const loadFn = vi.fn().mockResolvedValue(['Apple', 'Banana', 'Cherry']);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadFn,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'a');
+            await wait(300);
+            await tick();
+
+            expect(loadFn).toHaveBeenCalled();
+            // 'a' matches Apple, Banana (both contain 'a')
+            const listItems = document.querySelectorAll('.list-item');
+            expect(listItems.length).toBe(2);
+        });
+
+        it('clears items when loadOptions returns empty', async () => {
+            const user = userEvent.setup();
+            const loadFn = vi.fn().mockResolvedValue([]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadFn,
+                }
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'xyz');
+            await wait(300);
+            await tick();
+
+            const listItems = document.querySelectorAll('.list-item');
+            expect(listItems.length).toBe(0);
+        });
+    });
+
+    describe('reset', () => {
+        it('resets single select value', async () => {
+            const { component } = render(Select, {
+                props: {
+                    items,
+                    value: { value: 'cake', label: 'Cake' },
+                }
+            }) as { component: SelectInstance };
+
+            // Verify value is rendered
+            expect(document.querySelector('.selected-item')).toBeTruthy();
+
+            component.reset?.();
+            await tick();
+
+            // Value should be cleared - no selected item
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('resets multi select value', async () => {
+            const { component } = render(Select, {
+                props: {
+                    items,
+                    multiple: true,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                }
+            }) as { component: SelectInstance };
+
+            // Verify multi items are rendered
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+
+            component.reset?.();
+            await tick();
+
+            // Multi items should be cleared
+            expect(document.querySelectorAll('.multi-item').length).toBe(0);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('resets filterText when list is open with active search', async () => {
+            const user = userEvent.setup();
+
+            const { component } = render(Select, {
+                props: {
+                    items,
+                }
+            }) as { component: SelectInstance };
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.click(input);
+            await user.type(input, 'choc');
+            await tick();
+
+            expect(input.value).toBe('choc');
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            component.reset?.();
+            await tick();
+
+            expect(input.value).toBe('');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
+
+        it('does not fire onchange or onclear callbacks', async () => {
+            const changeFn = vi.fn();
+            const clearFn = vi.fn();
+
+            const { component } = render(Select, {
+                props: {
+                    items,
+                    value: { value: 'cake', label: 'Cake' },
+                    onchange: changeFn,
+                    onclear: clearFn,
+                }
+            }) as { component: SelectInstance };
+
+            component.reset?.();
+            await tick();
+
+            expect(changeFn).not.toHaveBeenCalled();
+            expect(clearFn).not.toHaveBeenCalled();
+        });
+
+        it('closes the list and clears selection after reset', async () => {
+            const { component } = render(Select, {
+                props: {
+                    items,
+                    value: { value: 'cake', label: 'Cake' },
+                }
+            }) as { component: SelectInstance };
+
+            // Open the list
+            await querySelectorClick('.svelte-select');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            component.reset?.();
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
     });
 });

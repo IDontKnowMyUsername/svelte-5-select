@@ -7,6 +7,6 @@
 
 <Select bind:items name="test" bind:value>
     {#snippet inputHiddenSnippet(value)}
-        <input type="hidden" name="test" value={value.value} />
+        <input type="hidden" name="test" value={value && !Array.isArray(value) ? value.value : ''} />
     {/snippet}
 </Select>

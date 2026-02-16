@@ -7,6 +7,6 @@
 
 <Select bind:items bind:value multiple>
     {#snippet selectionSnippet(selection, index)}
-        Index: {index} Slot: {selection.label}
+        Index: {index} Slot: {!Array.isArray(selection) ? selection.label : ''}
     {/snippet}
 </Select>

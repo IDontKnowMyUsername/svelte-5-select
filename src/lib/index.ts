@@ -16,6 +16,8 @@ export { isStringArray, isCancelled, areItemsEqual } from './utils';
 export type {
     SelectItem,
     SelectProps,
+    SelectValue,
+    JustValue,
     FloatingConfig,
     FilterConfig,
     KeyboardNavigationContext,

@@ -13,7 +13,7 @@
 <Select {items}>
     {#snippet selectionSnippet(selection)}
         <div>
-            🎉 {selection.label} 🎉
+            🎉 {!Array.isArray(selection) ? selection.label : ''} 🎉
         </div>
     {/snippet}
 </Select>
@@ -23,7 +23,7 @@
 <Select {items} multiple>
     {#snippet selectionSnippet(selection, index)}
         <div>
-            🎉 {index} : {selection.label} 🎉
+            🎉 {index} : {!Array.isArray(selection) ? selection.label : ''} 🎉
         </div>
     {/snippet}
 </Select>

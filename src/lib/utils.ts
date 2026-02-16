@@ -4,7 +4,7 @@ export function getItemProperty<T>(item: T, key: keyof T | string): T[keyof T] |
     return item && typeof item === 'object' ? (item as any)[key] : undefined;
 }
 
-export function areItemsEqual(a: any, b: any, itemId: string): boolean {
+export function areItemsEqual(a: SelectItem | null | undefined, b: SelectItem | null | undefined, itemId: string): boolean {
     if (!a || !b) return false;
     return getItemProperty(a, itemId) === getItemProperty(b, itemId);
 }
@@ -22,7 +22,7 @@ export function isItemSelectableCheck(item: SelectItem | undefined): boolean {
     return !item.hasOwnProperty('selectable') || item.selectable !== false;
 }
 
-export function hasValueChanged(newValue: any, oldValue: any): boolean {
+export function hasValueChanged(newValue: unknown, oldValue: unknown): boolean {
     return JSON.stringify(newValue) !== JSON.stringify(oldValue);
 }
 

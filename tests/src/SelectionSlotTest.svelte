@@ -7,6 +7,6 @@
 
 <Select bind:items bind:value>
     {#snippet selectionSnippet(selection)}
-        Slot: {selection.label}
+        Slot: {!Array.isArray(selection) ? selection.label : ''}
     {/snippet}
 </Select>

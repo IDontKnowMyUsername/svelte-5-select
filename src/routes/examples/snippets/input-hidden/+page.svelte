@@ -12,7 +12,7 @@
 <form method="POST" action="?/someaction">
     <Select {items} bind:value>
         {#snippet inputHiddenSnippet(value)}
-            <input type="hidden" name="demo" {...value} />
+            <input type="hidden" name="demo" value={value && !Array.isArray(value) ? JSON.stringify(value) : ''} />
         {/snippet}
     </Select>
 

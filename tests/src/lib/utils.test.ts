@@ -29,7 +29,7 @@ describe('areItemsEqual', () => {
     });
 
     it('handles non-object values', () => {
-        expect(areItemsEqual('string', { value: 'a' }, 'value')).toBe(false);
-        expect(areItemsEqual(123, { value: 'a' }, 'value')).toBe(false);
+        expect(areItemsEqual('string' as any, { value: 'a' }, 'value')).toBe(false);
+        expect(areItemsEqual(123 as any, { value: 'a' }, 'value')).toBe(false);
     });
 });

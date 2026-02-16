@@ -40,7 +40,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
 
         const hoverItem = filteredItems[hoverItemIndex];
 
-        if (!multiple && areItemsEqual(value, hoverItem, itemId)) {
+        if (!multiple && areItemsEqual(value as SelectItem | null, hoverItem, itemId)) {
             context.closeList();
         } else {
             context.handleSelect(filteredItems[hoverItemIndex]);
@@ -78,7 +78,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
 
         if (!listOpen || !focused) return;
 
-        if (filteredItems.length === 0 || areItemsEqual(value, filteredItems[hoverItemIndex], itemId)) {
+        if (filteredItems.length === 0 || areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)) {
             context.closeList();
             return;
         }

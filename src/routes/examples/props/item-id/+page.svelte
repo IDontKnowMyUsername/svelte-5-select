@@ -7,7 +7,9 @@
         { foo: 'value of Three with value key foo', label: 'Three' },
     ];
 
-    let justValue = $state();
+    import type { JustValue } from '$lib/types';
+
+    let justValue = $state<JustValue>(null);
 </script>
 
 <Select {items} itemId="foo" bind:justValue />

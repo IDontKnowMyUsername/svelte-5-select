@@ -11,7 +11,9 @@
     let value = $state<string | undefined>(undefined);
     let listOpen = $state(false);
     let activeIndex = $state<number | null>(null);
-    let justValue = $state();
+    import type { JustValue } from '$lib/types';
+
+    let justValue = $state<JustValue>(null);
     let hoverItemIndex = $state(0);
 
     function handleClick(i: number) {
