@@ -706,7 +706,7 @@
             onscroll={hoverManager.handleListScroll}
             onscrollend={hoverManager.handleListScrollEnd}
             onpointerup={(ev) => {
-                ev.preventDefault();
+                if (ev.pointerType === 'mouse') ev.preventDefault();
                 ev.stopPropagation();
             }}
             onmousedown={(ev) => {
@@ -815,7 +815,7 @@
                             <div
                                 class="multi-item-clear"
                                 onpointerup={(ev) => {
-                                    ev.preventDefault();
+                                    if (ev.pointerType === 'mouse') ev.preventDefault();
                                     ev.stopPropagation();
                                     valueManager.handleMultiItemClear(i);
                                 }}>
