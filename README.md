@@ -115,7 +115,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   let simple = ['one', 'two', 'three'];
 
@@ -135,7 +135,7 @@ They can also be grouped and include non-selectable items.
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   const items = [
     {value: 'chocolate', label: 'Chocolate', group: 'Sweet'},
@@ -155,7 +155,7 @@ You can also use custom collections.
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   const itemId = 'id';
   const label = 'title';
@@ -175,7 +175,7 @@ To load items asynchronously then `loadOptions` is the simplest solution. Supply
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   import { someApiCall } from './services';
 
@@ -198,7 +198,7 @@ To load items asynchronously then `loadOptions` is the simplest solution. Supply
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   let floatingConfig = {
     strategy: 'fixed'
@@ -293,7 +293,7 @@ You can style a component by overriding [the available CSS custom properties](/d
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 </script>
 
 <Select --border-radius= "10px" --placeholder-color="blue" />
@@ -303,7 +303,7 @@ You can also use the `inputStyles` prop to write in any override styles needed f
 
 ```html
 <script>
-  import Select from 'svelte-5-select';
+  import { Select } from 'svelte-5-select';
 
   const items = ['One', 'Two', 'Three'];
 </script>
@@ -317,4 +317,4 @@ If you'd like to supply your own styles use: `import Select from 'svelte-5-selec
 
 ## License
 
-[LIL](LICENSE)
+[License](LICENSE)
