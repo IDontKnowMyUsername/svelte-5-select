@@ -671,6 +671,27 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
+        it('uses user-supplied handleClear prop instead of default clear behavior', async () => {
+            const customHandleClear = vi.fn();
+
+            render(Select, {
+                props: {
+                    items,
+                    value: { value: 'pizza', label: 'Pizza' },
+                    handleClear: customHandleClear,
+                }
+            });
+
+            await tick();
+            const clearButton = document.querySelector('.clear-select') as HTMLElement;
+            clearButton.click();
+            await tick();
+
+            expect(customHandleClear).toHaveBeenCalledTimes(1);
+            const selectedItem = document.querySelector('.selected-item') as HTMLElement;
+            expect(selectedItem.textContent).toContain('Pizza');
+        });
+
         it('clears on list close', async () => {
             const div = document.createElement('div');
             document.body.appendChild(div);

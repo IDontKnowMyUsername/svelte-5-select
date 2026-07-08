@@ -24,7 +24,6 @@
 
     const defaultOnError = (error: SelectErrorEvent): void => {};
     const defaultOnLoaded = (options: SelectItem[]): void => {};
-    const defaultHandleClear = (e?: MouseEvent): void => {};
 
     let timeout = $state<ReturnType<typeof setTimeout>>();
     let clearState = $state(false);
@@ -107,7 +106,7 @@
         },
 
         // Custom behavior
-        handleClear = defaultHandleClear,
+        handleClear = internalHandleClear,
 
         // Event handlers
         onblur = () => {},
@@ -169,13 +168,13 @@
         ariaFocused,
     });
 
-    handleClear = (e?: MouseEvent): void => {
+    function internalHandleClear(e?: MouseEvent): void {
         clearState = true;
         onclear(value as SelectValue);
         value = undefined;
         closeList();
         handleFocus();
-    };
+    }
 
     let list = $state<HTMLDivElement | undefined>();
     let _inputAttributes = $derived<HTMLInputAttributes>({

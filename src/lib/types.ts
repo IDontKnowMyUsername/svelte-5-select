@@ -208,7 +208,7 @@ export interface SelectProps {
     ariaValues?: (values: string) => string;
 
     // Custom behavior
-    handleClear?: () => void;
+    handleClear?: (e?: MouseEvent) => void;
 
     // Event handlers
     onblur?: (e: FocusEvent) => void;
