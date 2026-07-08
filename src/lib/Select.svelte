@@ -184,7 +184,7 @@
         'aria-expanded': listOpen,
         'aria-haspopup': 'listbox',
         'aria-activedescendant': listOpen ? `listbox-${_id}-item-${hoverItemIndex}` : undefined,
-        'aria-label': ariaLabel,
+        'aria-label': ariaLabel ?? placeholder,
         tabindex: 0,
         readonly: !searchable,
         id: id ? id : undefined,
@@ -813,6 +813,9 @@
                         {#if !disabled && !multiFullItemClearable && ClearIcon}
                             <div
                                 class="multi-item-clear"
+                                role="button"
+                                tabindex="-1"
+                                aria-label={`Remove ${item[label]}`}
                                 onpointerup={(ev) => {
                                     if (ev.pointerType === 'mouse') ev.preventDefault();
                                     ev.stopPropagation();
@@ -864,7 +867,7 @@
         {/if}
 
         {#if showClear}
-            <button type="button" class="icon clear-select" onclick={handleClear}>
+            <button type="button" class="icon clear-select" aria-label="Clear selection" onclick={handleClear}>
                 {#if clearIconSnippet}
                     {@render clearIconSnippet()}
                 {:else}
