@@ -56,7 +56,7 @@
         "zod": "^4.3.6"
     },
     "author": "https://github.com/IDontKnowMyUsername/svelte-5-select, https://github.com/kodaicoder, Robert Balfré <rob.balfre@gmail.com> (https://github.com/rob-balfre)",
-    "license": "ISC",
+    "license": "SEE LICENSE IN LICENSE",
     "homepage": "https://github.com/IDontKnowMyUsername/svelte-5-select#readme",
     "bugs": {
         "url": "https://github.com/IDontKnowMyUsername/svelte-5-select/issues"
@@ -74,7 +74,13 @@
         ".": {
             "types": "./dist/index.d.ts",
             "svelte": "./dist/index.js"
-        }
+        },
+        "./no-styles/*": {
+            "types": "./dist/no-styles/*.d.ts",
+            "svelte": "./dist/no-styles/*"
+        },
+        "./styles/*": "./dist/styles/*",
+        "./tailwind.css": "./dist/tailwind.css"
     },
     "svelte": "./dist/index.js",
     "files": [
