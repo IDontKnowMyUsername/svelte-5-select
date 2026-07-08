@@ -54,9 +54,6 @@ importers:
       cross-env:
         specifier: ^10.1.0
         version: 10.1.0
-      find-in-files:
-        specifier: ^0.5.0
-        version: 0.5.0
       fuse.js:
         specifier: ^7.3.0
         version: 7.3.0
@@ -1190,12 +1187,6 @@ packages:
   fflate@0.8.2:
     resolution: {integrity: sha512-cPJU47OaAoCbg0pBvzsgpTPhmhqI5eJjh/JIu8tPj5q+T7iLvW/JAYUqmE7KOB4R1ZyEhzBaIQpQpardBF5z8A==}
 
-  find-in-files@0.5.0:
-    resolution: {integrity: sha512-VraTc6HdtdSHmAp0yJpAy20yPttGKzyBWc7b7FPnnsX9TOgmKx0g9xajizpF/iuu4IvNK4TP0SpyBT9zAlwG+g==}
-
-  find@0.1.7:
-    resolution: {integrity: sha512-jPrupTOe/pO//3a9Ty2o4NqQCp0L46UG+swUnfFtdmtQVN8pEltKpAqR7Nuf6vWn0GBXx5w+R1MyZzqwjEIqdA==}
-
   flatted@3.4.2:
     resolution: {integrity: sha512-PjDse7RzhcPkIJwy5t7KPWQSZ9cAbzQXcafsetQoD7sOJRQlGikNbx7yZp2OotDnJyrDcbyRq3Ttb18iYOqkxA==}
 
@@ -1686,14 +1677,6 @@ packages:
   pure-rand@6.1.0:
     resolution: {integrity: sha512-bVWawvoZoBYpp6yIoQtQXHZjmz35RSVHnUOTefl8Vcjr8snTPY1wnpSPMWekcFwbxI6gtmT7rSYPFvz71ldiOA==}
 
-  q@1.5.1:
-    resolution: {integrity: sha512-kV/CThkXo6xyFEZUugw/+pIOywXcDbFYgSct5cT3gqlbkBE1SJdwy6UQoZvodiWF/ckQLZyDE/Bu1M6gVu5lVw==}
-    engines: {node: '>=0.6.0', teleport: '>=0.2.0'}
-    deprecated: |-
-      You or someone you depend on is using Q, the JavaScript Promise library that gave JavaScript developers strong feelings about promises. They can almost certainly migrate to the native JavaScript promise now. Thank you literally everyone for joining me in this bet against the odds. Be excellent to each other.
-
-      (For a CapTP with native promises, see @endo/eventual-send and @endo/captp)
-
   rc9@2.1.2:
     resolution: {integrity: sha512-btXCnMmRIBINM2LDZoEmOogIZU7Qe7zn4BpomSKZ/ykbLObuBdvG+mFq11DL6fjH1DRwHhrlgtYWG96bJiC7Cg==}
 
@@ -1898,9 +1881,6 @@ packages:
   totalist@3.0.1:
     resolution: {integrity: sha512-sf4i37nQ2LBx4m3wB74y+ubopq6W/dIzXg0FDGjsYnZHVa1Da8FH853wlL2gtUhg+xJXjfk3kUZS3BRoQeoQBQ==}
     engines: {node: '>=6'}
-
-  traverse-chain@0.1.0:
-    resolution: {integrity: sha512-up6Yvai4PYKhpNp5PkYtx50m3KbwQrqDwbuZP/ItyL64YEWHAvH6Md83LFLV/GRSk/BoUVwwgUzX6SOQSbsfAg==}
 
   ts-algebra@2.0.0:
     resolution: {integrity: sha512-FPAhNPFMrkwz76P7cdjdmiShwMynZYN6SgOujD1urY4oNm80Ou9oMdmbR45LotcKOXoy7wSmHkRFE6Mxbrhefw==}
@@ -3098,15 +3078,6 @@ snapshots:
 
   fflate@0.8.2: {}
 
-  find-in-files@0.5.0:
-    dependencies:
-      find: 0.1.7
-      q: 1.5.1
-
-  find@0.1.7:
-    dependencies:
-      traverse-chain: 0.1.0
-
   flatted@3.4.2: {}
 
   fraction.js@5.3.4: {}
@@ -3555,8 +3526,6 @@ snapshots:
   pure-rand@6.1.0:
     optional: true
 
-  q@1.5.1: {}
-
   rc9@2.1.2:
     dependencies:
       defu: 6.1.4
@@ -3816,8 +3785,6 @@ snapshots:
     optional: true
 
   totalist@3.0.1: {}
-
-  traverse-chain@0.1.0: {}
 
   ts-algebra@2.0.0:
     optional: true
