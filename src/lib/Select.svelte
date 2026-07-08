@@ -350,7 +350,7 @@
         untrack(
             () =>
                 (filteredItems = filter({
-                    loadOptions: undefined,
+                    loadOptions,
                     filterText,
                     items,
                     multiple,

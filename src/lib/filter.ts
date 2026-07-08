@@ -15,10 +15,6 @@ export default function filter({
                                    filterGroupedItems,
                                    label,
                                }: FilterConfig): SelectItem[] {
-    if (items && loadOptions) {
-        return items as SelectItem[];
-    }
-
     // If no items, return empty array
     if (!items) {
         return [];
@@ -31,9 +27,10 @@ export default function filter({
         typedItems = convertStringItemsToObjects(typedItems as unknown as string[]);
     }
 
-    // Filter items based on filter text and selection
+    // Filter items based on filter text and selection.
+    // With loadOptions the results are already filtered remotely, so skip itemFilter.
     let filterResults: SelectItem[] = typedItems.filter((item: SelectItem): boolean => {
-        let matchesFilter: boolean = itemFilter(item[label], filterText, item);
+        let matchesFilter: boolean = loadOptions ? true : itemFilter(item[label], filterText, item);
 
         if (matchesFilter && multiple && Array.isArray(value) && value.length > 0) {
             matchesFilter = !value.some((x: SelectItem): boolean => {

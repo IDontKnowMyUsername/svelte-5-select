@@ -4400,9 +4400,11 @@ describe('Select Component', () => {
             await tick();
 
             expect(loadFn).toHaveBeenCalled();
+            // loadOptions results are already filtered remotely, so all are shown
             const listItems = document.querySelectorAll('.list-item');
-            expect(listItems.length).toBe(1);
+            expect(listItems.length).toBe(2);
             expect(listItems[0].textContent?.trim()).toBe('One');
+            expect(listItems[1].textContent?.trim()).toBe('Two');
         });
 
         it('handles loadOptions with string array results', async () => {
@@ -4421,9 +4423,9 @@ describe('Select Component', () => {
             await tick();
 
             expect(loadFn).toHaveBeenCalled();
-            // 'a' matches Apple, Banana (both contain 'a')
+            // loadOptions results are already filtered remotely, so all are shown
             const listItems = document.querySelectorAll('.list-item');
-            expect(listItems.length).toBe(2);
+            expect(listItems.length).toBe(3);
         });
 
         it('clears items when loadOptions returns empty', async () => {
