@@ -16,13 +16,12 @@
 
     function handleChange(selectedItem: any) {
         if (Array.isArray(selectedItem)) checked = [];
-        checked.includes(selectedItem.value)
-            ? (checked = checked.filter((i) => i != selectedItem.value))
-            : (checked = [...checked, selectedItem.value]);
+        if (checked.includes(selectedItem.value)) {
+            checked = checked.filter((i) => i != selectedItem.value);
+        } else {
+            checked = [...checked, selectedItem.value];
+        }
     }
-
-    $inspect('PARENT VALUE', value);
-    $inspect('PARENT CHECKED', checked);
 </script>
 
 <Select
@@ -40,8 +39,7 @@
                     type="checkbox"
                     id={`${item.value}${index}`}
                     checked={isItemChecked(item.value)}
-                    onchange={() => handleChange(item)}
-                />
+                    onchange={() => handleChange(item)} />
                 {item.label}
             </label>
         </div>

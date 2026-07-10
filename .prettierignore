@@ -1,2 +1,10 @@
-/test/src/index.js
 *.md
+pnpm-lock.yaml
+dist/
+package/
+.svelte-kit/
+src/lib/no-styles/
+tests/public/
+static/
+coverage/
+docs/

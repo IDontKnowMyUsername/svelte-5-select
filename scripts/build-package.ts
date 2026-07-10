@@ -23,8 +23,7 @@ function findStyleSpan(source: string, filename: string): StyleSpan | null {
 function rewriteRelativeImports(source: string, siblings: Set<string>): string {
     return source.replace(
         /((?:from|import)\s+['"])\.\/([^'"]+)(['"])/g,
-        (match, pre: string, spec: string, post: string) =>
-            siblings.has(spec) ? match : `${pre}../${spec}${post}`,
+        (match, pre: string, spec: string, post: string) => (siblings.has(spec) ? match : `${pre}../${spec}${post}`),
     );
 }
 

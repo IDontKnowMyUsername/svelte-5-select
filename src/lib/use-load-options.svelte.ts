@@ -1,8 +1,8 @@
 import type { LoadOptionsContext, SelectItem } from './types';
 
 export function useLoadOptions(context: LoadOptionsContext) {
-    function handleLoadOptions(currentFilterText: string, currentDeps: any[]) {
-        const { loadOptions, disabled, multiple, value, itemId, useJustValue, justValue, prevFilterText, debounceWait, listOpen } = context.getState();
+    function handleLoadOptions(currentFilterText: string, _currentDeps: any[]) {
+        const { loadOptions, disabled, prevFilterText, debounceWait, listOpen } = context.getState();
 
         if (loadOptions && !disabled) {
             context.setLoading(true);
@@ -25,14 +25,21 @@ export function useLoadOptions(context: LoadOptionsContext) {
                     if (state.value && state.items && (state.items as any[]).length > 0) {
                         const items = state.items as SelectItem[];
                         const valueExists = state.multiple
-                            ? Array.isArray(state.value) && state.value.every((v: any) =>
-                                items.some((item: any) =>
-                                    (typeof item === 'string' ? item : item[state.itemId]) === (typeof v === 'string' ? v : v[state.itemId])
-                                )
-                            )
-                            : items.some((item: any) =>
-                                (typeof item === 'string' ? item : item[state.itemId]) === (typeof state.value === 'string' ? state.value : (state.value as any)[state.itemId])
-                            );
+                            ? Array.isArray(state.value) &&
+                              state.value.every((v: any) =>
+                                  items.some(
+                                      (item: any) =>
+                                          (typeof item === 'string' ? item : item[state.itemId]) ===
+                                          (typeof v === 'string' ? v : v[state.itemId]),
+                                  ),
+                              )
+                            : items.some(
+                                  (item: any) =>
+                                      (typeof item === 'string' ? item : item[state.itemId]) ===
+                                      (typeof state.value === 'string'
+                                          ? state.value
+                                          : (state.value as any)[state.itemId]),
+                              );
 
                         if (!valueExists) {
                             context.setValue(state.multiple ? [] : undefined);

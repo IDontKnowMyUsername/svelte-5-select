@@ -36,8 +36,6 @@
     $effect(() => {
         handleListOpen();
     });
-
-    let style = "color:red";
 </script>
 
 <Select
@@ -51,11 +49,7 @@
     {#snippet listSnippet(filteredItems)}
         {#if filteredItems && filteredItems.length > 0}
             <div>
-                <VirtualList
-                    items={filteredItems}
-                    itemHeight={30}
-                    height="300px"
-                    let:item>
+                <VirtualList items={filteredItems} itemHeight={30} height="300px" let:item>
                     {@const index = filteredItems.indexOf(item)}
                     <button
                         tabindex="0"

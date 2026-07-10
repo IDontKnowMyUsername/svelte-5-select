@@ -11,8 +11,6 @@
 
     let collectionData = $state(collection[1]);
     let collectionMultipleData = $state([collection[0], collection[2]]);
-
-    $inspect('collectionMultipleData', collectionMultipleData);
 </script>
 
 <h4>Single</h4>

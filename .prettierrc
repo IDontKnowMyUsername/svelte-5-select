@@ -4,14 +4,13 @@
     "tabWidth": 4,
     "printWidth": 120,
     "bracketSameLine": true,
+    "plugins": ["prettier-plugin-svelte"],
     "overrides": [
         {
             "files": ["*.svelte"],
             "options": {
-                "singleQuote": true
+                "parser": "svelte"
             }
         }
-    ],
-    "svelteSortOrder": "scripts-markup-styles",
-    "svelteBracketNewLine": false
+    ]
 }

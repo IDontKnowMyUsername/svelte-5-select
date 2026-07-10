@@ -6,12 +6,6 @@
 
     let value = $state<SelectItem[]>([]);
 
-    type Item = {
-        value: number;
-        label: string;
-        created: boolean;
-    };
-
     let items = $state([
         { value: 1, label: 'name 1', created: false },
         { value: 2, label: 'name 2', created: false },
@@ -24,12 +18,12 @@
         if (value?.find((i: any) => i.label === filterText)) return;
         if (foundedItems.length === 0 && filterText.length > 0) {
             const prev = items.filter((i) => !i.created);
-            const maxValue = Math.max(...items.map(i => i.value), 0);
+            const maxValue = Math.max(...items.map((i) => i.value), 0);
             items = [...prev, { value: maxValue + 1, label: filterText, created: true }];
         }
     }
 
-    function handleChange(selectedValue: SelectValue) {
+    function handleChange(_selectedValue: SelectValue) {
         items = items.map((i) => {
             i.created = false;
             return i;

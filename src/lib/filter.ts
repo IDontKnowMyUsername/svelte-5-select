@@ -2,19 +2,19 @@ import type { FilterConfig, SelectItem } from './types';
 import { areItemsEqual, isStringArray } from '$lib/utils';
 
 export default function filter({
-                                   loadOptions,
-                                   filterText = '',
-                                   items,
-                                   multiple,
-                                   value,
-                                   itemId,
-                                   groupBy,
-                                   filterSelectedItems,
-                                   itemFilter,
-                                   convertStringItemsToObjects,
-                                   filterGroupedItems,
-                                   label,
-                               }: FilterConfig): SelectItem[] {
+    loadOptions,
+    filterText = '',
+    items,
+    multiple,
+    value,
+    itemId,
+    groupBy,
+    filterSelectedItems,
+    itemFilter,
+    convertStringItemsToObjects,
+    filterGroupedItems,
+    label,
+}: FilterConfig): SelectItem[] {
     // If no items, return empty array
     if (!items) {
         return [];

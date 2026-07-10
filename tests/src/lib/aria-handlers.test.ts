@@ -220,9 +220,7 @@ describe('useAriaHandlers', () => {
 
             const { handleAriaContent } = useAriaHandlers(config);
 
-            const items: SelectItem[] = [
-                { value: 'a', label: 'Item A' },
-            ];
+            const items: SelectItem[] = [{ value: 'a', label: 'Item A' }];
 
             const context = {
                 value: null,
@@ -248,9 +246,7 @@ describe('useAriaHandlers', () => {
 
             const { handleAriaContent } = useAriaHandlers(config);
 
-            const items: SelectItem[] = [
-                { value: 'a', label: 'Item A' },
-            ];
+            const items: SelectItem[] = [{ value: 'a', label: 'Item A' }];
 
             const context = {
                 value: null,

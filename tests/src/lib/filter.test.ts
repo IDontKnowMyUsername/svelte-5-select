@@ -4,7 +4,7 @@ import type { SelectItem } from '$lib/types';
 
 describe('filter', () => {
     const mockItemFilter = vi.fn((label: string, filterText: string) =>
-        label.toLowerCase().includes(filterText.toLowerCase())
+        label.toLowerCase().includes(filterText.toLowerCase()),
     );
 
     const mockConvertStringItemsToObjects = (items: string[]): SelectItem[] =>
@@ -110,9 +110,7 @@ describe('filter', () => {
             { value: 'c', label: 'Cherry' },
         ];
 
-        const selectedValue: SelectItem[] = [
-            { value: 'a', label: 'Apple' },
-        ];
+        const selectedValue: SelectItem[] = [{ value: 'a', label: 'Apple' }];
 
         const result = filter({
             loadOptions: undefined,
@@ -130,9 +128,9 @@ describe('filter', () => {
         });
 
         expect(result).toHaveLength(2);
-        expect(result.find(item => item.value === 'a')).toBeUndefined();
-        expect(result.find(item => item.value === 'b')).toBeDefined();
-        expect(result.find(item => item.value === 'c')).toBeDefined();
+        expect(result.find((item) => item.value === 'a')).toBeUndefined();
+        expect(result.find((item) => item.value === 'b')).toBeDefined();
+        expect(result.find((item) => item.value === 'c')).toBeDefined();
     });
 
     it('does not filter out selected items when filterSelectedItems is false', () => {
@@ -142,9 +140,7 @@ describe('filter', () => {
             { value: 'c', label: 'Cherry' },
         ];
 
-        const selectedValue: SelectItem[] = [
-            { value: 'a', label: 'Apple' },
-        ];
+        const selectedValue: SelectItem[] = [{ value: 'a', label: 'Apple' }];
 
         const result = filter({
             loadOptions: undefined,
@@ -162,7 +158,7 @@ describe('filter', () => {
         });
 
         expect(result).toHaveLength(3);
-        expect(result.find(item => item.value === 'a')).toBeDefined();
+        expect(result.find((item) => item.value === 'a')).toBeDefined();
     });
 
     it('applies grouping when groupBy is provided', () => {
@@ -172,10 +168,7 @@ describe('filter', () => {
         ];
 
         const mockFilterGroupedItemsWithGrouping = vi.fn((items: SelectItem[]) => {
-            return [
-                { value: 'group', label: 'Fruits', groupHeader: true },
-                ...items,
-            ];
+            return [{ value: 'group', label: 'Fruits', groupHeader: true }, ...items];
         });
 
         const result = filter({
@@ -275,7 +268,7 @@ describe('filter', () => {
         });
 
         expect(result).toHaveLength(2);
-        expect(result.find(item => item.value === 'b')).toBeDefined();
-        expect(result.find(item => item.value === 'd')).toBeDefined();
+        expect(result.find((item) => item.value === 'b')).toBeDefined();
+        expect(result.find((item) => item.value === 'd')).toBeDefined();
     });
 });

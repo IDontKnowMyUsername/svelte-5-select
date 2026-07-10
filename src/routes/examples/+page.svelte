@@ -1,5 +1,4 @@
 <script lang="ts">
-
 </script>
 
 <div class="container">
@@ -22,9 +21,7 @@
             <img src="https://badgen.net/badge/icon/github?icon=github&label" alt="downloads" />
         </a>
     </div>
-    <div style="width:80%;margin-top:4rem;">
-
-    </div>
+    <div style="width:80%;margin-top:4rem;"></div>
 </div>
 
 <style>

@@ -1,10 +1,10 @@
 import type { Actions, PageServerLoad } from './$types';
-import { fail, redirect } from "@sveltejs/kit"
-import { zod } from "sveltekit-superforms/adapters";
-import { superValidate } from "sveltekit-superforms/server";
+import { fail, redirect } from '@sveltejs/kit';
+import { zod } from 'sveltekit-superforms/adapters';
+import { superValidate } from 'sveltekit-superforms/server';
 import { orderSchema } from '../../../../lib-example/order';
 
-export const load: PageServerLoad = async ({ fetch }) => {
+export const load: PageServerLoad = async () => {
     // @ts-expect-error - Type mismatch between Zod schema and SuperForms adapter
     const form = await superValidate({ category: [], item: [] }, zod(orderSchema));
     return { form };
@@ -23,9 +23,8 @@ export const actions = {
         }
 
         // Do stuff with your data
-        throw redirect(303, "/examples/advanced/load-option-dependencies-superforms-json/success");
-
-    }
+        throw redirect(303, '/examples/advanced/load-option-dependencies-superforms-json/success');
+    },
 } satisfies Actions;
 
 export const prerender = false;

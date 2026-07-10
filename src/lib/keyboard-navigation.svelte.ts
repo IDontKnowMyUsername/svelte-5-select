@@ -9,14 +9,14 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         if (!focused) return;
 
         const handlers: Record<string, (e: KeyboardEvent) => void> = {
-            'Escape': handleEscapeKey,
-            'Enter': handleEnterKey,
-            'ArrowDown': handleArrowDownKey,
-            'ArrowUp': handleArrowUpKey,
-            'Tab': handleTabKey,
-            'Backspace': handleBackspaceKey,
-            'ArrowLeft': handleArrowLeftKey,
-            'ArrowRight': handleArrowRightKey,
+            Escape: handleEscapeKey,
+            Enter: handleEnterKey,
+            ArrowDown: handleArrowDownKey,
+            ArrowUp: handleArrowUpKey,
+            Tab: handleTabKey,
+            Backspace: handleBackspaceKey,
+            ArrowLeft: handleArrowLeftKey,
+            ArrowRight: handleArrowRightKey,
         };
 
         const handler = handlers[e.key];
@@ -78,7 +78,10 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
 
         if (!listOpen || !focused) return;
 
-        if (filteredItems.length === 0 || areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)) {
+        if (
+            filteredItems.length === 0 ||
+            areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)
+        ) {
             context.closeList();
             return;
         }
@@ -88,7 +91,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         context.closeList();
     }
 
-    function handleBackspaceKey(e: KeyboardEvent): void {
+    function handleBackspaceKey(_e: KeyboardEvent): void {
         const { multiple, filterText, value, activeValue } = context.getState();
 
         if (!multiple || filterText.length > 0) return;
@@ -104,7 +107,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         }
     }
 
-    function handleArrowLeftKey(e: KeyboardEvent): void {
+    function handleArrowLeftKey(_e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = context.getState();
 
         if (!value || !multiple || filterText.length > 0) return;
@@ -118,7 +121,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         }
     }
 
-    function handleArrowRightKey(e: KeyboardEvent): void {
+    function handleArrowRightKey(_e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = context.getState();
 
         if (!value || !multiple || filterText.length > 0 || activeValue === undefined) return;

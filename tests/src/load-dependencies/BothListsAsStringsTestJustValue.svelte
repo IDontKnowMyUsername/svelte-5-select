@@ -1,24 +1,13 @@
 <script lang="ts">
     import Select from '$lib/Select.svelte';
 
-    let {
-        category = $bindable<string>(),
-        item = $bindable<string>()
-    } = $props();
+    let { category = $bindable<string>(), item = $bindable<string>() } = $props();
 
     const categoriesAsStrings = ['Drinks', 'Food'];
 
-    const drinkItemsAsStrings: string[] = [
-        'Beer',
-        'Juice',
-        'Liquor'
-    ];
+    const drinkItemsAsStrings: string[] = ['Beer', 'Juice', 'Liquor'];
 
-    const foodItemsAsStrings: string[] = [
-        'Fries',
-        'Hamburger',
-        'Pizza'
-    ];
+    const foodItemsAsStrings: string[] = ['Fries', 'Hamburger', 'Pizza'];
 
     async function getCategoryItems(): Promise<string[]> {
         let results: string[] = [];
@@ -31,14 +20,5 @@
     }
 </script>
 
-<Select
-    bind:justValue={category}
-    useJustValue={true}
-    items={categoriesAsStrings}
-/>
-<Select
-    bind:justValue={item}
-    useJustValue={true}
-    loadOptions={getCategoryItems}
-    loadOptionsDeps={[category]}
-/>
+<Select bind:justValue={category} useJustValue={true} items={categoriesAsStrings} />
+<Select bind:justValue={item} useJustValue={true} loadOptions={getCategoryItems} loadOptionsDeps={[category]} />

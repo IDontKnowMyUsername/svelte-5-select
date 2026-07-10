@@ -25,7 +25,7 @@
         }
     }
 
-    function handleChange(selectedValue: any) {
+    function handleChange(_selectedValue: any) {
         items = items.map((i) => {
             i.created = false;
             return i;
@@ -34,7 +34,7 @@
 </script>
 
 <Select onchange={handleChange} onfilter={handleFilter} bind:filterText {items}>
-    {#snippet itemSnippet(item: SelectItem, index)}
+    {#snippet itemSnippet(item: SelectItem)}
         <div>
             {item.created ? 'Add new: ' : ''}
             {item.label}

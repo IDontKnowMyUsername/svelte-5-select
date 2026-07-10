@@ -10,7 +10,6 @@
     let disabled = $state(false);
 </script>
 
-<button onclick={() => disabled = !disabled}>Toggle disabled</button>
+<button onclick={() => (disabled = !disabled)}>Toggle disabled</button>
 
 <Select {items} {disabled} />
-

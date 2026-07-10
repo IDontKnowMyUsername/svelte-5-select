@@ -7,18 +7,18 @@ export default defineConfig({
         svelte({
             compilerOptions: {
                 hmr: !process.env.VITEST,
-                runes: true
-            }
-        })
+                runes: true,
+            },
+        }),
     ],
     optimizeDeps: {
-        exclude: ['svelte-virtual-list']
+        exclude: ['svelte-virtual-list'],
     },
     resolve: {
         alias: {
-            $lib: path.resolve('./src/lib')
+            $lib: path.resolve('./src/lib'),
         },
-        conditions: ['browser']
+        conditions: ['browser'],
     },
     test: {
         globals: true,
@@ -45,8 +45,8 @@ export default defineConfig({
                 'src/lib/ClearIcon.svelte',
                 'src/lib/LoadingIcon.svelte',
                 'src/lib-example/**',
-                'src/routes/**/*'
+                'src/routes/**/*',
             ],
-        }
-    }
+        },
+    },
 });

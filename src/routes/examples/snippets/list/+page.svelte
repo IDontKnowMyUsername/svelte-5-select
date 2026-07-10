@@ -20,7 +20,7 @@
 <p>parameter <code>filteredItems</code></p>
 <Select {items} bind:value multiple>
     {#snippet listSnippet(filteredItems)}
-        {#each filteredItems as item, index}
+        {#each filteredItems as item}
             <div>
                 <button aria-label={item.label} onclick={() => handleClick(item)}>
                     {item.label}

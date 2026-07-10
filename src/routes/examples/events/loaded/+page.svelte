@@ -8,7 +8,7 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function loadOptions(filterText: string): Promise<SelectItem[]> {
+    function loadOptions(_filterText: string): Promise<SelectItem[]> {
         return new Promise((resolve) => {
             setTimeout(() => {
                 resolve(JSON.parse(JSON.stringify(items)));

@@ -2,7 +2,6 @@
     import Select from '$lib/Select.svelte';
     import type { Strategy, Placement } from '@floating-ui/dom';
 
-
     let items = [
         { value: 'one', label: 'One' },
         { value: 'two', label: 'Two' },

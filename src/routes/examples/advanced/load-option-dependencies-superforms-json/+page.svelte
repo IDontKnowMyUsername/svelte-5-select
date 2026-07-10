@@ -5,23 +5,34 @@
     import { zodClient } from 'sveltekit-superforms/adapters';
     import { superForm } from 'sveltekit-superforms';
 
-    let categories = [{value:1, label:'Drinks'}, {value:2, label:'Food'}];
+    let categories = [
+        { value: 1, label: 'Drinks' },
+        { value: 2, label: 'Food' },
+    ];
 
     let { data } = $props();
-    const { form, errors, constraints, enhance, tainted, submitting, allErrors } = superForm(data.form, {
+    const { form, errors, tainted, submitting, allErrors } = superForm(data.form, {
         dataType: 'json',
         // @ts-expect-error - Type mismatch between Zod schema and SuperForms adapter
         validators: zodClient(orderSchema),
         validationMethod: 'oninput',
-        customValidity: true
+        customValidity: true,
     });
 
     const hasErrors = $derived($allErrors.length > 0);
     const isDirty = $derived(Object.keys($tainted ?? {}).length > 0);
     const isValid = $derived(!hasErrors && isDirty);
 
-    let drinkItems = [{value:'B', label:'Beer'}, {value:'J', label:'Juice'}, {value:'L', label:'Liquor'}];
-    let foodItems = [{value:1, label:'Fries'}, {value:2, label:'Hamburger'}, {value:3, label:'Pizza'}];
+    let drinkItems = [
+        { value: 'B', label: 'Beer' },
+        { value: 'J', label: 'Juice' },
+        { value: 'L', label: 'Liquor' },
+    ];
+    let foodItems = [
+        { value: 1, label: 'Fries' },
+        { value: 2, label: 'Hamburger' },
+        { value: 3, label: 'Pizza' },
+    ];
 
     const select1Valid = $derived(!($form.category === '' || $form.category === undefined));
 
@@ -39,13 +50,10 @@
     }
 </script>
 
-<form method="POST" >
+<form method="POST">
     <div style="padding: 20px;">
         <h2>Category Select</h2>
-        <Select
-            bind:value={$form.category as any}
-            items={categories}
-        />
+        <Select bind:value={$form.category as any} items={categories} />
 
         <div style="margin: 10px 0;">
             Selected: {JSON.stringify($form.category) ?? 'None'}
@@ -56,14 +64,13 @@
             bind:value={$form.item as any}
             disabled={!select1Valid}
             loadOptions={getCategoryItems}
-            loadOptionsDeps={[$form.category]}
-        />
+            loadOptionsDeps={[$form.category]} />
 
         <div style="margin: 10px 0;">
             Select 1 has valid value: {select1Valid}
-            <br/>
+            <br />
             Select 2 disabled: {!select1Valid}
-            <br/>
+            <br />
             Selected: {JSON.stringify($form.item) ?? 'None'}
         </div>
         <div style="margin: 10px 0;">

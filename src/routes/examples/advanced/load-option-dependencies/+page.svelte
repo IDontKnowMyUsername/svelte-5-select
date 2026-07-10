@@ -27,11 +27,7 @@
 
 <div style="padding: 20px;">
     <h2>Category Select</h2>
-    <Select
-        bind:listOpen
-        bind:value={select1Value}
-        items={categories}
-    />
+    <Select bind:listOpen bind:value={select1Value} items={categories} />
 
     <div style="margin: 10px 0;">
         Selected: {select1Value?.value ?? 'None'}
@@ -42,8 +38,7 @@
         bind:value={select2Value}
         bind:items={select2Items}
         loadOptions={getCategoryItems}
-        loadOptionsDeps={[select1Value]}
-    />
+        loadOptionsDeps={[select1Value]} />
 
     <div style="margin: 10px 0;">
         Items in state: {JSON.stringify(select2Items)}

@@ -21,9 +21,9 @@ describe('useKeyboardNavigation', () => {
 
         return {
             getState: () => state,
-            setListOpen: vi.fn((v) => state.listOpen = v),
-            setHoverItemIndex: vi.fn((v) => state.hoverItemIndex = v),
-            setActiveValue: vi.fn((v) => state.activeValue = v),
+            setListOpen: vi.fn((v) => (state.listOpen = v)),
+            setHoverItemIndex: vi.fn((v) => (state.hoverItemIndex = v)),
+            setActiveValue: vi.fn((v) => (state.activeValue = v)),
             closeList: vi.fn(),
             setHoverIndex: vi.fn(),
             handleSelect: vi.fn(),
@@ -67,9 +67,7 @@ describe('useKeyboardNavigation', () => {
 
         handleKeyDown(event);
 
-        expect(context.handleSelect).toHaveBeenCalledWith(
-            context.getState().filteredItems[0]
-        );
+        expect(context.handleSelect).toHaveBeenCalledWith(context.getState().filteredItems[0]);
     });
 
     it('does nothing when not focused', () => {
@@ -119,9 +117,7 @@ describe('useKeyboardNavigation', () => {
 
         handleKeyDown(event);
 
-        expect(context.handleSelect).toHaveBeenCalledWith(
-            context.getState().filteredItems[0]
-        );
+        expect(context.handleSelect).toHaveBeenCalledWith(context.getState().filteredItems[0]);
         expect(context.closeList).toHaveBeenCalled();
     });
 
@@ -353,7 +349,7 @@ describe('useKeyboardNavigation', () => {
             { value: 'b', label: 'B' },
             { value: 'c', label: 'C' },
         ];
-        context.getState().activeValue = 1;  // Middle item, not 0
+        context.getState().activeValue = 1; // Middle item, not 0
         context.getState().filterText = '';
 
         const { handleKeyDown } = useKeyboardNavigation(context);
@@ -369,10 +365,8 @@ describe('useKeyboardNavigation', () => {
     it('handles Backspace when value.length equals activeValue', () => {
         const context = createMockContext();
         context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-        ];
-        context.getState().activeValue = 1;  // After removal, value.length will be 1
+        context.getState().value = [{ value: 'a', label: 'A' }];
+        context.getState().activeValue = 1; // After removal, value.length will be 1
         context.getState().filterText = '';
 
         const { handleKeyDown } = useKeyboardNavigation(context);
@@ -394,7 +388,7 @@ describe('useKeyboardNavigation', () => {
             { value: 'a', label: 'A' },
             { value: 'b', label: 'B' },
         ];
-        context.getState().activeValue = 2;  // Equal to value.length
+        context.getState().activeValue = 2; // Equal to value.length
         context.getState().filterText = '';
 
         const { handleKeyDown } = useKeyboardNavigation(context);
@@ -410,10 +404,8 @@ describe('useKeyboardNavigation', () => {
     it('handles ArrowRight when activeValue exceeds bounds', () => {
         const context = createMockContext();
         context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-        ];
-        context.getState().activeValue = 5;  // Way beyond bounds
+        context.getState().value = [{ value: 'a', label: 'A' }];
+        context.getState().activeValue = 5; // Way beyond bounds
         context.getState().filterText = '';
 
         const { handleKeyDown } = useKeyboardNavigation(context);
@@ -433,7 +425,7 @@ describe('useKeyboardNavigation', () => {
             { value: 'a', label: 'A' },
             { value: 'b', label: 'B' },
         ];
-        context.getState().activeValue = undefined;  // Explicitly undefined
+        context.getState().activeValue = undefined; // Explicitly undefined
         context.getState().filterText = '';
 
         const { handleKeyDown } = useKeyboardNavigation(context);
@@ -454,7 +446,7 @@ describe('useKeyboardNavigation', () => {
             { value: 'b', label: 'B' },
         ];
         context.getState().activeValue = 1;
-        context.getState().filterText = 'test';  // Has filterText
+        context.getState().filterText = 'test'; // Has filterText
 
         const { handleKeyDown } = useKeyboardNavigation(context);
 
@@ -473,7 +465,7 @@ describe('useKeyboardNavigation', () => {
             { value: 'b', label: 'B' },
         ];
         context.getState().activeValue = 0;
-        context.getState().filterText = 'test';  // Has filterText
+        context.getState().filterText = 'test'; // Has filterText
 
         const { handleKeyDown } = useKeyboardNavigation(context);
 

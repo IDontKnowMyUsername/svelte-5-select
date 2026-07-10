@@ -4,32 +4,36 @@ import { hasValueChanged } from './utils';
 export function useValue(context: ValueContext) {
     function findItemByValue(id: string | number): SelectItem | undefined {
         const { items, itemId } = context.getState();
-        return (items as SelectItem[])?.find(item => item[itemId] === id);
+        return (items as SelectItem[])?.find((item) => item[itemId] === id);
     }
 
     function findItem(selection?: SelectItem): SelectItem | undefined {
         const { normalizedValue, items, itemId } = context.getState();
-        let matchTo = selection ? selection[itemId] : (normalizedValue as SelectItem)[itemId];
-        return (items as SelectItem[])?.find(item => item[itemId] === matchTo);
+        const matchTo = selection ? selection[itemId] : (normalizedValue as SelectItem)[itemId];
+        return (items as SelectItem[])?.find((item) => item[itemId] === matchTo);
     }
 
     function setValue() {
         const { value, multiple, itemId } = context.getState();
         context.setPrevValue(value);
         if (typeof value === 'string') {
-            let item = findItemByValue(value);
-            context.setValue(item || {
-                [itemId]: value,
-                label: value,
-            });
+            const item = findItemByValue(value);
+            context.setValue(
+                item || {
+                    [itemId]: value,
+                    label: value,
+                },
+            );
         } else if (multiple && Array.isArray(value) && value.length > 0) {
-            context.setValue(value.map((val: any) => {
-                if (typeof val === 'string') {
-                    let item = findItemByValue(val);
-                    return item || { value: val, label: val };
-                }
-                return val;
-            }));
+            context.setValue(
+                value.map((val: any) => {
+                    if (typeof val === 'string') {
+                        const item = findItemByValue(val);
+                        return item || { value: val, label: val };
+                    }
+                    return val;
+                }),
+            );
         }
     }
 
@@ -39,7 +43,8 @@ export function useValue(context: ValueContext) {
         if (!value) return;
 
         if (Array.isArray(value)) {
-            if (value.some((selection: SelectItem) => !selection || !(selection as Record<string, any>)[itemId])) return;
+            if (value.some((selection: SelectItem) => !selection || !(selection as Record<string, any>)[itemId]))
+                return;
             context.setValue(value.map((selection: SelectItem) => findItem(selection) || selection));
         } else if (typeof value === 'object') {
             if (!(value as Record<string, any>)[itemId]) return;
@@ -51,21 +56,23 @@ export function useValue(context: ValueContext) {
         const { multiple, value, itemId, useJustValue, justValue, clearState } = context.getState();
 
         const hasJustValue = multiple
-            ? (Array.isArray(justValue) && justValue.length > 0)
-            : (justValue !== '' && justValue != null);
+            ? Array.isArray(justValue) && justValue.length > 0
+            : justValue !== '' && justValue != null;
 
         if (useJustValue && !value && !clearState && hasJustValue) {
             const { items } = context.getState();
             const typedItems = (items as SelectItem[]) || [];
             if (multiple && Array.isArray(justValue)) {
                 const justValueArr = justValue as (string | number)[];
-                context.setValue(typedItems.filter((item: SelectItem) =>
-                    justValueArr.includes((item as Record<string, any>)[itemId])
-                ));
+                context.setValue(
+                    typedItems.filter((item: SelectItem) =>
+                        justValueArr.includes((item as Record<string, any>)[itemId]),
+                    ),
+                );
             } else {
-                context.setValue(typedItems.filter((item: SelectItem) =>
-                    (item as Record<string, any>)[itemId] === justValue
-                )[0]);
+                context.setValue(
+                    typedItems.filter((item: SelectItem) => (item as Record<string, any>)[itemId] === justValue)[0],
+                );
             }
         }
 
@@ -91,6 +98,7 @@ export function useValue(context: ValueContext) {
         const { value, itemId } = context.getState();
         if (!Array.isArray(value) || value.length === 0) return true;
 
+        // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local dedup scratch, not reactive state
         const seen = new Set();
         const uniqueValues = value.filter((val: SelectItem) => {
             const id = val[itemId];
@@ -143,9 +151,11 @@ export function useValue(context: ValueContext) {
         if (value.length === 1) {
             context.setValue(undefined);
         } else {
-            context.setValue(value.filter((item: SelectItem) => {
-                return item !== itemToRemove;
-            }));
+            context.setValue(
+                value.filter((item: SelectItem) => {
+                    return item !== itemToRemove;
+                }),
+            );
         }
         context.onclear(itemToRemove);
     }

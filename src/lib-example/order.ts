@@ -1,6 +1,6 @@
-import { z } from "zod";
+import { z } from 'zod';
 
-let SelectItemType = z.object({
+const SelectItemType = z.object({
     label: z.string(),
     value: z.union([z.string(), z.number()]),
 });

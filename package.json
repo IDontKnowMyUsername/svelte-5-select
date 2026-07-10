@@ -4,7 +4,10 @@
     "publishConfig": {
         "access": "public"
     },
-    "repository": "https://github.com/IDontKnowMyUsername/svelte-5-select.git",
+    "repository": {
+        "type": "git",
+        "url": "git+https://github.com/IDontKnowMyUsername/svelte-5-select.git"
+    },
     "description": "A <Select> component for Svelte 5 apps",
     "scripts": {
         "check": "svelte-kit sync && svelte-check --tsconfig ./tsconfig.json",
@@ -16,12 +19,18 @@
         "test": "vitest",
         "test:ui": "vitest --ui",
         "test:run": "vitest run",
+        "lint": "eslint .",
+        "format:check": "prettier --check .",
         "gen:docs": "node docs/generate_theming_variables_md.cjs",
         "package": "svelte-kit sync && tsx scripts/build-package.ts && pnpm run gen:docs",
         "prepare": "svelte-kit sync",
+        "lint:package": "publint",
+        "smoke": "bash scripts/smoke-test.sh",
         "release": "release-it"
     },
     "devDependencies": {
+        "@eslint/js": "^10.0.1",
+        "@release-it/conventional-changelog": "^11.0.1",
         "@sveltejs/adapter-auto": "7.0.1",
         "@sveltejs/adapter-static": "3.0.10",
         "@sveltejs/kit": "2.56.1",
@@ -33,13 +42,18 @@
         "@vitest/ui": "^4.1.3",
         "autoprefixer": "^10.4.27",
         "cross-env": "^10.1.0",
+        "eslint": "^9.39.4",
+        "eslint-config-prettier": "^10.1.8",
+        "eslint-plugin-svelte": "^3.20.0",
         "fuse.js": "^7.3.0",
+        "globals": "^17.7.0",
         "happy-dom": "^20.8.9",
         "npm-check-updates": "^20.0.0",
         "postcss": "^8.5.9",
         "postcss-load-config": "^6.0.1",
         "prettier": "~3.8.1",
         "prettier-plugin-svelte": "^3.5.1",
+        "publint": "^0.3.21",
         "release-it": "^19.2.4",
         "svelte-check": "^4.4.6",
         "svelte-highlight": "^7.9.0",
@@ -48,6 +62,7 @@
         "sveltekit-superforms": "^2.30.1",
         "tsx": "^4.21.0",
         "typescript": "^5.9.3",
+        "typescript-eslint": "^8.63.0",
         "vite": "^8.0.7",
         "vitest": "^4.1.3",
         "zod": "^4.3.6"
@@ -77,20 +92,21 @@
             "svelte": "./dist/no-styles/*"
         },
         "./styles/*": "./dist/styles/*",
-        "./tailwind.css": "./dist/tailwind.css"
+        "./tailwind.css": "./dist/tailwind.css",
+        "./package.json": "./package.json"
     },
     "svelte": "./dist/index.js",
+    "sideEffects": [
+        "**/*.css"
+    ],
+    "engines": {
+        "node": ">=20.19"
+    },
     "files": [
         "dist"
     ],
     "peerDependencies": {
-        "svelte": "^5.55.2",
-        "tailwindcss": "^4.1.16"
-    },
-    "peerDependenciesMeta": {
-        "tailwindcss": {
-            "optional": true
-        }
+        "svelte": "^5.55.2"
     },
     "dependencies": {
         "@floating-ui/dom": "^1.7.6",

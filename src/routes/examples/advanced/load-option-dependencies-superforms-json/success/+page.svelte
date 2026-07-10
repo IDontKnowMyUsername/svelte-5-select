@@ -1,7 +1,5 @@
 <script lang="ts">
-    $effect(() => {
-
-    });
+    $effect(() => {});
 </script>
 
 <div>

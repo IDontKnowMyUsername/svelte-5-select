@@ -10,7 +10,6 @@
     let searchable = $state(true);
 </script>
 
-<button onclick={() => searchable = !searchable}>Searchable: {searchable}</button>
+<button onclick={() => (searchable = !searchable)}>Searchable: {searchable}</button>
 
 <Select {items} {searchable} />
-

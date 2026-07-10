@@ -84,6 +84,7 @@
 </script>
 
 <svelte:head>
+    <!-- eslint-disable-next-line svelte/no-at-html-tags -- static stylesheet bundled with svelte-highlight -->
     {@html highlightStyles}
 </svelte:head>
 
@@ -96,7 +97,7 @@
     </button>
 
     <nav class:show={showNav} class:navigating={!!navigating?.to}>
-    <ul>
+        <ul>
             <li><a class:active={page.route.id === 'examples'} href="/">Home</a></li>
         </ul>
 

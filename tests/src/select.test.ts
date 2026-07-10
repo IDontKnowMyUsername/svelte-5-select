@@ -43,8 +43,8 @@ async function querySelectorClick(selector: string): Promise<void> {
 }
 
 function handleKeyboard(key: string) {
-    window.dispatchEvent(new KeyboardEvent('keydown', { 'key': key }));
-    return new Promise(f => setTimeout(f, 0));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: key }));
+    return new Promise((f) => setTimeout(f, 0));
 }
 
 function getPosts(filterText: string): Promise<SelectItem[]> {
@@ -58,7 +58,7 @@ function getPosts(filterText: string): Promise<SelectItem[]> {
         { id: 7, name: 'Porter', tagline: 'Smooth porter' },
         { id: 8, name: 'Amber Ale', tagline: 'Balanced amber' },
         { id: 9, name: 'Wheat Beer', tagline: 'Light wheat beer' },
-        { id: 10, name: 'Saison', tagline: 'Farmhouse ale' }
+        { id: 10, name: 'Saison', tagline: 'Farmhouse ale' },
     ];
 
     // If no filter or filter too short, return all beers
@@ -69,20 +69,20 @@ function getPosts(filterText: string): Promise<SelectItem[]> {
                 if (a.name < b.name) return -1;
                 return 0;
             })
-            .map(beer => ({ value: beer.id, label: beer.name }));
+            .map((beer) => ({ value: beer.id, label: beer.name }));
 
         return Promise.resolve(allBeers);
     }
 
     // Filter beers by name (case insensitive)
     const filtered = mockBeers
-        .filter(beer => beer.name.toLowerCase().includes(filterText.toLowerCase()))
+        .filter((beer) => beer.name.toLowerCase().includes(filterText.toLowerCase()))
         .sort((a, b) => {
             if (a.name > b.name) return 1;
             if (a.name < b.name) return -1;
             return 0;
         })
-        .map(beer => ({ value: beer.id, label: beer.name }));
+        .map((beer) => ({ value: beer.id, label: beer.name }));
 
     return Promise.resolve(filtered);
 }
@@ -90,13 +90,13 @@ function getPosts(filterText: string): Promise<SelectItem[]> {
 function resolvePromise(): Promise<string[]> {
     return new Promise((resolve) => {
         resolve(['a', 'b', 'c']);
-    })
+    });
 }
 
 function rejectPromise(): Promise<SelectItem[]> {
     return new Promise((resolve, reject) => {
         reject('error 123');
-    })
+    });
 }
 
 const items = [
@@ -112,7 +112,7 @@ const itemsWithGroup = [
     { value: 'pizza', label: 'Pizza', group: 'Savory' },
     { value: 'cake', label: 'Cake', group: 'Sweet' },
     { value: 'chips', label: 'Chips', group: 'Savory' },
-    { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' }
+    { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' },
 ];
 
 const itemsWithGroupAndSelectable = [
@@ -120,7 +120,7 @@ const itemsWithGroupAndSelectable = [
     { value: 'pizza', label: 'Pizza', group: 'Savory' },
     { value: 'cake', label: 'Cake', group: 'Sweet', selectable: false },
     { value: 'chips', label: 'Chips', group: 'Savory', selectable: false },
-    { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' }
+    { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' },
 ];
 
 const itemsWithIndex = [
@@ -136,18 +136,18 @@ const collection = [
     { _id: 1, label: 'Pizza' },
     { _id: 2, label: 'Cake' },
     { _id: 3, label: 'Chips' },
-    { _id: 4, label: 'Ice Cream' }
+    { _id: 4, label: 'Ice Cream' },
 ];
 
 const itemsWithSelectable = [
     { value: 'notSelectable1', label: 'NotSelectable1', selectable: false },
     { value: 'selectableDefault', label: 'SelectableDefault' },
     { value: 'selectableTrue', label: 'SelectableTrue', selectable: true },
-    { value: 'notSelectable2', label: 'NotSelectable2', selectable: false }
+    { value: 'notSelectable2', label: 'NotSelectable2', selectable: false },
 ];
 
 async function wait(ms: number) {
-    return new Promise(f => setTimeout(f, ms));
+    return new Promise((f) => setTimeout(f, ms));
 }
 
 describe('Select Component', () => {
@@ -178,8 +178,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: itemsWithIndex
-                }
+                    items: itemsWithIndex,
+                },
             });
             expect(document.getElementsByClassName('list-item').length).toBeGreaterThan(0);
         });
@@ -189,8 +189,8 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithIndex,
-                    value: { value: 'pizza', label: 'Pizza', index: 1 }
-                }
+                    value: { value: 'pizza', label: 'Pizza', index: 1 },
+                },
             });
 
             expect(document.querySelector('.list-item .active')!.textContent).toBe('Pizza');
@@ -210,7 +210,7 @@ describe('Select Component', () => {
                     items: itemsWithIndex.concat(extras),
                     value: { value: 'sunday-roast', label: 'Sunday Roast' },
                     listOpen: true,
-                }
+                },
             });
 
             let offsetBounding;
@@ -218,7 +218,8 @@ describe('Select Component', () => {
             if (container) {
                 const focusedElemBounding = container.querySelector('.list-item .active');
                 if (focusedElemBounding) {
-                    offsetBounding = container.getBoundingClientRect().bottom - focusedElemBounding.getBoundingClientRect().bottom;
+                    offsetBounding =
+                        container.getBoundingClientRect().bottom - focusedElemBounding.getBoundingClientRect().bottom;
                 }
             }
 
@@ -235,8 +236,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: itemsWithIndex.concat(extras)
-                }
+                    items: itemsWithIndex.concat(extras),
+                },
             });
 
             const container = document.querySelector('.svelte-select-list');
@@ -255,7 +256,8 @@ describe('Select Component', () => {
                         expect.fail('No hovered item found');
                     }
 
-                    const isInViewport = container.getBoundingClientRect().bottom - hoveredItem.getBoundingClientRect().bottom >= 0;
+                    const isInViewport =
+                        container.getBoundingClientRect().bottom - hoveredItem.getBoundingClientRect().bottom >= 0;
 
                     selectedItemsAreWithinBounds = selectedItemsAreWithinBounds && isInViewport;
 
@@ -264,7 +266,7 @@ describe('Select Component', () => {
 
                 expect(selectedItemsAreWithinBounds).toBeTruthy();
             } else {
-                expect.fail('container doesn\'t exist');
+                expect.fail("container doesn't exist");
             }
         });
     });
@@ -274,8 +276,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: items
-                }
+                    items: items,
+                },
             });
 
             await handleKeyboard('ArrowDown');
@@ -292,13 +294,13 @@ describe('Select Component', () => {
                     items: itemsWithIndex,
                     onchange: (event: any) => {
                         value = JSON.stringify(event);
-                    }
-                }
+                    },
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             expect(value).toBe(JSON.stringify({ value: 'cake', label: 'Cake', index: 2 }));
         });
@@ -312,8 +314,8 @@ describe('Select Component', () => {
                     items: itemsWithIndex,
                     onchange: (selectedValue: SelectValue) => {
                         value = JSON.stringify(selectedValue);
-                    }
-                }
+                    },
+                },
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -333,33 +335,33 @@ describe('Select Component', () => {
                     value: { value: 'chocolate', label: 'Chocolate', index: 0 },
                     onchange: () => {
                         itemSelectedFired = true;
-                    }
-                }
+                    },
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
             expect(itemSelectedFired).toBe(false);
         });
     });
 
     describe('Value display', () => {
-        it('shows selected item\'s default view', () => {
+        it("shows selected item's default view", () => {
             render(Select, {
                 props: {
                     value: { value: 'chips', label: 'Chips' },
-                }
+                },
             });
 
             expect(document.querySelector('.selected-item')!.textContent).toBe('Chips');
         });
 
         it('updates view when value updates', async () => {
-            const { rerender } = render(Select, { props: {items: []} });
+            const { rerender } = render(Select, { props: { items: [] } });
 
             await rerender({
                 items: [],
-                value: { value: 'chips', label: 'Chips' }
+                value: { value: 'chips', label: 'Chips' },
             });
 
             expect(document.querySelector('.selected-item')!.textContent).toBe('Chips');
@@ -369,12 +371,12 @@ describe('Select Component', () => {
             const { rerender } = render(Select, {
                 props: {
                     value: { value: 'chips', label: 'Chips' },
-                }
+                },
             });
 
             await rerender({
                 items: [],
-                value: undefined
+                value: undefined,
             });
 
             await tick();
@@ -422,15 +424,19 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    floatingConfig: { placement: 'top-start' }
-                }
+                    floatingConfig: { placement: 'top-start' },
+                },
             });
 
             const container = document.querySelector('.svelte-select') as HTMLElement;
             container.style.margin = '300px 0 0 0';
             await tick();
-            const distanceOfListBottomFromViewportTop = document.querySelector('.svelte-select-list')!.getBoundingClientRect().bottom;
-            const distanceOfInputTopFromViewportTop = document.querySelector('.svelte-select')!.getBoundingClientRect().top;
+            const distanceOfListBottomFromViewportTop = document
+                .querySelector('.svelte-select-list')!
+                .getBoundingClientRect().bottom;
+            const distanceOfInputTopFromViewportTop = document
+                .querySelector('.svelte-select')!
+                .getBoundingClientRect().top;
             expect(distanceOfListBottomFromViewportTop).toBeLessThanOrEqual(distanceOfInputTopFromViewportTop);
             container.style.margin = '0';
         });
@@ -440,13 +446,17 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    floatingConfig: { placement: 'bottom-start' }
-                }
+                    floatingConfig: { placement: 'bottom-start' },
+                },
             });
 
             await tick();
-            const distanceOfListTopFromViewportTop = document.querySelector('.svelte-select-list')!.getBoundingClientRect().top;
-            const distanceOfInputBottomFromViewportTop = document.querySelector('.svelte-select')!.getBoundingClientRect().bottom;
+            const distanceOfListTopFromViewportTop = document
+                .querySelector('.svelte-select-list')!
+                .getBoundingClientRect().top;
+            const distanceOfInputBottomFromViewportTop = document
+                .querySelector('.svelte-select')!
+                .getBoundingClientRect().bottom;
 
             expect(distanceOfListTopFromViewportTop).toBeGreaterThanOrEqual(distanceOfInputBottomFromViewportTop);
         });
@@ -459,8 +469,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -484,10 +494,9 @@ describe('Select Component', () => {
                     items,
                     clearFilterTextOnBlur: false,
                     focused: true,
-                    filterText: 'potato'
-                }
+                    filterText: 'potato',
+                },
             });
-
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             expect(selectInput.value).toBe('potato');
@@ -507,8 +516,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    filterText: 'potato'
-                }
+                    filterText: 'potato',
+                },
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -526,7 +535,7 @@ describe('Select Component', () => {
 
             await querySelectorClick('.svelte-select');
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
             expect(document.querySelector('.svelte-select.focused')).toBeTruthy();
@@ -537,9 +546,9 @@ describe('Select Component', () => {
 
             await querySelectorClick('.svelte-select');
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             await querySelectorClick('.svelte-select');
             await tick();
@@ -566,7 +575,7 @@ describe('Select Component', () => {
 
             expect(input).toBe(document.activeElement);
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
@@ -578,14 +587,14 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             input.focus();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             await tick();
 
             const selectContainer = document.querySelector('.svelte-select') as HTMLElement | null;
@@ -618,7 +627,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { name: 'Item #2' },
-                }
+                },
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -631,8 +640,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items: itemsWithGroup,
-                    placeholder
-                }
+                    placeholder,
+                },
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -645,14 +654,14 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    filterText: 'potato'
-                }
+                    filterText: 'potato',
+                },
             });
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             expect(document.querySelector('.svelte-select .value')).toBeFalsy();
         });
 
@@ -661,9 +670,9 @@ describe('Select Component', () => {
 
             await querySelectorClick('.svelte-select');
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             const clearButton = document.querySelector('.clear-select') as HTMLElement;
             clearButton?.click();
@@ -679,7 +688,7 @@ describe('Select Component', () => {
                     items,
                     value: { value: 'pizza', label: 'Pizza' },
                     handleClear: customHandleClear,
-                }
+                },
             });
 
             await tick();
@@ -699,12 +708,12 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    filterText: 'potato'
-                }
+                    filterText: 'potato',
+                },
             });
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             div.click();
             div.remove();
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -716,15 +725,15 @@ describe('Select Component', () => {
                 props: {
                     items,
                     focused: true,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             input.blur();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 't' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'e' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 's' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 't' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
         });
 
         it('filters list', async () => {
@@ -755,8 +764,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    itemFilter: (label: string) => label === 'Ice Cream'
-                }
+                    itemFilter: (label: string) => label === 'Ice Cream',
+                },
             });
             await tick();
 
@@ -781,8 +790,8 @@ describe('Select Component', () => {
             const { component } = render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             }) as { component: SelectInstance };
             await tick();
 
@@ -801,8 +810,8 @@ describe('Select Component', () => {
             const { component } = render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             }) as { component: SelectInstance };
             await tick();
 
@@ -822,8 +831,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { name: 'Item #2' },
-                    containerStyles: `padding-left: 40px;`
-                }
+                    containerStyles: `padding-left: 40px;`,
+                },
             });
 
             const container = document.querySelector('.svelte-select') as HTMLElement;
@@ -836,7 +845,7 @@ describe('Select Component', () => {
                     items,
                     value: { value: 'cake', label: 'Cake' },
                     class: 'svelte-select testclass',
-                }
+                },
             });
 
             const container = document.querySelector('.svelte-select') as HTMLElement;
@@ -850,7 +859,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     disabled: true,
-                }
+                },
             });
 
             expect(document.querySelector('.svelte-select.disabled')).toBeTruthy();
@@ -861,8 +870,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     disabled: true,
-                    value: { name: 'Item #4' }
-                }
+                    value: { name: 'Item #4' },
+                },
             });
 
             expect(document.querySelector('.clear-select')).toBeFalsy();
@@ -874,13 +883,13 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
         });
 
@@ -888,8 +897,8 @@ describe('Select Component', () => {
             const { rerender } = render(Select, {
                 props: {
                     items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
@@ -897,7 +906,7 @@ describe('Select Component', () => {
 
             await rerender({
                 items,
-                listOpen: false
+                listOpen: false,
             });
 
             await tick();
@@ -921,7 +930,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'chips', label: 'Chips' },
-                }
+                },
             });
 
             const selectedItem = document.querySelector('.selected-item') as HTMLElement;
@@ -935,15 +944,15 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'ice-cream', label: 'Ice Cream' },
-                }
+                },
             });
 
             expect(selectedItem.textContent).toBe(result.textContent);
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
             expect(selectedItem.textContent).toBe(result.textContent);
         });
@@ -952,7 +961,8 @@ describe('Select Component', () => {
     describe('Text overflow', () => {
         // Need to use Playwright instead
         it.skip('shows ellipsis for overflowing text in list item', async () => {
-            const longest = 'super super super super super super super super super super super super super super super super super super super super super super super super super super super super loooooonnnng name';
+            const longest =
+                'super super super super super super super super super super super super super super super super super super super super super super super super super super super super loooooonnnng name';
 
             const container = document.createElement('div');
             container.style.width = '300px';
@@ -966,14 +976,14 @@ describe('Select Component', () => {
                     items: [
                         {
                             index: 0,
-                            label: longest
+                            label: longest,
                         },
                         {
                             index: 1,
-                            label: 'Not so loooooonnnng name'
-                        }
-                    ]
-                }
+                            label: 'Not so loooooonnnng name',
+                        },
+                    ],
+                },
             });
 
             await tick();
@@ -1000,7 +1010,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items,
-                }
+                },
             });
 
             textarea.focus();
@@ -1017,7 +1027,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items,
-                }
+                },
             });
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
@@ -1038,11 +1048,13 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: [{
-                        value: 0,
-                        label: 'tests one'
-                    }]
-                }
+                    items: [
+                        {
+                            value: 0,
+                            label: 'tests one',
+                        },
+                    ],
+                },
             });
 
             const item = document.querySelector('.list-item .item') as HTMLElement;
@@ -1074,8 +1086,8 @@ describe('Select Component', () => {
                     items,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await querySelectorClick('.svelte-select');
@@ -1091,13 +1103,13 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    clearable: false
-                }
+                    clearable: false,
+                },
             });
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
             expect(document.querySelector('.clear-select')).toBeFalsy();
         });
@@ -1108,8 +1120,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    searchable: false
-                }
+                    searchable: false,
+                },
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1120,8 +1132,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    searchable: false
-                }
+                    searchable: false,
+                },
             });
 
             const elem = document.querySelector('.svelte-select input') as HTMLElement;
@@ -1134,8 +1146,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    loading: true
-                }
+                    loading: true,
+                },
             });
 
             expect(document.querySelector('.loading')).toBeTruthy();
@@ -1148,8 +1160,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'pizza', label: 'Pizza' },
-                    inputStyles: `padding-left: 40px;`
-                }
+                    inputStyles: `padding-left: 40px;`,
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1167,8 +1179,8 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithGroup,
-                    groupBy
-                }
+                    groupBy,
+                },
             });
 
             const titleElement = document.querySelector('.list-group-title') as HTMLElement;
@@ -1183,8 +1195,8 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithGroup,
-                    groupBy: (item: any) => item.group
-                }
+                    groupBy: (item: any) => item.group,
+                },
             });
 
             await tick();
@@ -1202,7 +1214,7 @@ describe('Select Component', () => {
 
             function createGroupHeaderItem(groupValue: any, item: any) {
                 return {
-                    label: `XXX ${groupValue} XXX ${item.label}`
+                    label: `XXX ${groupValue} XXX ${item.label}`,
                 };
             }
 
@@ -1215,8 +1227,8 @@ describe('Select Component', () => {
                     createGroupHeaderItem,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -1235,8 +1247,8 @@ describe('Select Component', () => {
                     listOpen: true,
                     items: itemsWithGroup,
                     groupBy: (item: any) => item.group,
-                    groupFilter: (groups: any) => groups.reverse()
-                }
+                    groupFilter: (groups: any) => groups.reverse(),
+                },
             });
 
             await tick();
@@ -1253,13 +1265,13 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithGroup,
-                    groupBy: (item: any) => item.group
-                }
+                    groupBy: (item: any) => item.group,
+                },
             });
 
             await tick();
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(document.querySelector('.selected-item')).toBeFalsy();
@@ -1274,16 +1286,16 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithGroup,
-                    groupBy
-                }
+                    groupBy,
+                },
             });
 
             await tick();
 
-            let title = document.querySelector('.list-group-title') as HTMLElement;
+            const title = document.querySelector('.list-group-title') as HTMLElement;
             expect(title && title.textContent === 'Sweet').toBeTruthy();
 
-            let item = document.querySelector('.list-item .item.group-item') as HTMLElement;
+            const item = document.querySelector('.list-item .item.group-item') as HTMLElement;
             expect(item && item.textContent === 'Chocolate').toBeTruthy();
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1292,7 +1304,7 @@ describe('Select Component', () => {
 
             await tick();
 
-            let empty = document.querySelector('.svelte-select-list .empty');
+            const empty = document.querySelector('.svelte-select-list .empty');
             expect(empty).toBeTruthy();
         });
 
@@ -1310,11 +1322,11 @@ describe('Select Component', () => {
                     itemId: 'id',
                     label: 'name',
                     groupBy: (i: any) => i.group,
-                }
+                },
             });
 
-            let titles = document.querySelectorAll('.list-group-title');
-            let items = document.querySelectorAll('.item.group-item');
+            const titles = document.querySelectorAll('.list-group-title');
+            const items = document.querySelectorAll('.item.group-item');
 
             expect(titles[1].textContent).toBe('group 2');
             expect(items[3].textContent).toBe('name 3');
@@ -1333,7 +1345,7 @@ describe('Select Component', () => {
                     ],
                     label: 'name',
                     groupBy: (i: any) => i.group,
-                }
+                },
             });
 
             await tick();
@@ -1347,7 +1359,7 @@ describe('Select Component', () => {
             hoverItem = document.querySelector('.list-item .hover') as HTMLElement;
             expect(hoverItem && hoverItem.textContent?.includes('name 2')).toBeTruthy();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
@@ -1364,8 +1376,8 @@ describe('Select Component', () => {
                 props: {
                     items: itemsWithGroup,
                     groupBy: (item: any) => item.group,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1395,8 +1407,8 @@ describe('Select Component', () => {
                     groupBy,
                     loadOptions: async function () {
                         return itemsWithGroup;
-                    }
-                }
+                    },
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1423,7 +1435,7 @@ describe('Select Component', () => {
                         { value: 'pizza', label: 'Pizza' },
                         { value: 'chips', label: 'Chips' },
                     ],
-                }
+                },
             });
 
             const all = document.querySelectorAll('.multi-item span');
@@ -1437,8 +1449,8 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: undefined
-                }
+                    value: undefined,
+                },
             });
 
             expect(document.querySelector('.multi-item span')).toBeFalsy();
@@ -1454,8 +1466,8 @@ describe('Select Component', () => {
                     value: undefined,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await querySelectorClick('.svelte-select');
@@ -1473,8 +1485,8 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }]
-                }
+                    value: [{ value: 'chocolate', label: 'Chocolate' }],
+                },
             });
 
             await tick();
@@ -1482,8 +1494,8 @@ describe('Select Component', () => {
             const selectContainer = document.querySelector('.svelte-select') as HTMLElement;
             await user.click(selectContainer);
 
-            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map(
-                (item) => (item as HTMLElement).textContent?.trim()
+            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map((item) =>
+                (item as HTMLElement).textContent?.trim(),
             );
 
             expect(listItems.length).toBe(4);
@@ -1500,8 +1512,8 @@ describe('Select Component', () => {
                     listOpen: true,
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }]
-                }
+                    value: [{ value: 'chocolate', label: 'Chocolate' }],
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1510,8 +1522,8 @@ describe('Select Component', () => {
 
             await tick();
 
-            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map(
-                (item) => (item as HTMLElement).textContent?.trim()
+            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map((item) =>
+                (item as HTMLElement).textContent?.trim(),
             );
 
             expect(listItems.length).toBe(1);
@@ -1526,11 +1538,14 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }, { value: 'pizza', label: 'Pizza' }],
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
                     oninput: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             const clearButton = document.querySelector('.multi-item-clear') as HTMLElement;
@@ -1547,8 +1562,8 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }]
-                }
+                    value: [{ value: 'chocolate', label: 'Chocolate' }],
+                },
             });
 
             const clearButton = document.querySelector('.multi-item-clear') as HTMLElement;
@@ -1565,9 +1580,12 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }, { value: 'pizza', label: 'Pizza' }],
-                    onclear: () => { }
-                }
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    onclear: () => {},
+                },
             });
 
             const clearButton = document!.querySelector('.clear-select') as HTMLInputElement;
@@ -1588,23 +1606,25 @@ describe('Select Component', () => {
                     groupBy: (item: any) => item.group,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await querySelectorClick('.svelte-select');
             await querySelectorClick('.list-item .group-item');
             await tick();
 
-            expect(JSON.stringify(capturedValue)).toBe(JSON.stringify([{ "groupItem": true, "value": "chocolate", "label": "Chocolate", "group": "Sweet" }]));
+            expect(JSON.stringify(capturedValue)).toBe(
+                JSON.stringify([{ groupItem: true, value: 'chocolate', label: 'Chocolate', group: 'Sweet' }]),
+            );
         });
 
         it.skip('Select height increases when items wrap', async () => {
             const { component } = render(Select, {
                 props: {
                     multiple: true,
-                    items
-                }
+                    items,
+                },
             }) as { component: SelectInstance };
 
             const container = document.querySelector('.svelte-select') as HTMLElement;
@@ -1613,7 +1633,10 @@ describe('Select Component', () => {
             const container1 = document.querySelector('.svelte-select') as HTMLElement;
             expect(container1.scrollHeight).toBe(40);
 
-            component.value = [{ value: 'chocolate', label: 'Chocolate' }, { value: 'pizza', label: 'Pizza' }];
+            component.value = [
+                { value: 'chocolate', label: 'Chocolate' },
+                { value: 'pizza', label: 'Pizza' },
+            ];
             await tick();
 
             const container2 = document.querySelector('.svelte-select') as HTMLElement;
@@ -1625,13 +1648,17 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }, { value: 'pizza', label: 'Pizza' }, { value: 'chips', label: 'Chips' }],
-                    focused: true
-                }
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                        { value: 'chips', label: 'Chips' },
+                    ],
+                    focused: true,
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowLeft' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowLeft' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
             await tick();
 
@@ -1647,15 +1674,19 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' }, { value: 'pizza', label: 'Pizza' }, { value: 'chips', label: 'Chips' }],
-                    focused: true
-                }
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                        { value: 'chips', label: 'Chips' },
+                    ],
+                    focused: true,
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowLeft' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowLeft' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowLeft' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowRight' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
 
             await tick();
 
@@ -1668,7 +1699,7 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items,
-                }
+                },
             });
 
             await querySelectorClick('.svelte-select');
@@ -1685,7 +1716,7 @@ describe('Select Component', () => {
                     items,
                     disabled: true,
                     value: [{ value: 'chocolate', label: 'Chocolate' }],
-                }
+                },
             });
 
             expect(document.querySelector('.multi-item.disabled')).toBeTruthy();
@@ -1696,8 +1727,8 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items: ['pizza', 'chips', 'chocolate'],
-                    value: ['pizza', 'chocolate']
-                }
+                    value: ['pizza', 'chocolate'],
+                },
             });
 
             const all = document.querySelectorAll('.multi-item span');
@@ -1715,7 +1746,7 @@ describe('Select Component', () => {
                         { value: 'pizza', label: 'Pizza' },
                         { value: 'cake', label: 'Cake' },
                     ],
-                }
+                },
             });
 
             await tick();
@@ -1736,12 +1767,12 @@ describe('Select Component', () => {
                     listOpen: true,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             expect(capturedValue && capturedValue[0].value).toBe('pizza');
         });
@@ -1753,11 +1784,11 @@ describe('Select Component', () => {
                     items,
                     focused: true,
                     filterText: 'zc',
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(document.querySelector('.multi-item')).toBeFalsy();
@@ -1769,12 +1800,12 @@ describe('Select Component', () => {
                     multiple: true,
                     items,
                     focused: true,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Backspace' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Backspace' }));
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
@@ -1782,7 +1813,7 @@ describe('Select Component', () => {
 
         it('on:input events fire on each item removal', async () => {
             const user = userEvent.setup();
-            let events: string[] = [];
+            const events: string[] = [];
 
             render(Select, {
                 props: {
@@ -1791,8 +1822,8 @@ describe('Select Component', () => {
                     value: ['Cake', 'Chips'],
                     oninput: () => {
                         events.push('event fired');
-                    }
-                }
+                    },
+                },
             });
 
             const event = new PointerEvent('pointerup', { bubbles: true });
@@ -1812,7 +1843,7 @@ describe('Select Component', () => {
         it('checks if value[itemId] changed before firing input event', async () => {
             let inputFired: boolean = false;
 
-            const {rerender} = render(Select, {
+            const { rerender } = render(Select, {
                 props: {
                     multiple: true,
                     items,
@@ -1822,8 +1853,8 @@ describe('Select Component', () => {
                     ],
                     oninput: () => {
                         inputFired = true;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -1839,7 +1870,7 @@ describe('Select Component', () => {
                 ],
                 oninput: () => {
                     inputFired = true;
-                }
+                },
             });
             await tick();
             expect(inputFired).toBeFalsy();
@@ -1847,12 +1878,10 @@ describe('Select Component', () => {
             await rerender({
                 multiple: true,
                 items,
-                value: [
-                    { value: 'pizza', label: 'Pizza' }
-                ],
+                value: [{ value: 'pizza', label: 'Pizza' }],
                 oninput: () => {
                     inputFired = true;
-                }
+                },
             });
             await tick();
 
@@ -1860,12 +1889,12 @@ describe('Select Component', () => {
         });
 
         it('filters list when filterText is applied and groupBy is active', async () => {
-            let _items = [
-                { id: 1, name: "Foo", group: "first" },
-                { id: 2, name: "Bar", group: "second" },
-                { id: 3, name: "Baz", group: "second" },
-                { id: 4, name: "Qux", group: "first" },
-                { id: 5, name: "Bah", group: "first" },
+            const _items = [
+                { id: 1, name: 'Foo', group: 'first' },
+                { id: 2, name: 'Bar', group: 'second' },
+                { id: 3, name: 'Baz', group: 'second' },
+                { id: 4, name: 'Qux', group: 'first' },
+                { id: 5, name: 'Bah', group: 'first' },
             ];
 
             render(Select, {
@@ -1877,11 +1906,11 @@ describe('Select Component', () => {
                     label: 'name',
                     value: [{ id: 2, name: 'Bar', group: 'second' }],
                     listOpen: true,
-                }
+                },
             });
 
-            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map(
-                (item) => (item as HTMLElement).textContent?.trim()
+            const listItems = Array.from(document.querySelectorAll('.list-item .item')).map((item) =>
+                (item as HTMLElement).textContent?.trim(),
             );
 
             expect(listItems.includes('Bar')).toBeFalsy();
@@ -1893,8 +1922,11 @@ describe('Select Component', () => {
                     multiple: true,
                     items,
                     listOpen: true,
-                    value: [{ value: 'chips', label: 'Chips' }, { value: 'pizza', label: 'Pizza' }],
-                }
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
             });
 
             await tick();
@@ -1911,11 +1943,14 @@ describe('Select Component', () => {
                     multiple: true,
                     items,
                     multiFullItemClearable: true,
-                    value: [{ value: 'chips', label: 'Chips' }, { value: 'pizza', label: 'Pizza' }],
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
                     oninput: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -1929,16 +1964,18 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    value: [{ value: 'chocolate', label: 'Chocolate' },
-                        { value: 'pizza', label: 'Pizza' },],
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
                     multiple: true,
                     placeholderAlwaysShow: true,
-                    placeholder: 'foo bar'
-                }
+                    placeholder: 'foo bar',
+                },
             });
 
             await tick();
-            let elem = document.querySelector('.svelte-select input[type="text"]') as HTMLInputElement;
+            const elem = document.querySelector('.svelte-select input[type="text"]') as HTMLInputElement;
             expect(elem.placeholder).toBe('foo bar');
         });
     });
@@ -1947,11 +1984,14 @@ describe('Select Component', () => {
         it('shows correct label when label prop is set', () => {
             render(Select, {
                 props: {
-                    items: [{ value: 0, label: 'ONE' }, { value: 1, label: 'TWO' }],
+                    items: [
+                        { value: 0, label: 'ONE' },
+                        { value: 1, label: 'TWO' },
+                    ],
                     value: { value: 0, label: 'ONE' },
                     label: 'label',
                     itemId: 'label',
-                }
+                },
             });
 
             const selectedItem = document.querySelector('.selected-item') as HTMLElement;
@@ -1963,21 +2003,24 @@ describe('Select Component', () => {
 
             render(Select, {
                 props: {
-                    items: [{ id: 'ONE', label: 'ONE' }, { id: 'TWO', label: 'TWO' }],
+                    items: [
+                        { id: 'ONE', label: 'ONE' },
+                        { id: 'TWO', label: 'TWO' },
+                    ],
                     value: { id: 'ONE', label: 'ONE' },
                     itemId: 'id',
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             const selectedItem = document.querySelector('.selected-item') as HTMLElement;
             expect(selectedItem && selectedItem.textContent).toBe('ONE');
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(capturedValue && capturedValue.id).toBe('TWO');
@@ -1988,7 +2031,7 @@ describe('Select Component', () => {
                 props: {
                     label: 'notLabel',
                     value: { notLabel: 'This is not a label', value: 'not important' },
-                }
+                },
             });
 
             const selectedItem = document.querySelector('.selected-item') as HTMLElement;
@@ -2006,7 +2049,7 @@ describe('Select Component', () => {
                         { notLabel: 'This is not a label', value: 'not important #1' },
                         { notLabel: 'This is also not a label', value: 'not important #2' },
                     ],
-                }
+                },
             });
 
             const firstItem = document.querySelector('.list-item') as HTMLElement;
@@ -2024,7 +2067,7 @@ describe('Select Component', () => {
                     value: { _id: 2, label: 'Cake' },
                     itemId: '_id',
                     useJustValue: true,
-                }
+                },
             });
 
             await tick();
@@ -2041,7 +2084,7 @@ describe('Select Component', () => {
                     label: 'name',
                     loadOptions: getPosts,
                     itemId: 'id',
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2049,8 +2092,8 @@ describe('Select Component', () => {
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await tick();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
             await tick();
         });
@@ -2062,8 +2105,8 @@ describe('Select Component', () => {
                 props: {
                     loadOptions: getPosts,
                     itemId: 'id',
-                    multiple: true
-                }
+                    multiple: true,
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2089,8 +2132,8 @@ describe('Select Component', () => {
                     onloaded: (options: any) => {
                         loadedEventData = { detail: { items: options } };
                     },
-                    onerror: () => { }
-                }
+                    onerror: () => {},
+                },
             });
 
             await tick();
@@ -2103,8 +2146,8 @@ describe('Select Component', () => {
                     onloaded: (options: any) => {
                         loadedEventData = { detail: { items: options } };
                     },
-                    onerror: () => { }
-                }
+                    onerror: () => {},
+                },
             });
 
             await tick();
@@ -2126,11 +2169,11 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: rejectPromise,
-                    onloaded: () => { },
+                    onloaded: () => {},
                     onerror: (error: any) => {
                         errorEventData = error;
-                    }
-                }
+                    },
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2155,12 +2198,13 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     value: {
-                        value: 'chocolate', label: 'Chocolate'
+                        value: 'chocolate',
+                        label: 'Chocolate',
                     },
                     listOpen: true,
                     filterText: 'a',
-                    loadOptions: loadOptionsFn
-                }
+                    loadOptions: loadOptionsFn,
+                },
             });
 
             await wait(300);
@@ -2177,18 +2221,19 @@ describe('Select Component', () => {
                     { value: 'ice-cream', label: 'Ice-cream' },
                     { value: 'pizza', label: 'pizza' },
                 ]);
-            }
+            };
 
             render(Select, {
                 props: {
                     multiple: true,
                     value: {
-                        value: 'chocolate', label: 'Chocolate'
+                        value: 'chocolate',
+                        label: 'Chocolate',
                     },
                     listOpen: true,
                     filterText: 'test',
-                    loadOptions: loadOptionsFn
-                }
+                    loadOptions: loadOptionsFn,
+                },
             });
 
             await wait(300);
@@ -2199,16 +2244,19 @@ describe('Select Component', () => {
 
         it('closes list on blur with loadOptions and items', async () => {
             const user = userEvent.setup();
-            let items = [{ value: 1, label: '1' }, { value: 2, label: '2' }];
+            const items = [
+                { value: 1, label: '1' },
+                { value: 2, label: '2' },
+            ];
 
             render(Select, {
                 props: {
                     items,
                     loadOptions: getPosts,
-                }
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             await tick();
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2237,7 +2285,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: getDelayedRes,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2255,10 +2303,9 @@ describe('Select Component', () => {
         it('sets initial value correctly', async () => {
             render(LoadOptionsGroup, {
                 props: {
-                    value: 'cake'
-                }
+                    value: 'cake',
+                },
             });
-
 
             await tick();
             await tick(); // Extra tick for effects to cascade
@@ -2275,7 +2322,7 @@ describe('Select Component', () => {
             input.value = 'cre';
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await tick();
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             console.log('List open?', document.querySelector('.svelte-select-list'));
             console.log('Items:', document.querySelectorAll('.list-item'));
@@ -2289,7 +2336,7 @@ describe('Select Component', () => {
             input.value = 'cr';
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await tick();
-            await new Promise(resolve => setTimeout(resolve, 50));
+            await new Promise((resolve) => setTimeout(resolve, 50));
 
             console.log('After second input - Group titles:', document.querySelectorAll('.list-group-title'));
 
@@ -2379,8 +2426,8 @@ describe('Select Component', () => {
                     items,
                     listOpen: true,
                     filterText: 'x',
-                    hideEmptyState: true
-                }
+                    hideEmptyState: true,
+                },
             });
 
             await tick();
@@ -2399,8 +2446,8 @@ describe('Select Component', () => {
                     items,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await handleKeyboard('ArrowDown');
@@ -2418,8 +2465,8 @@ describe('Select Component', () => {
                     value: items[0],
                     onclear: () => {
                         capturedValue = true;
-                    }
-                }
+                    },
+                },
             });
 
             const clearButton = document!.querySelector('.clear-select') as HTMLElement;
@@ -2440,8 +2487,8 @@ describe('Select Component', () => {
                     value: [itemToRemove],
                     onclear: (value: any) => {
                         removedItem = value;
-                    }
-                }
+                    },
+                },
             });
 
             const selectedItem = document!.querySelector('.multi-item-clear') as HTMLElement;
@@ -2461,8 +2508,8 @@ describe('Select Component', () => {
                     value: itemToRemove,
                     onclear: (value: any) => {
                         removedItem = value;
-                    }
-                }
+                    },
+                },
             });
 
             const clearButton = document!.querySelector('.clear-select') as HTMLElement;
@@ -2477,8 +2524,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    focused: true
-                }
+                    focused: true,
+                },
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -2490,7 +2537,7 @@ describe('Select Component', () => {
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
 
             await user.type(input, 'chi');
-            await tick()
+            await tick();
 
             hoverItem = document.querySelector('.hover') as HTMLElement;
             expect(hoverItem && hoverItem.textContent).toBe('Chips');
@@ -2505,8 +2552,8 @@ describe('Select Component', () => {
                     value: { value: 'cake', label: 'Cake' },
                     oninput: () => {
                         inputFired = true;
-                    }
-                }
+                    },
+                },
             }) as { component: SelectInstance };
 
             component.value = { value: 'cake', label: 'Cake' };
@@ -2522,8 +2569,8 @@ describe('Select Component', () => {
                     items,
                     onfocus: () => {
                         f = true;
-                    }
-                }
+                    },
+                },
             });
 
             const ele = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2543,11 +2590,11 @@ describe('Select Component', () => {
                     focused: true,
                     onblur: () => {
                         b = true;
-                    }
-                }
+                    },
+                },
             });
 
-            let ele = document.querySelector('.svelte-select input') as HTMLInputElement;
+            const ele = document.querySelector('.svelte-select input') as HTMLInputElement;
             ele.blur();
 
             await tick();
@@ -2564,13 +2611,13 @@ describe('Select Component', () => {
                     items,
                     onchange(e: any) {
                         value = JSON.stringify(e);
-                    }
-                }
+                    },
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             expect(value).toBe(JSON.stringify({ value: 'cake', label: 'Cake' }));
         });
@@ -2585,8 +2632,8 @@ describe('Select Component', () => {
                     value: { value: 'cake', label: 'Cake' },
                     onchange: () => {
                         changeFired = true;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -2602,8 +2649,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
@@ -2617,8 +2664,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    value: { value: 'one', label: 'one', index: 0 }
-                }
+                    value: { value: 'one', label: 'one', index: 0 },
+                },
             });
 
             const selectedItem = document!.querySelector('.selected-item') as HTMLElement;
@@ -2629,8 +2676,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items: ['Pizza', 'Chocolate', 'Crisps'],
-                    value: 'Pizza'
-                }
+                    value: 'Pizza',
+                },
             });
 
             const selectedItem = document!.querySelector('.selected-item') as HTMLElement;
@@ -2643,7 +2690,7 @@ describe('Select Component', () => {
             props: {
                 focused: true,
                 items,
-            }
+            },
         });
 
         const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2667,7 +2714,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: 'chips',
-                }
+                },
             });
 
             await tick();
@@ -2688,7 +2735,7 @@ describe('Select Component', () => {
 
             await tick();
 
-            let selectedItem = document.querySelector('.selected-item') as HTMLElement;
+            const selectedItem = document.querySelector('.selected-item') as HTMLElement;
             expect(selectedItem && selectedItem.textContent).toBe('Loaded Fries');
         });
 
@@ -2698,7 +2745,7 @@ describe('Select Component', () => {
                     multiple: true,
                     items,
                     value: ['chips', 'pizza'],
-                }
+                },
             });
 
             await tick();
@@ -2721,8 +2768,8 @@ describe('Select Component', () => {
             await tick();
             await tick();
 
-            const multiItems = Array.from(document.querySelectorAll('.multi-item-text')).map(
-                (item) => (item as HTMLElement).textContent?.trim()
+            const multiItems = Array.from(document.querySelectorAll('.multi-item-text')).map((item) =>
+                (item as HTMLElement).textContent?.trim(),
             );
 
             expect(multiItems.includes('Loaded Fries')).toBeTruthy();
@@ -2734,7 +2781,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'chips', label: 'Chips' },
-                }
+                },
             });
 
             await tick();
@@ -2751,7 +2798,7 @@ describe('Select Component', () => {
                         { value: 'ice-cream', label: 'Ice Cream' },
                     ],
                     value: { value: 'chips', label: 'Chips' },
-                }
+                },
             });
 
             await tick();
@@ -2763,8 +2810,8 @@ describe('Select Component', () => {
         it('ensures filtering works when items updated post onMount', async () => {
             render(Select, {
                 props: {
-                    items: null
-                }
+                    items: null,
+                },
             });
 
             await tick();
@@ -2773,10 +2820,10 @@ describe('Select Component', () => {
 
             render(Select, {
                 props: {
-                    items: ['One', 'Two', 'Three'].map(item => ({ value: item, label: item })),
+                    items: ['One', 'Two', 'Three'].map((item) => ({ value: item, label: item })),
                     filterText: 'Two',
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
@@ -2791,8 +2838,8 @@ describe('Select Component', () => {
         it('ensures grouped filtering works when items updated post onMount', async () => {
             render(Select, {
                 props: {
-                    groupBy: (item: any) => item.group
-                }
+                    groupBy: (item: any) => item.group,
+                },
             });
 
             await tick();
@@ -2801,15 +2848,15 @@ describe('Select Component', () => {
 
             render(Select, {
                 props: {
-                    items: ['One', 'Two', 'Three'].map(item => ({
+                    items: ['One', 'Two', 'Three'].map((item) => ({
                         value: item,
                         label: item,
-                        group: item.includes('T') ? '2nd Group' : '1st Group'
+                        group: item.includes('T') ? '2nd Group' : '1st Group',
                     })),
                     filterText: 'Tw',
                     listOpen: true,
-                    groupBy: (item: any) => item.group
-                }
+                    groupBy: (item: any) => item.group,
+                },
             });
 
             await tick();
@@ -2830,8 +2877,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    value: 'cake'
-                }
+                    value: 'cake',
+                },
             });
 
             await tick();
@@ -2843,8 +2890,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    value: 'pizza'
-                }
+                    value: 'pizza',
+                },
             });
 
             await tick();
@@ -2858,7 +2905,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                }
+                },
             });
 
             cleanup();
@@ -2867,8 +2914,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    value: 'cake'
-                }
+                    value: 'cake',
+                },
             });
 
             await tick();
@@ -2884,8 +2931,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listAutoWidth: false,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
@@ -2899,12 +2946,12 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOffset: 0,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
-            let elem = document.querySelector('.svelte-select-list') as HTMLElement;
+            const elem = document.querySelector('.svelte-select-list') as HTMLElement;
             expect(elem.style.top).toBe('41px');
         });
     });
@@ -2915,8 +2962,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    value: 'pizza'
-                }
+                    value: 'pizza',
+                },
             });
 
             await tick();
@@ -2933,8 +2980,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2954,8 +3001,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                    value: { value: 'cake', label: 'Cake' }
-                }
+                    value: { value: 'cake', label: 'Cake' },
+                },
             });
 
             const input2 = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -2980,8 +3027,8 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'chocolate', label: 'Chocolate' },
-                    showChevron: true
-                }
+                    showChevron: true,
+                },
             });
 
             expect(document.querySelectorAll('.indicator').length).toBe(0);
@@ -2991,8 +3038,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    showChevron: true
-                }
+                    showChevron: true,
+                },
             });
 
             expect(document.querySelectorAll('.chevron')[0]).toBeTruthy();
@@ -3004,8 +3051,8 @@ describe('Select Component', () => {
                     items,
                     value: { value: 'chocolate', label: 'Chocolate' },
                     showChevron: true,
-                    clearable: false
-                }
+                    clearable: false,
+                },
             });
 
             expect(document.querySelectorAll('.chevron')[0]).toBeTruthy();
@@ -3017,8 +3064,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: itemsWithSelectable
-                }
+                    items: itemsWithSelectable,
+                },
             });
 
             await tick();
@@ -3038,8 +3085,8 @@ describe('Select Component', () => {
                     items: itemsWithSelectable,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -3059,8 +3106,8 @@ describe('Select Component', () => {
                     items: itemsWithSelectable,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
@@ -3075,11 +3122,11 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithSelectable,
-                    filterText: '2'
-                }
+                    filterText: '2',
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Tab' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
             await tick();
 
             expect(document.querySelector('.selected-item')).toBeFalsy();
@@ -3091,11 +3138,11 @@ describe('Select Component', () => {
                     listOpen: true,
                     items: itemsWithSelectable,
                     filterText: '2',
-                    multiple: true
-                }
+                    multiple: true,
+                },
             });
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(document.querySelector('.multi-item')).toBeFalsy();
@@ -3117,12 +3164,12 @@ describe('Select Component', () => {
                     filterText: 'Ca',
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(capturedValue).toBeFalsy();
@@ -3132,7 +3179,7 @@ describe('Select Component', () => {
             input.dispatchEvent(new Event('input', { bubbles: true }));
 
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(capturedValue && capturedValue.label).toBe('Pizza');
@@ -3148,8 +3195,8 @@ describe('Select Component', () => {
                     filterText: 'not',
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
@@ -3178,7 +3225,7 @@ describe('Select Component', () => {
                     listOpen: true,
                     items: items,
                     value: { value: 'cake', label: 'Cake' },
-                }
+                },
             });
 
             await tick();
@@ -3196,8 +3243,8 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: items,
-                    multiple: true
-                }
+                    multiple: true,
+                },
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
@@ -3220,8 +3267,8 @@ describe('Select Component', () => {
                     items: itemsWithGroupAndSelectable,
                     value: { value: 'chocolate', label: 'Chocolate', group: 'Sweet' },
                     groupBy: (i: any) => i.group,
-                    groupHeaderSelectable: true
-                }
+                    groupHeaderSelectable: true,
+                },
             });
 
             await tick();
@@ -3235,7 +3282,9 @@ describe('Select Component', () => {
             await tick();
 
             hoverItem = document.querySelector('.list-item .hover') as HTMLElement;
-            expect(hoverItem && (hoverItem.textContent === 'Savory' || hoverItem.classList.contains('list-group-title'))).toBeTruthy();
+            expect(
+                hoverItem && (hoverItem.textContent === 'Savory' || hoverItem.classList.contains('list-group-title')),
+            ).toBeTruthy();
         });
 
         it('works correctly with custom test', async () => {
@@ -3248,7 +3297,7 @@ describe('Select Component', () => {
             expect(hoverItem !== null).toBeTruthy();
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
@@ -3269,12 +3318,12 @@ describe('Select Component', () => {
                     closeListOnChange: false,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(capturedValue && capturedValue.value).toBe('chocolate');
@@ -3291,7 +3340,7 @@ describe('Select Component', () => {
             expect(capturedValue && capturedValue.value).toBe('cake');
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
@@ -3304,9 +3353,9 @@ describe('Select Component', () => {
                     items,
                     inputAttributes: {
                         id: 'testId',
-                        autocomplete: 'custom-value'
-                    }
-                }
+                        autocomplete: 'custom-value',
+                    },
+                },
             });
 
             const el = document.getElementById('testId') as HTMLInputElement;
@@ -3324,7 +3373,7 @@ describe('Select Component', () => {
                     name: 'Foods',
                     items: items,
                     showChevron: true,
-                }
+                },
             });
 
             const hidden = document.querySelector('input[type="hidden"]') as HTMLInputElement;
@@ -3336,7 +3385,7 @@ describe('Select Component', () => {
                 props: {
                     inputAttributes: { name: 'Foods' },
                     items: items,
-                }
+                },
             });
 
             const hidden = document.querySelector('input[type="hidden"]') as HTMLInputElement;
@@ -3348,7 +3397,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     value: { value: 'cake', label: 'Cake' },
-                }
+                },
             });
 
             const hiddenInput = document.querySelector('input[type="hidden"]') as HTMLInputElement;
@@ -3365,7 +3414,7 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items: items,
-                }
+                },
             });
 
             const hiddenInput = document.querySelector('input[type="hidden"]');
@@ -3378,8 +3427,11 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items: items,
-                    value: [{ value: 'cake', label: 'Cake' }, { value: 'pizza', label: 'Pizza' },]
-                }
+                    value: [
+                        { value: 'cake', label: 'Cake' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
             });
 
             const hiddenInputs = document.querySelectorAll('input[type="hidden"]') as NodeListOf<HTMLInputElement>;
@@ -3395,8 +3447,11 @@ describe('Select Component', () => {
                     multiple: true,
                     items: items,
                     useJustValue: true,
-                    value: [{ value: 'cake', label: 'Cake' }, { value: 'pizza', label: 'Pizza' },],
-                }
+                    value: [
+                        { value: 'cake', label: 'Cake' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
             });
 
             const hiddenInputs = document.querySelectorAll('input[type="hidden"]') as NodeListOf<HTMLInputElement>;
@@ -3412,11 +3467,11 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items: items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
-            let aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('#aria-context');
             expect(aria!.innerHTML.includes('Chocolate')).toBeTruthy();
             await handleKeyboard('ArrowDown');
             expect(aria!.innerHTML.includes('Pizza')).toBeTruthy();
@@ -3427,11 +3482,11 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     value: { value: 'cake', label: 'Cake' },
-                    focused: true
-                }
+                    focused: true,
+                },
             });
 
-            let aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('#aria-selection');
             expect(aria!.innerHTML.includes('Cake')).toBeTruthy();
         });
 
@@ -3440,12 +3495,15 @@ describe('Select Component', () => {
                 props: {
                     multiple: true,
                     items: items,
-                    value: [{ value: 'cake', label: 'Cake' }, { value: 'pizza', label: 'Pizza' },],
-                    focused: true
-                }
+                    value: [
+                        { value: 'cake', label: 'Cake' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    focused: true,
+                },
             });
 
-            let aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('#aria-selection');
             expect(aria!.innerHTML.includes('Cake')).toBeTruthy();
             expect(aria!.innerHTML.includes('Pizza')).toBeTruthy();
         });
@@ -3456,11 +3514,11 @@ describe('Select Component', () => {
                     items: items,
                     value: { value: 'pizza', label: 'Pizza' },
                     focused: true,
-                    ariaValues: (val: any) => `Yummy ${val} in my tummy!`
-                }
+                    ariaValues: (val: any) => `Yummy ${val} in my tummy!`,
+                },
             });
 
-            let aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('#aria-selection');
             expect(aria!.innerHTML).toBe('Yummy Pizza in my tummy!');
         });
 
@@ -3469,12 +3527,12 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    ariaListOpen: (label: any, count: any) => `label: ${label}, count: ${count}`
-                }
+                    ariaListOpen: (label: any, count: any) => `label: ${label}, count: ${count}`,
+                },
             });
 
             await tick();
-            let aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('#aria-context');
             expect(aria!.innerHTML).toBe('label: Chocolate, count: 5');
         });
 
@@ -3484,11 +3542,11 @@ describe('Select Component', () => {
                     items: items,
                     focused: true,
                     listOpen: false,
-                    ariaFocused: () => `nothing to see here.`
-                }
+                    ariaFocused: () => `nothing to see here.`,
+                },
             });
 
-            let aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('#aria-context');
             expect(aria!.innerHTML).toBe('nothing to see here.');
         });
 
@@ -3497,11 +3555,11 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    id: 'test'
-                }
+                    id: 'test',
+                },
             });
 
-            let listbox = document.querySelector('[role="listbox"]');
+            const listbox = document.querySelector('[role="listbox"]');
             expect(listbox).toBeTruthy();
             expect(listbox!.id).toBe('listbox-test');
         });
@@ -3511,11 +3569,11 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    value: { value: 'pizza', label: 'Pizza' }
-                }
+                    value: { value: 'pizza', label: 'Pizza' },
+                },
             });
 
-            let options = document.querySelectorAll('[role="option"]');
+            const options = document.querySelectorAll('[role="option"]');
             expect(options.length).toBe(5);
             expect(options[0].getAttribute('aria-selected')).toBe('false');
             expect(options[1].getAttribute('aria-selected')).toBe('true');
@@ -3526,11 +3584,11 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    id: 'test'
-                }
+                    id: 'test',
+                },
             });
 
-            let input = document.querySelector('input[type="text"]');
+            const input = document.querySelector('input[type="text"]');
             expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-0');
             await handleKeyboard('ArrowDown');
             expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
@@ -3541,11 +3599,11 @@ describe('Select Component', () => {
                 props: {
                     items: itemsWithGroup,
                     listOpen: true,
-                    groupBy: (item: SelectItem) => item.group as string
-                }
+                    groupBy: (item: SelectItem) => item.group as string,
+                },
             });
 
-            let groups = document.querySelectorAll('[role="group"]');
+            const groups = document.querySelectorAll('[role="group"]');
             expect(groups.length).toBe(2);
             expect(groups[0].getAttribute('aria-label')).toBe('Sweet');
             expect(groups[1].getAttribute('aria-label')).toBe('Savory');
@@ -3556,11 +3614,11 @@ describe('Select Component', () => {
                 props: {
                     items: itemsWithGroup,
                     listOpen: true,
-                    groupBy: (item: SelectItem) => item.group as string
-                }
+                    groupBy: (item: SelectItem) => item.group as string,
+                },
             });
 
-            let presentations = document.querySelectorAll('[role="presentation"]');
+            const presentations = document.querySelectorAll('[role="presentation"]');
             expect(presentations.length).toBe(2);
         });
 
@@ -3568,11 +3626,11 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items: items,
-                    ariaLabel: 'Select a food'
-                }
+                    ariaLabel: 'Select a food',
+                },
             });
 
-            let input = document.querySelector('input[type="text"]');
+            const input = document.querySelector('input[type="text"]');
             expect(input!.getAttribute('aria-label')).toBe('Select a food');
         });
 
@@ -3581,13 +3639,13 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                }
+                },
             });
 
-            let listbox = document.querySelector('[role="listbox"]');
-            let input = document.querySelector('input[type="text"]');
+            const listbox = document.querySelector('[role="listbox"]');
+            const input = document.querySelector('input[type="text"]');
             expect(listbox!.id).toMatch(/^listbox-svelte-select-/);
-            let activedescendant = input!.getAttribute('aria-activedescendant');
+            const activedescendant = input!.getAttribute('aria-activedescendant');
             expect(activedescendant).toMatch(/^listbox-svelte-select-.*-item-0$/);
             // aria-controls should match the listbox id
             expect(input!.getAttribute('aria-controls')).toBe(listbox!.id);
@@ -3600,18 +3658,18 @@ describe('Select Component', () => {
                 props: {
                     id: 'foods',
                     items: items,
-                }
+                },
             });
 
-            let aria = document.querySelector('input[type="text"]');
+            const aria = document.querySelector('input[type="text"]');
             expect(aria!.id).toBe('foods');
         });
     });
 
     describe('Focusable ancestor', () => {
         it('allows selecting item with focusable ancestor', async () => {
-            const ancestor = document.createElement("div");
-            ancestor.setAttribute("tabindex", "-1");
+            const ancestor = document.createElement('div');
+            ancestor.setAttribute('tabindex', '-1');
             document.body.appendChild(ancestor);
 
             let capturedValue: any;
@@ -3622,8 +3680,8 @@ describe('Select Component', () => {
                     items,
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await querySelectorClick('.svelte-select');
@@ -3642,10 +3700,10 @@ describe('Select Component', () => {
                 props: {
                     items,
                     listOpen: true,
-                }
+                },
             });
 
-            let list = document.querySelector('.svelte-select-list');
+            const list = document.querySelector('.svelte-select-list');
 
             expect(list).toBeTruthy();
         });
@@ -3655,8 +3713,8 @@ describe('Select Component', () => {
         it('shows error styles', async () => {
             render(Select, {
                 props: {
-                    hasError: true
-                }
+                    hasError: true,
+                },
             });
 
             expect(document.querySelector('.svelte-select.error')).toBeTruthy();
@@ -3665,8 +3723,8 @@ describe('Select Component', () => {
 
             render(Select, {
                 props: {
-                    hasError: false
-                }
+                    hasError: false,
+                },
             });
 
             await tick();
@@ -3679,14 +3737,14 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             await tick();
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Escape' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
@@ -3731,7 +3789,7 @@ describe('Select Component', () => {
             item = document.querySelector('.item.hover.group-item') as HTMLElement;
             expect(item && item.textContent).toBe('Chips');
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowUp' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp' }));
             await tick();
 
             item = document.querySelector('.item.hover.group-item') as HTMLElement;
@@ -3786,13 +3844,13 @@ describe('Select Component', () => {
                     items: ['A5', 'tests string', 'something else'],
                     onchange: (value: any) => {
                         capturedValue = value;
-                    }
-                }
+                    },
+                },
             });
 
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { 'key': 'Enter' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
             expect(capturedValue.value).toBe('A5');
@@ -3807,8 +3865,8 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    listOpen: true
-                }
+                    listOpen: true,
+                },
             });
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
@@ -3832,7 +3890,7 @@ describe('Select Component', () => {
                     { value: 'a', label: 'Item A' },
                     { value: 'b', label: 'Item B' },
                 ],
-            }
+            },
         });
 
         const input = container.querySelector('input[type="text"]') as HTMLInputElement;
@@ -3849,12 +3907,10 @@ describe('Select Component', () => {
         const { container } = render(Select, {
             props: {
                 multiple: true,
-                value: [
-                    { value: 'chocolate', label: 'Chocolate' },
-                ],
+                value: [{ value: 'chocolate', label: 'Chocolate' }],
                 items: items,
                 listOpen: true,
-            }
+            },
         });
 
         await tick();
@@ -3881,11 +3937,11 @@ describe('Select Component', () => {
                 useJustValue: true,
                 justValue: ['chocolate', 'pizza'],
                 // Don't provide value - let it be computed
-            }
+            },
         });
 
         await tick();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // Check if multi-items are rendered
         const multiItems = container.querySelectorAll('.multi-item');
@@ -3910,12 +3966,12 @@ describe('Select Component', () => {
                 value: boundValue,
                 oninput: (v: any) => {
                     boundValue = v;
-                }
-            }
+                },
+            },
         });
 
         await tick();
-        await new Promise(resolve => setTimeout(resolve, 100));
+        await new Promise((resolve) => setTimeout(resolve, 100));
 
         // The component should have computed value from justValue
         expect(boundValue).toBeDefined();
@@ -3925,14 +3981,14 @@ describe('Select Component', () => {
         // Create many items to ensure scrolling is possible
         const items = Array.from({ length: 50 }, (_, i) => ({
             value: `item${i}`,
-            label: `Item ${i}`
+            label: `Item ${i}`,
         }));
 
         const { container } = render(Select, {
             props: {
                 items: items,
                 listOpen: true,
-            }
+            },
         });
 
         await tick();
@@ -3947,7 +4003,7 @@ describe('Select Component', () => {
         await tick();
 
         // Wait for setTimeout to complete (100ms + buffer)
-        await new Promise(resolve => setTimeout(resolve, 150));
+        await new Promise((resolve) => setTimeout(resolve, 150));
 
         // If we got here without errors, the scroll handler executed
         expect(list).toBeTruthy();
@@ -3963,7 +4019,7 @@ describe('Select Component', () => {
             props: {
                 items: items,
                 listOpen: true,
-            }
+            },
         });
 
         await tick();
@@ -3999,7 +4055,7 @@ describe('Select Component', () => {
                     { value: 'chocolate', label: 'Chocolate' },
                     { value: 'pizza', label: 'Pizza' },
                 ],
-            }
+            },
         });
 
         await tick();
@@ -4027,7 +4083,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     required: true,
-                }
+                },
             });
 
             const requiredSelect = container.querySelector('select.required') as HTMLSelectElement;
@@ -4042,7 +4098,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     required: true,
-                }
+                },
             });
 
             expect(container.querySelector('select.required')).toBeTruthy();
@@ -4063,7 +4119,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     required: false,
-                }
+                },
             });
 
             expect(container.querySelector('select.required')).toBeFalsy();
@@ -4076,7 +4132,7 @@ describe('Select Component', () => {
                     required: true,
                     multiple: true,
                     value: [],
-                }
+                },
             });
 
             expect(container.querySelector('select.required')).toBeTruthy();
@@ -4089,7 +4145,7 @@ describe('Select Component', () => {
                     required: true,
                     multiple: true,
                     value: [{ value: 'chocolate', label: 'Chocolate' }],
-                }
+                },
             });
 
             await tick();
@@ -4104,7 +4160,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     focused: true,
-                }
+                },
             });
 
             await tick();
@@ -4122,7 +4178,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     focused: true,
-                }
+                },
             });
 
             await tick();
@@ -4138,7 +4194,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                }
+                },
             });
 
             await tick();
@@ -4155,7 +4211,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                }
+                },
             });
 
             await tick();
@@ -4175,7 +4231,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                }
+                },
             });
 
             await tick();
@@ -4194,8 +4250,10 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    onchange: (val: any) => { selectedValue = val; },
-                }
+                    onchange: (val: any) => {
+                        selectedValue = val;
+                    },
+                },
             });
 
             await tick();
@@ -4216,8 +4274,10 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    onchange: (val: any) => { selectedValue = val; },
-                }
+                    onchange: (val: any) => {
+                        selectedValue = val;
+                    },
+                },
             });
 
             await tick();
@@ -4234,7 +4294,7 @@ describe('Select Component', () => {
                 props: {
                     items: itemsWithSelectable,
                     listOpen: true,
-                }
+                },
             });
 
             await tick();
@@ -4272,7 +4332,7 @@ describe('Select Component', () => {
                         { value: 'pizza', label: 'Pizza' },
                         { value: 'cake', label: 'Cake' },
                     ],
-                }
+                },
             });
 
             await tick();
@@ -4286,8 +4346,6 @@ describe('Select Component', () => {
         });
 
         it('removes active multi-item with Backspace', async () => {
-            let currentValue: any;
-
             render(Select, {
                 props: {
                     items: items,
@@ -4297,8 +4355,7 @@ describe('Select Component', () => {
                         { value: 'chocolate', label: 'Chocolate' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                    oninput: (val: any) => { currentValue = val; },
-                }
+                },
             });
 
             await tick();
@@ -4319,14 +4376,15 @@ describe('Select Component', () => {
             const user = userEvent.setup();
 
             let resolveLoad: (items: SelectItem[]) => void;
-            const slowLoad = () => new Promise<SelectItem[]>((resolve) => {
-                resolveLoad = resolve;
-            });
+            const slowLoad = () =>
+                new Promise<SelectItem[]>((resolve) => {
+                    resolveLoad = resolve;
+                });
 
             render(Select, {
                 props: {
                     loadOptions: slowLoad,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4351,7 +4409,7 @@ describe('Select Component', () => {
                 props: {
                     loadOptions: loadSpy,
                     debounceWait: 200,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4368,7 +4426,7 @@ describe('Select Component', () => {
                 props: {
                     loadOptions: getPosts,
                     value: { value: 1, label: 'Amber Ale' },
-                }
+                },
             });
 
             await tick();
@@ -4391,7 +4449,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: getPosts,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4412,7 +4470,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: loadFn,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4435,7 +4493,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: loadFn,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4456,7 +4514,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: loadFn,
-                }
+                },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4475,7 +4533,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'cake', label: 'Cake' },
-                }
+                },
             }) as { component: SelectInstance };
 
             // Verify value is rendered
@@ -4498,7 +4556,7 @@ describe('Select Component', () => {
                         { value: 'chocolate', label: 'Chocolate' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                }
+                },
             }) as { component: SelectInstance };
 
             // Verify multi items are rendered
@@ -4518,7 +4576,7 @@ describe('Select Component', () => {
             const { component } = render(Select, {
                 props: {
                     items,
-                }
+                },
             }) as { component: SelectInstance };
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -4547,7 +4605,7 @@ describe('Select Component', () => {
                     value: { value: 'cake', label: 'Cake' },
                     onchange: changeFn,
                     onclear: clearFn,
-                }
+                },
             }) as { component: SelectInstance };
 
             component.reset?.();
@@ -4562,7 +4620,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'cake', label: 'Cake' },
-                }
+                },
             }) as { component: SelectInstance };
 
             // Open the list

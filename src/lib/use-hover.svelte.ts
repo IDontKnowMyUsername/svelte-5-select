@@ -2,9 +2,8 @@ import type { HoverContext, SelectItem } from './types';
 import { areItemsEqual, isItemSelectableCheck } from './utils';
 
 export function useHover(context: HoverContext) {
-
     function computeNextIndex(filteredItems: SelectItem[], fromIndex: number, increment: number): number {
-        let selectableFilteredItems = filteredItems.filter(
+        const selectableFilteredItems = filteredItems.filter(
             (item) => !Object.hasOwn(item, 'selectable') || item.selectable === true,
         );
 
@@ -18,7 +17,7 @@ export function useHover(context: HoverContext) {
         let currentSelectableIndex;
 
         if (isCurrentSelectable) {
-            currentSelectableIndex = selectableFilteredItems.findIndex(item => item === currentItem);
+            currentSelectableIndex = selectableFilteredItems.findIndex((item) => item === currentItem);
         } else {
             currentSelectableIndex = increment > 0 ? -1 : selectableFilteredItems.length;
         }
@@ -27,11 +26,12 @@ export function useHover(context: HoverContext) {
         if (increment > 0) {
             newSelectableIndex = (currentSelectableIndex + 1) % selectableFilteredItems.length;
         } else {
-            newSelectableIndex = (currentSelectableIndex - 1 + selectableFilteredItems.length) % selectableFilteredItems.length;
+            newSelectableIndex =
+                (currentSelectableIndex - 1 + selectableFilteredItems.length) % selectableFilteredItems.length;
         }
 
         const newItem = selectableFilteredItems[newSelectableIndex];
-        return filteredItems.findIndex(item => item === newItem);
+        return filteredItems.findIndex((item) => item === newItem);
     }
 
     function setHoverIndex(increment: number) {
@@ -78,7 +78,11 @@ export function useHover(context: HoverContext) {
         return 0;
     }
 
-    function isItemActive(item: SelectItem, val: SelectItem | SelectItem[] | null | undefined, itemId: string): boolean | undefined {
+    function isItemActive(
+        item: SelectItem,
+        val: SelectItem | SelectItem[] | null | undefined,
+        itemId: string,
+    ): boolean | undefined {
         const { multiple } = context.getState();
         if (multiple) return;
         const normalized = !val ? null : typeof val === 'string' ? { value: val, label: val } : val;
