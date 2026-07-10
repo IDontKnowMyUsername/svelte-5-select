@@ -17,6 +17,7 @@ import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
+import FormTest from './FormTest.svelte';
 import type { SelectItem, SelectValue } from '$lib/types';
 import { tick } from 'svelte';
 import userEvent from '@testing-library/user-event';
@@ -3462,6 +3463,75 @@ describe('Select Component', () => {
         });
     });
 
+    describe('Form integration', () => {
+        it('round-trips a single selection through FormData', async () => {
+            render(FormTest, {
+                props: {
+                    items: items,
+                    name: 'food',
+                    value: { value: 'cake', label: 'Cake' },
+                },
+            });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            const data = new FormData(form);
+            expect(data.get('food')).toBe(JSON.stringify({ value: 'cake', label: 'Cake' }));
+        });
+
+        it('round-trips every selection through FormData when multiple', async () => {
+            render(FormTest, {
+                props: {
+                    items: items,
+                    name: 'food',
+                    multiple: true,
+                    value: [
+                        { value: 'cake', label: 'Cake' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
+            });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            const data = new FormData(form);
+            expect(data.getAll('food')).toEqual([
+                JSON.stringify({ value: 'cake', label: 'Cake' }),
+                JSON.stringify({ value: 'pizza', label: 'Pizza' }),
+            ]);
+        });
+
+        it('round-trips justValue through FormData when useJustValue', async () => {
+            render(FormTest, {
+                props: {
+                    items: items,
+                    name: 'food',
+                    useJustValue: true,
+                    value: { value: 'cake', label: 'Cake' },
+                },
+            });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            const data = new FormData(form);
+            expect(data.get('food')).toBe('cake');
+        });
+
+        it('submits an empty value when nothing is selected', async () => {
+            render(FormTest, {
+                props: {
+                    items: items,
+                    name: 'food',
+                },
+            });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            const data = new FormData(form);
+            expect(data.get('food')).toBe('');
+        });
+    });
+
     describe('ARIA', () => {
         it('describes highlighted item when listOpen', async () => {
             render(Select, {
@@ -3675,6 +3745,53 @@ describe('Select Component', () => {
             expect(options.length).toBe(5);
             expect(options[0].getAttribute('aria-selected')).toBe('false');
             expect(options[1].getAttribute('aria-selected')).toBe('true');
+        });
+
+        it('marks selected options with aria-selected in multiple mode', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    multiple: true,
+                    filterSelectedItems: false,
+                    value: [
+                        { value: 'pizza', label: 'Pizza' },
+                        { value: 'chips', label: 'Chips' },
+                    ],
+                },
+            });
+
+            const options = document.querySelectorAll('[role="option"]');
+            expect(options.length).toBe(5);
+            const selected = Array.from(options).map((o) => o.getAttribute('aria-selected'));
+            expect(selected).toEqual(['false', 'true', 'false', 'true', 'false']);
+        });
+
+        it('selectable group headers have role="option" instead of presentation', () => {
+            render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    listOpen: true,
+                    groupBy: (item: SelectItem) => item.group as string,
+                    groupHeaderSelectable: true,
+                },
+            });
+
+            expect(document.querySelectorAll('[role="presentation"]').length).toBe(0);
+            expect(document.querySelectorAll('[role="option"]').length).toBe(7);
+        });
+
+        it('omits aria-activedescendant when the list has no options', () => {
+            render(Select, {
+                props: {
+                    items: [],
+                    listOpen: true,
+                    id: 'test',
+                },
+            });
+
+            const input = document.querySelector('input[type="text"]');
+            expect(input!.getAttribute('aria-activedescendant')).toBeNull();
         });
 
         it('input has aria-activedescendant pointing to hovered item', async () => {
