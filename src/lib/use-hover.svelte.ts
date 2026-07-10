@@ -82,10 +82,14 @@ export function useHover(context: HoverContext) {
         item: SelectItem,
         val: SelectItem | SelectItem[] | null | undefined,
         itemId: string,
-    ): boolean | undefined {
+    ): boolean {
         const { multiple } = context.getState();
-        if (multiple) return;
+        if (multiple) {
+            if (!Array.isArray(val)) return false;
+            return val.some((v) => areItemsEqual(typeof v === 'string' ? { value: v, label: v } : v, item, itemId));
+        }
         const normalized = !val ? null : typeof val === 'string' ? { value: val, label: val } : val;
+        if (Array.isArray(normalized)) return false;
         return areItemsEqual(normalized, item, itemId);
     }
 

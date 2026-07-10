@@ -143,8 +143,12 @@
         !value ? null : typeof value === 'string' ? { value, label: value } : value,
     );
 
-    const _generatedId = `svelte-select-${Math.random().toString(36).slice(2, 9)}`;
+    const _uid = $props.id();
+    const _generatedId = `svelte-select-${_uid}`;
     let _id = $derived(id ?? _generatedId);
+
+    // Group headers render as options only when they are selectable; otherwise they are presentational
+    const isPresentationalHeader = (item: SelectItem | undefined): boolean => !!item?.groupHeader && !item.selectable;
 
     const DEFAULT_INPUT_ATTRS = {
         autocapitalize: 'none',
@@ -157,9 +161,15 @@
     } as const;
 
     const ariaHandlers = useAriaHandlers({
-        ariaValues,
-        ariaListOpen,
-        ariaFocused,
+        get ariaValues() {
+            return ariaValues;
+        },
+        get ariaListOpen() {
+            return ariaListOpen;
+        },
+        get ariaFocused() {
+            return ariaFocused;
+        },
     });
 
     function internalHandleClear(_e?: MouseEvent): void {
@@ -171,28 +181,47 @@
     }
 
     let list = $state<HTMLDivElement | undefined>();
+    let filteredItems = $derived.by<SelectItem[]>(() =>
+        filter({
+            loadOptions,
+            filterText,
+            items,
+            multiple,
+            value: normalizedValue,
+            itemId,
+            groupBy: groupBy as ((item: SelectItem) => string) | undefined,
+            label,
+            filterSelectedItems,
+            itemFilter: itemFilter as (label: string, filterText: string, option: SelectItem) => boolean,
+            convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
+            filterGroupedItems,
+        }),
+    );
     let _inputAttributes = $derived<HTMLInputAttributes>({
         ...DEFAULT_INPUT_ATTRS,
         role: 'combobox',
         'aria-controls': listOpen ? `listbox-${_id}` : undefined,
         'aria-expanded': listOpen,
         'aria-haspopup': 'listbox',
-        'aria-activedescendant': listOpen ? `listbox-${_id}-item-${hoverItemIndex}` : undefined,
+        'aria-activedescendant':
+            listOpen && filteredItems[hoverItemIndex] && !isPresentationalHeader(filteredItems[hoverItemIndex])
+                ? `listbox-${_id}-item-${hoverItemIndex}`
+                : undefined,
         'aria-label': ariaLabel ?? placeholder,
         'aria-required': required || undefined,
         'aria-invalid': hasError || undefined,
-        tabindex: 0,
         readonly: !searchable,
         id: id ? id : undefined,
         ...inputAttributes,
     });
     let activeValue = $state<number | undefined>(undefined);
-    let prev_value = $state<SelectItem | SelectItem[] | string | null | undefined>();
+    // Seeded with the initial value so mount does not dispatch oninput
+    let prev_value = $state<SelectItem | SelectItem[] | string | null | undefined>(value);
     let prev_filterText: string | undefined = $state();
-    let prev_multiple = $state();
+    let prev_multiple = $state<boolean | undefined>();
     let isScrolling = $state(false);
     let prefloat = $state(true);
-    let hasValue = $state(false);
+    let hasValue = $derived(multiple ? !!(value && value.length > 0) : !!value);
     let placeholderText = $derived(
         placeholderAlwaysShow && multiple
             ? placeholder
@@ -204,7 +233,6 @@
     );
     let showClear = $derived(hasValue && clearable && !disabled && !loading);
     let hideSelectedItem = $derived(hasValue && filterText.length > 0);
-    let filteredItems = $state<SelectItem[]>([]);
 
     // Instance export — call via a bind:this reference
     export function getFilteredItems(): Item[] {
@@ -234,10 +262,10 @@
             : '',
     );
 
+    // svelte-floating-ui keeps a reference to this object; effects below mutate it in place
     let _floatingConfig = $state<FloatingConfig>({
         strategy: 'absolute',
         placement: 'bottom-start',
-        middleware: [offset(listOffset), flip(), shift()],
         autoUpdate: false,
     });
 
@@ -283,7 +311,6 @@
         }),
         setHoverItemIndex: (v) => (hoverItemIndex = v),
         setIsScrolling: (v) => (isScrolling = v),
-        onhoveritem: (i) => onhoveritem?.(i),
     });
 
     const loadOptionsManager = useLoadOptions({
@@ -307,7 +334,7 @@
         setJustValue: (v) => (justValue = v),
         setLoading: (v) => (loading = v),
         setListOpen: (v) => (listOpen = v),
-        debounce,
+        debounce: (fn, wait) => debounce(fn, wait),
         convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
         onloaded: (opts) => onloaded(opts as Item[]),
         onerror: (err) => onerror(err),
@@ -342,28 +369,15 @@
         if (focused && input) input.focus();
     });
 
-    // Filter items
+    // Keep the floating middleware in sync with listOffset
     $effect.pre(() => {
-        filterText;
-        value;
-        items;
-        untrack(
-            () =>
-                (filteredItems = filter({
-                    loadOptions,
-                    filterText,
-                    items,
-                    multiple,
-                    value: normalizedValue,
-                    itemId,
-                    groupBy: groupBy as ((item: SelectItem) => string) | undefined,
-                    label,
-                    filterSelectedItems,
-                    itemFilter: itemFilter as (label: string, filterText: string, option: SelectItem) => boolean,
-                    convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
-                    filterGroupedItems,
-                })),
-        );
+        const middleware = [offset(listOffset), flip(), shift()];
+        untrack(() => {
+            _floatingConfig.middleware = middleware;
+            if (container && list) {
+                floatingUpdate(floatingConfig ? { ..._floatingConfig, ...floatingConfig } : _floatingConfig);
+            }
+        });
     });
 
     // Set value on hasValue change
@@ -396,18 +410,10 @@
         }
     });
 
-    // Dispatch selected item
+    // Dispatch oninput when value changes (selection, update, or clear)
     $effect(() => {
-        if (value) {
-            untrack(() => valueManager.dispatchSelectedItem());
-        }
-    });
-
-    // Value cleared notification
-    $effect(() => {
-        if (prev_value && !value) {
-            oninput?.((value || []) as SelectValue<Item>);
-        }
+        value;
+        untrack(() => valueManager.dispatchSelectedItem());
     });
 
     // Close list on unfocus
@@ -435,22 +441,13 @@
         onhoveritem?.(hoverItemIndex);
     });
 
-    // Compute hasValue
-    $effect(() => {
-        multiple;
-        value;
-        untrack(() => {
-            hasValue = multiple ? !!(value && value.length > 0) : !!value;
-        });
-    });
-
-    // Compute justValue
+    // Hydrate value from an initial justValue, then keep justValue in sync
     $effect(() => {
         multiple;
         itemId;
         value;
         untrack(() => {
-            justValue = valueManager.computeJustValue();
+            justValue = valueManager.syncJustValue();
         });
     });
 
@@ -714,6 +711,7 @@
                 ev.stopPropagation();
             }}
             role="listbox"
+            tabindex="-1"
             aria-multiselectable={multiple || undefined}
             id="listbox-{_id}">
             {#if listPrependSnippet}
@@ -736,11 +734,11 @@
                         }}
                         class="list-item"
                         tabindex="-1"
-                        role={item.groupHeader ? 'presentation' : 'option'}
+                        role={isPresentationalHeader(item) ? 'presentation' : 'option'}
                         id="listbox-{_id}-item-{i}"
-                        aria-selected={item.groupHeader
+                        aria-selected={isPresentationalHeader(item)
                             ? undefined
-                            : hoverManager.isItemActive(item, normalizedValue, itemId) || false}>
+                            : hoverManager.isItemActive(item, normalizedValue, itemId)}>
                         <div
                             class="item"
                             class:list-group-title={item.groupHeader}
@@ -850,7 +848,6 @@
             onblur={handleBlur}
             oninput={handleInput}
             onfocus={handleFocus}
-            readOnly={!searchable}
             {..._inputAttributes}
             bind:this={input}
             value={filterText}

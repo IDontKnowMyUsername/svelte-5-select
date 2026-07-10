@@ -15,7 +15,6 @@ export function useValue(context: ValueContext) {
 
     function setValue() {
         const { value, multiple, itemId } = context.getState();
-        context.setPrevValue(value);
         if (typeof value === 'string') {
             const item = findItemByValue(value);
             context.setValue(
@@ -52,34 +51,39 @@ export function useValue(context: ValueContext) {
         }
     }
 
-    function computeJustValue(): JustValue | undefined {
+    // Command: when an initial justValue is supplied without a value, resolve it against items and set value
+    function hydrateValueFromJustValue(): void {
         const { multiple, value, itemId, useJustValue, justValue, clearState } = context.getState();
 
         const hasJustValue = multiple
             ? Array.isArray(justValue) && justValue.length > 0
             : justValue !== '' && justValue != null;
 
-        if (useJustValue && !value && !clearState && hasJustValue) {
-            const { items } = context.getState();
-            const typedItems = (items as SelectItem[]) || [];
-            if (multiple && Array.isArray(justValue)) {
-                const justValueArr = justValue as (string | number)[];
-                context.setValue(
-                    typedItems.filter((item: SelectItem) =>
-                        justValueArr.includes((item as Record<string, any>)[itemId]),
-                    ),
-                );
-            } else {
-                context.setValue(
-                    typedItems.filter((item: SelectItem) => (item as Record<string, any>)[itemId] === justValue)[0],
-                );
-            }
+        if (!useJustValue || value || clearState || !hasJustValue) return;
+
+        const typedItems = (context.getState().items as SelectItem[]) || [];
+        if (multiple && Array.isArray(justValue)) {
+            const justValueArr = justValue as (string | number)[];
+            context.setValue(
+                typedItems.filter((item: SelectItem) => justValueArr.includes((item as Record<string, any>)[itemId])),
+            );
+        } else {
+            context.setValue(
+                typedItems.filter((item: SelectItem) => (item as Record<string, any>)[itemId] === justValue)[0],
+            );
         }
+    }
 
-        const wasClearing = clearState;
-        context.setClearState(false);
+    // Query: pure derivation of justValue from a state snapshot
+    function deriveJustValue(
+        snapshot: Pick<
+            ReturnType<ValueContext['getState']>,
+            'multiple' | 'value' | 'itemId' | 'useJustValue' | 'justValue' | 'clearState'
+        >,
+    ): JustValue | undefined {
+        const { multiple, value, itemId, useJustValue, justValue, clearState } = snapshot;
 
-        if (useJustValue && !value && !wasClearing) {
+        if (useJustValue && !value && !clearState) {
             return justValue;
         }
 
@@ -92,6 +96,13 @@ export function useValue(context: ValueContext) {
         }
 
         return value[itemId];
+    }
+
+    function syncJustValue(): JustValue | undefined {
+        const snapshot = context.getState();
+        hydrateValueFromJustValue();
+        context.setClearState(false);
+        return deriveJustValue(snapshot);
     }
 
     function checkValueForDuplicates(): boolean {
@@ -116,18 +127,21 @@ export function useValue(context: ValueContext) {
     function dispatchSelectedItem() {
         const { multiple, value, prevValue, itemId } = context.getState();
 
-        if (multiple) {
-            if (hasValueChanged(value, prevValue)) {
-                if (checkValueForDuplicates()) {
-                    context.oninput(value || []);
-                }
-            }
+        if (!value) {
+            if (prevValue) context.oninput([]);
+            context.setPrevValue(value);
             return;
         }
 
-        if (!prevValue || hasValueChanged((value as SelectItem)[itemId], (prevValue as SelectItem)[itemId])) {
+        if (multiple) {
+            if (hasValueChanged(value, prevValue) && checkValueForDuplicates()) {
+                context.oninput(value);
+            }
+        } else if (!prevValue || hasValueChanged((value as SelectItem)[itemId], (prevValue as SelectItem)[itemId])) {
             context.oninput(value);
         }
+
+        context.setPrevValue(value);
     }
 
     function setupMulti() {
@@ -191,7 +205,7 @@ export function useValue(context: ValueContext) {
     return {
         setValue,
         updateValueDisplay,
-        computeJustValue,
+        syncJustValue,
         checkValueForDuplicates,
         findItem,
         findItemByValue,

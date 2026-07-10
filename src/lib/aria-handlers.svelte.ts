@@ -16,8 +16,7 @@ interface AriaHandlersContext {
 }
 
 export function useAriaHandlers(config: AriaHandlersConfig) {
-    const { ariaValues, ariaListOpen, ariaFocused } = config;
-
+    // Read the config properties at call time so live getters (see Select.svelte) stay reactive
     function handleAriaSelection(context: AriaHandlersContext): string {
         const { value, multiple, label } = context;
 
@@ -33,7 +32,7 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
             selected = (value as SelectItem)[label];
         }
 
-        return ariaValues(selected || '');
+        return config.ariaValues(selected || '');
     }
 
     function handleAriaContent(context: AriaHandlersContext): string {
@@ -45,9 +44,9 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
 
         if (listOpen && _item) {
             const count = filteredItems.length;
-            return ariaListOpen(_item[label], count);
+            return config.ariaListOpen(_item[label], count);
         } else {
-            return ariaFocused();
+            return config.ariaFocused();
         }
     }
 

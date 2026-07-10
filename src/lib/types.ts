@@ -66,7 +66,6 @@ export interface HoverContext {
     };
     setHoverItemIndex: (value: number) => void;
     setIsScrolling: (value: boolean) => void;
-    onhoveritem: (index: number) => void;
 }
 
 export type JustValue = string | number | string[] | number[] | null;
