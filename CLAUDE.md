@@ -22,23 +22,34 @@ A `<Select>` component for Svelte 5 apps.
 
 ## Architecture
 
-Composable pattern: `useX(context)` where context provides `getState()` closures over `$state` and setter callbacks.
+Shared reactive store: `createSelectState<Item>()` (`src/lib/select-state.svelte.ts`) combines live
+getter/setter accessors over `Select.svelte`'s bindable props with internal shared `$state`.
+Composables receive that single store (plus a small `actions` object for callbacks) and read/write
+`state.value`, `state.hoverItemIndex`, etc. directly — per-field access tracks only that field's
+signal. Composables are generic over `Item extends SelectItem` and own their domain effects;
+`Select.svelte` keeps only cross-cutting coordination effects.
 
 Composables in `src/lib/`:
-- `use-hover.svelte.ts`
-- `use-value.svelte.ts`
-- `use-load-options.svelte.ts`
-- `keyboard-navigation.svelte.ts`
+- `use-hover.svelte.ts` — hover index management + its effects
+- `use-value.svelte.ts` — value normalization, selection, oninput dispatch + effects
+- `use-load-options.svelte.ts` — async option loading (with a stale-response token) + effect
+- `keyboard-navigation.svelte.ts` — publicly exported, takes the narrow `KeyboardNavigationState`
 - `aria-handlers.svelte.ts`
 
-## Key Svelte 5 Pattern
+## Key Svelte 5 Patterns
 
-When calling composable functions from `$effect` bodies, `context.getState()` reads ALL state signals, creating unwanted reactive dependencies. Wrap composable calls in `untrack()` inside effects, keeping only intended triggers tracked:
+- Inside `$effect` bodies, keep the intended triggers as tracked reads at the top and wrap
+  composable calls in `untrack()` so incidental reads don't become dependencies:
 
 ```js
 $effect(() => {
-    if (listOpen && value) {  // tracked triggers
-        untrack(() => hoverManager.setValueIndexAsHoverIndex());  // untracked execution
-    }
+    state.value; // tracked trigger
+    untrack(() => dispatchSelectedItem()); // untracked execution
 });
 ```
+
+- Never name a component-local variable `state` — it collides with the `$state` rune
+  (the store is called `selectState` inside `Select.svelte`).
+- Unit tests for composables that register `$effect`s must be named `*.svelte.test.ts`
+  (vite-plugin-svelte compiles the `.svelte.` infix) and create the composable inside
+  `$effect.root(...)` followed by `flushSync()` — see `tests/src/lib/use-load-options.svelte.test.ts`.
