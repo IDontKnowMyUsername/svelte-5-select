@@ -195,7 +195,6 @@ export interface SelectProps {
     createGroupHeaderItem?: (groupValue: string, item: SelectItem) => SelectItem;
     debounce?: (fn: () => void, wait: number) => void;
     filter?: (config: FilterConfig) => SelectItem[];
-    getFilteredItems?: () => SelectItem[];
     groupBy?: ((item: SelectItem) => string) | undefined;
     groupFilter?: (groups: string[]) => string[];
     itemFilter?: (label: string, filterText: string, option: SelectItem) => boolean;

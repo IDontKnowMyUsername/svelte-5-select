@@ -247,9 +247,10 @@ export let loadOptions = undefined; // if used must return a Promise that update
 ```
 
 ```js
-export const getFilteredItems = () => {
-  return filteredItems;
-};
+// instance export — read the current filtered items via a component reference
+let select;
+// <Select bind:this={select} ... />
+select.getFilteredItems();
 ```
 
 ```js
@@ -312,7 +313,7 @@ You can also use the `inputStyles` prop to write in any override styles needed f
 ```
 
 ### 🧪 Experimental: Replace styles (Tailwind, Bootstrap, Bulma etc)
-If you'd like to supply your own styles use: `import Select from 'svelte-5-select/no-styles/Select.svelte'`. Then somewhere in your code or build pipeline add your own. There is a tailwind stylesheet via `import 'svelte-5-select/tailwind.css'`. It uses `@extend` so PostCSS is required.
+If you'd like to supply your own styles use: `import Select from 'svelte-5-select/no-styles/Select.svelte'`. Then somewhere in your code or build pipeline add your own. There is a tailwind stylesheet via `import 'svelte-5-select/tailwind.css'`. It uses `@import 'tailwindcss'` and `@apply`, so your app must have Tailwind CSS v4 set up to process it.
 
 
 ## License

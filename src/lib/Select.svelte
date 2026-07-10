@@ -1,4 +1,5 @@
 <svelte:options runes={true} />
+
 <script lang="ts">
     import { onDestroy, onMount, untrack } from 'svelte';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
@@ -19,11 +20,11 @@
     import { useLoadOptions } from '$lib/use-load-options.svelte';
     import { areItemsEqual, isItemSelectableCheck, createGroupHeaderItem as _createGroupHeaderItem } from '$lib/utils';
 
-    const defaultItemFilter = (label: string, filterText: string, option: SelectItem): boolean =>
+    const defaultItemFilter = (label: string, filterText: string, _option: SelectItem): boolean =>
         `${label}`.toLowerCase().includes(filterText?.toLowerCase());
 
-    const defaultOnError = (error: SelectErrorEvent): void => {};
-    const defaultOnLoaded = (options: SelectItem[]): void => {};
+    const defaultOnError = (_error: SelectErrorEvent): void => {};
+    const defaultOnLoaded = (_options: SelectItem[]): void => {};
 
     let timeout = $state<ReturnType<typeof setTimeout>>();
     let clearState = $state(false);
@@ -85,9 +86,6 @@
             timeout = setTimeout(fn, wait);
         },
         filter = _filter,
-        getFilteredItems = () => {
-            return filteredItems;
-        },
         groupBy = undefined,
         groupFilter = (groups: string[]) => groups,
         itemFilter = defaultItemFilter,
@@ -142,11 +140,7 @@
     }: SelectProps = $props();
 
     let normalizedValue = $derived<SelectItem | SelectItem[] | null>(
-        !value
-            ? null
-            : typeof value === 'string'
-                ? { value, label: value }
-                : value
+        !value ? null : typeof value === 'string' ? { value, label: value } : value,
     );
 
     const _generatedId = `svelte-select-${Math.random().toString(36).slice(2, 9)}`;
@@ -168,7 +162,7 @@
         ariaFocused,
     });
 
-    function internalHandleClear(e?: MouseEvent): void {
+    function internalHandleClear(_e?: MouseEvent): void {
         clearState = true;
         onclear(value as SelectValue);
         value = undefined;
@@ -201,16 +195,19 @@
         placeholderAlwaysShow && multiple
             ? placeholder
             : multiple && value?.length === 0
-                ? placeholder
-                : value ? '' : placeholder
+              ? placeholder
+              : value
+                ? ''
+                : placeholder,
     );
-    let showClear = $derived(
-        hasValue && clearable && !disabled && !loading
-    );
-    let hideSelectedItem = $derived(
-        hasValue && filterText.length > 0
-    );
+    let showClear = $derived(hasValue && clearable && !disabled && !loading);
+    let hideSelectedItem = $derived(hasValue && filterText.length > 0);
     let filteredItems = $state<SelectItem[]>([]);
+
+    // Instance export — call via a bind:this reference
+    export function getFilteredItems(): SelectItem[] {
+        return filteredItems;
+    }
 
     let ariaContext = $derived(
         ariaHandlers.handleAriaContent({
@@ -220,17 +217,19 @@
             listOpen,
             multiple,
             label,
-        })
+        }),
     );
     let ariaSelection = $derived(
-        value ? ariaHandlers.handleAriaSelection({
-            value,
-            filteredItems,
-            hoverItemIndex,
-            listOpen,
-            multiple,
-            label,
-        }) : ''
+        value
+            ? ariaHandlers.handleAriaSelection({
+                  value,
+                  filteredItems,
+                  hoverItemIndex,
+                  listOpen,
+                  multiple,
+                  label,
+              })
+            : '',
     );
 
     let _floatingConfig = $state<FloatingConfig>({
@@ -256,12 +255,12 @@
             clearState,
             closeListOnChange,
         }),
-        setValue: (v) => value = v,
-        setJustValue: (v) => justValue = v,
-        setPrevValue: (v) => prev_value = v,
-        setClearState: (v) => clearState = v,
-        setActiveValue: (v) => activeValue = v,
-        setFilterText: (v) => filterText = v,
+        setValue: (v) => (value = v),
+        setJustValue: (v) => (justValue = v),
+        setPrevValue: (v) => (prev_value = v),
+        setClearState: (v) => (clearState = v),
+        setActiveValue: (v) => (activeValue = v),
+        setFilterText: (v) => (filterText = v),
         closeList,
         oninput: (v) => oninput?.(v as SelectValue),
         onchange: (v) => onchange?.(v as SelectValue),
@@ -280,8 +279,8 @@
             groupBy,
             itemId,
         }),
-        setHoverItemIndex: (v) => hoverItemIndex = v,
-        setIsScrolling: (v) => isScrolling = v,
+        setHoverItemIndex: (v) => (hoverItemIndex = v),
+        setIsScrolling: (v) => (isScrolling = v),
         onhoveritem: (i) => onhoveritem?.(i),
     });
 
@@ -301,11 +300,11 @@
             listOpen,
             debounceWait,
         }),
-        setItems: (v) => items = v,
-        setValue: (v) => value = v,
-        setJustValue: (v) => justValue = v,
-        setLoading: (v) => loading = v,
-        setListOpen: (v) => listOpen = v,
+        setItems: (v) => (items = v),
+        setValue: (v) => (value = v),
+        setJustValue: (v) => (justValue = v),
+        setLoading: (v) => (loading = v),
+        setListOpen: (v) => (listOpen = v),
         debounce,
         convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
         onloaded: (opts) => onloaded(opts),
@@ -324,9 +323,9 @@
             itemId,
             focused,
         }),
-        setListOpen: (v) => listOpen = v,
-        setHoverItemIndex: (v) => hoverItemIndex = v,
-        setActiveValue: (v) => activeValue = v,
+        setListOpen: (v) => (listOpen = v),
+        setHoverItemIndex: (v) => (hoverItemIndex = v),
+        setActiveValue: (v) => (activeValue = v),
         closeList,
         setHoverIndex: hoverManager.setHoverIndex,
         handleSelect,
@@ -439,9 +438,7 @@
         multiple;
         value;
         untrack(() => {
-            hasValue = multiple
-                ? !!(value && value.length > 0)
-                : !!value;
+            hasValue = multiple ? !!(value && value.length > 0) : !!value;
         });
     });
 
@@ -479,7 +476,7 @@
 
     // Floating UI config
     $effect(() => {
-        if (container && floatingConfig) floatingUpdate({..._floatingConfig, ...floatingConfig});
+        if (container && floatingConfig) floatingUpdate({ ..._floatingConfig, ...floatingConfig });
     });
 
     // List mounted
@@ -631,6 +628,8 @@
     }
 
     onDestroy(() => {
+        // The floating list can outlive the component's own tree; remove it explicitly
+        // eslint-disable-next-line svelte/no-dom-manipulating
         list?.remove();
     });
 
@@ -648,7 +647,7 @@
         }
     }
 
-    function setListWidth():void {
+    function setListWidth(): void {
         if (!container || !list) return;
         const { width } = container.getBoundingClientRect();
         list.style.width = listAutoWidth ? width + 'px' : 'auto';
@@ -736,7 +735,9 @@
                         tabindex="-1"
                         role={item.groupHeader ? 'presentation' : 'option'}
                         id="listbox-{_id}-item-{i}"
-                        aria-selected={item.groupHeader ? undefined : hoverManager.isItemActive(item, normalizedValue, itemId) || false}>
+                        aria-selected={item.groupHeader
+                            ? undefined
+                            : hoverManager.isItemActive(item, normalizedValue, itemId) || false}>
                         <div
                             class="item"
                             class:list-group-title={item.groupHeader}
@@ -788,7 +789,7 @@
     <div class="value-container">
         {#if hasValue}
             {#if multiple}
-                {#each (Array.isArray(value) ? value : []) as item, i}
+                {#each Array.isArray(value) ? value : [] as item, i}
                     <div
                         class="multi-item"
                         class:active={activeValue === i}
