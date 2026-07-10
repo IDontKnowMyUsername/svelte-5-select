@@ -33,46 +33,80 @@ Acceptance (verified): `pnpm install` no longer touches `src/lib` or `dist`;
 `pnpm run package` run twice produces byte-identical `dist` including `no-styles/`
 with `.d.ts` files; exports subpaths still resolve; tests and svelte-check green.
 
-## Phase 2 — Packaging correctness, verified mechanically
+## Phase 2 — Packaging correctness, verified mechanically ✅ DONE (2026-07-08)
 
-- [ ] Drop the `tailwindcss` peer dependency. `tailwind.css` is a stylesheet processed by
-      the consumer's build — no dependency needed. Remove the peer +
-      `peerDependenciesMeta`; document the requirement in the README experimental-styles
-      section instead.
-- [ ] Add correctness fields: `sideEffects: ["**/*.css"]`, `engines: { "node": ">=20.19" }`
-      (vite 8 floor), and `"./package.json": "./package.json"` in exports.
-- [ ] Add `publint` and a tarball smoke test: `pnpm pack`, install the tarball into a
-      throwaway Vite+Svelte app in a temp dir, compile a page importing `{ Select }`,
-      the `no-styles` path, and `tailwind.css`. This is the check that would have caught
-      the broken subpath exports before v1.0.0.
-- [ ] Automate the CHANGELOG with `@release-it/conventional-changelog` (history is already
-      conventional-commit shaped; fixes the stub-entry problem going forward).
+- [x] Drop the `tailwindcss` peer dependency (stylesheet is processed by the consumer's
+      build — no dependency needed). README experimental-styles section documents the
+      Tailwind v4 requirement instead.
+- [x] Add correctness fields: `sideEffects: ["**/*.css"]`, `engines: { "node": ">=20.19" }`,
+      `"./package.json": "./package.json"` in exports; `repository` converted to object
+      form (publint warning).
+- [x] Add `publint` (`pnpm run lint:package`) and a tarball smoke test
+      (`pnpm run smoke` → `scripts/smoke-test.sh`): packs the library, installs the
+      tarball into a throwaway Vite+Svelte app, builds a page importing `{ Select }` and
+      the `no-styles` subpath, and resolution-checks the css subpaths. (`tailwind.css` is
+      resolution-checked rather than built, since building it would require a full
+      Tailwind v4 setup in the smoke app.) Both are wired into release-it as a
+      `before:npm:release` gate.
+- [x] Automate the CHANGELOG with `@release-it/conventional-changelog`
+      (conventionalcommits preset, prepends to CHANGELOG.md); validated with a release-it
+      dry run. Also fixed the unfinished 1.0.0-beta fork-attribution stub.
 
-Acceptance: `publint` passes with zero warnings; the smoke app builds against the packed tarball.
+Acceptance (verified): `publint` passes with zero warnings ("All good!"); the smoke app
+builds against the packed tarball (136 modules, both Select variants).
 
-## Phase 3 — Lint
+## Phase 3 — Lint ✅ DONE (2026-07-10)
 
-- [ ] ESLint 9 flat config with `eslint-plugin-svelte` + `typescript-eslint` +
-      `eslint-config-prettier`. Add `"lint": "eslint ."` and
-      `"format:check": "prettier --check ."` scripts. Expect a small initial cleanup pass;
-      lint will mechanically flag the dead exports the audit found (`isCancelled`,
-      unused params).
+- [x] ESLint 9 flat config (`eslint.config.js`) with `eslint-plugin-svelte` +
+      `typescript-eslint` + `eslint-config-prettier`; `"lint": "eslint ."` and
+      `"format:check": "prettier --check ."` scripts added.
+- [x] Cleanup pass (204 initial errors): removed dead code lint flagged — unused params
+      (`_`-prefixed where the signature is API), leftover `$inspect` debug calls in two
+      example pages, unused consts in tests, `prefer-const` autofixes, and a
+      `no-prototype-builtins` fix in `utils.ts`. The inert `getFilteredItems` prop
+      (destructured but never read — upstream's Svelte 4 `export const` accessor lost in
+      the port) was restored as a real instance export callable via `bind:this`; README
+      updated. `isCancelled` was NOT removed: it is an exported public symbol, which
+      ESLint cannot flag as unused — dropping it is an API decision, left for a future
+      major.
+- [x] Deliberate rule policy: `no-explicit-any` off (items are consumer-defined shapes),
+      `no-unused-expressions` off in Svelte files (bare signal reads are the
+      tracked-trigger idiom used with `untrack()`), `require-each-key` off (consumer
+      items carry no guaranteed unique key; unkeyed each is upstream behavior),
+      `no-navigation-without-resolve` off for the demo routes.
+- [x] Bonus: `.prettierrc` never declared `plugins: ["prettier-plugin-svelte"]`, so
+      Prettier 3 had been silently skipping every `.svelte` file and warning on two
+      removed options. Fixed the config, extended `.prettierignore` to generated
+      output, and ran the one-time repo reformat (84 files) so `format:check` is
+      meaningful.
 
-Acceptance: `pnpm run lint` clean; the rule set catches an intentionally introduced unused variable.
+Acceptance (verified): `pnpm run lint` clean; an intentionally introduced unused variable
+is flagged by `@typescript-eslint/no-unused-vars`; `format:check` passes; tests
+(277 passed / 3 skipped) and svelte-check (0 errors) green after the cleanup.
 
-## Phase 4 — CI/CD
+## Phase 4 — CI/CD ✅ DONE (2026-07-10) — one owner action pending
 
-- [ ] Extend `ci.yml`: add lint + `publint` + the tarball smoke test; run test/check on a
-      Node 20/22 matrix.
-- [ ] Move publishing into CI: keep release-it locally for version-bump/tag/GitHub-release,
-      but publish from a tag-triggered workflow using npm trusted publishing (OIDC) with
-      `--provenance`. The workflow reruns check + tests + smoke test against the tagged
-      commit before publishing. Requires enabling trusted publishing for the package on
-      npmjs.com (owner action, ~2 minutes). Dress-rehearse with `--dry-run` in CI first.
-- [ ] Add Dependabot for `github-actions` and npm (weekly, grouped minor/patch), replacing
-      the manual "bump dependencies" chores.
+- [x] Extended `ci.yml`: test/check now run on a Node 20/22 matrix; added a `lint` job
+      (`lint` + `format:check`) and a `package` job (`pnpm run package` + `publint` +
+      tarball smoke test).
+- [x] Publishing moved into CI: `.github/workflows/publish.yml` triggers on `v*` tags,
+      verifies the tag matches `package.json`, reruns check + tests + package + publint +
+      smoke against the tagged commit, then `npm publish --provenance` via trusted
+      publishing (OIDC; `id-token: write`, npm upgraded to >=11.5.1 in the job).
+      `workflow_dispatch` runs the same gate with `npm publish --dry-run` — use this for
+      the dress rehearsal. release-it keeps version-bump/tag/GitHub-release locally:
+      `npm.publish` set to `false`, and the publint+smoke gate moved from
+      `before:npm:release` (which no longer fires) to `before:git:release` so it still
+      gates tag creation.
+- [x] Dependabot added for `github-actions` (grouped) and npm (weekly, grouped
+      minor/patch).
 
-Acceptance: a `v*` tag on a green commit publishes to npm with provenance, zero local publish steps.
+Acceptance: workflows + config in place and verified locally (publint "All good!",
+smoke test passed, lint/format/tests/check green). ⚠️ Before the first tagged release:
+enable trusted publishing for `svelte-5-select` on npmjs.com pointing at
+`.github/workflows/publish.yml` (owner action, ~2 minutes), then dress-rehearse via the
+workflow's manual dispatch. Full acceptance — a `v*` tag publishing with provenance —
+is verifiable only after that.
 
 ## Deliberate omissions
 

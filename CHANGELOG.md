@@ -1,7 +1,7 @@
 # svelte-5-select changelog
 
 ## 1.0.0-beta
-* Forked from which was forked from
+* Forked from [kodaicoder/svelte-5-select](https://github.com/kodaicoder/svelte-5-select), which was forked from [rob-balfre/svelte-select](https://github.com/rob-balfre/svelte-select)
 * Updated dependencies and associated code to Typescript
 
 ## 5.8.3
