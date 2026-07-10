@@ -23,6 +23,7 @@
         "format:check": "prettier --check .",
         "gen:docs": "node docs/generate_theming_variables_md.cjs",
         "package": "svelte-kit sync && tsx scripts/build-package.ts && pnpm run gen:docs",
+        "prepack": "pnpm run package",
         "prepare": "svelte-kit sync",
         "lint:package": "publint",
         "smoke": "bash scripts/smoke-test.sh",
