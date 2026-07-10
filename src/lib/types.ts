@@ -1,4 +1,5 @@
 import type { Snippet } from 'svelte';
+import type { HTMLInputAttributes } from 'svelte/elements';
 import type { ComputePositionConfig } from 'svelte-floating-ui/dom';
 
 export type SelectValue<Item extends SelectItem = SelectItem> = Item | Item[] | null;
@@ -8,17 +9,17 @@ export interface ErrorEvent {
     details: unknown;
 }
 
-export interface FilterConfig {
-    loadOptions?: (filterText: string) => Promise<SelectItem[] | string[]>;
+export interface FilterConfig<Item extends SelectItem = SelectItem> {
+    loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
     filterText: string;
-    items: SelectItem[] | string[] | null;
+    items: Item[] | string[] | null;
     multiple: boolean;
     value: SelectItem | SelectItem[] | null | undefined;
     itemId: string;
-    groupBy?: (item: SelectItem) => string | undefined;
+    groupBy?: (item: Item) => string;
     label: string;
     filterSelectedItems: boolean;
-    itemFilter: (label: string, filterText: string, option: SelectItem) => boolean;
+    itemFilter: (label: string, filterText: string, option: Item) => boolean;
     convertStringItemsToObjects: (items: string[]) => SelectItem[];
     filterGroupedItems: (items: SelectItem[]) => SelectItem[];
 }
@@ -27,110 +28,10 @@ export interface FloatingConfig extends Partial<ComputePositionConfig> {
     autoUpdate?: boolean;
 }
 
-export interface KeyboardNavigationContext {
-    // Getters for current state
-    getState: () => {
-        listOpen: boolean;
-        filteredItems: SelectItem[];
-        hoverItemIndex: number;
-        multiple: boolean;
-        value: SelectProps['value'];
-        filterText: string;
-        activeValue: number | undefined;
-        itemId: string;
-        focused: boolean;
-    };
-
-    // Setters for state updates
-    setListOpen: (value: boolean) => void;
-    setHoverItemIndex: (value: number) => void;
-    setActiveValue: (value: number | undefined) => void;
-
-    // Action callbacks
-    closeList: () => void;
-    setHoverIndex: (increment: number) => void;
-    handleSelect: (item: SelectItem) => void;
-    handleMultiItemClear: (index: number) => Promise<void>;
-}
-
-export interface HoverContext {
-    getState: () => {
-        listOpen: boolean;
-        filteredItems: SelectItem[];
-        hoverItemIndex: number;
-        multiple: boolean;
-        value: SelectProps['value'];
-        isScrolling: boolean;
-        groupBy: ((item: SelectItem) => string) | undefined;
-        itemId: string;
-    };
-    setHoverItemIndex: (value: number) => void;
-    setIsScrolling: (value: boolean) => void;
-}
-
 export type JustValue = string | number | string[] | number[] | null;
 
-export interface ValueContext {
-    getState: () => {
-        value: SelectProps['value'];
-        prevValue: SelectProps['value'];
-        items: SelectItem[] | string[] | null;
-        multiple: boolean;
-        itemId: string;
-        label: string;
-        hasValue: boolean;
-        normalizedValue: SelectItem | SelectItem[] | null;
-        useJustValue: boolean;
-        justValue: JustValue | undefined;
-        clearState: boolean;
-        closeListOnChange: boolean;
-    };
-    setValue: (value: SelectProps['value']) => void;
-    setJustValue: (value: JustValue) => void;
-    setPrevValue: (value: SelectProps['value']) => void;
-    setClearState: (value: boolean) => void;
-    setActiveValue: (value: number | undefined) => void;
-    setFilterText: (value: string) => void;
-    closeList: () => void;
-    oninput: (value: SelectProps['value']) => void;
-    onchange: (value: SelectProps['value']) => void;
-    onclear: (value: SelectProps['value'] | SelectItem) => void;
-    onselect: (selection: SelectItem) => void;
-}
-
-export interface LoadOptionsContext {
-    getState: () => {
-        filterText: string;
-        prevFilterText: string | undefined;
-        loadOptionsDeps: any[];
-        loadOptions: ((filterText: string) => Promise<SelectItem[] | string[]>) | undefined;
-        disabled: boolean;
-        multiple: boolean;
-        value: SelectProps['value'];
-        items: SelectItem[] | string[] | null;
-        itemId: string;
-        useJustValue: boolean;
-        justValue: JustValue | undefined;
-        listOpen: boolean;
-        debounceWait: number;
-    };
-    setItems: (items: SelectItem[] | string[] | null) => void;
-    setValue: (value: SelectProps['value']) => void;
-    setJustValue: (value: JustValue) => void;
-    setLoading: (value: boolean) => void;
-    setListOpen: (value: boolean) => void;
-    debounce: (fn: () => void, wait: number) => void;
-    convertStringItemsToObjects: (items: string[]) => SelectItem[];
-    onloaded: (options: SelectItem[]) => void;
-    onerror: (error: ErrorEvent) => void;
-}
-
-export interface ScrollActionParams {
-    scroll: boolean;
-}
-
 export interface SelectItem {
-    value?: any;
+    value?: unknown;
     label?: string;
     index?: number;
     group?: string;
@@ -138,7 +39,88 @@ export interface SelectItem {
     groupItem?: boolean;
     selectable?: boolean;
     id?: string | number;
-    [key: string]: any;
+    [key: string]: unknown;
+}
+
+/**
+ * The single reactive state object shared by Select.svelte and its composables.
+ * Prop-backed fields are live accessors over the component's `$props()` bindings;
+ * the rest is internal shared state owned by `createSelectState`. Reading a field
+ * tracks only that field's signal.
+ */
+export interface SelectState<Item extends SelectItem = SelectItem> {
+    // Bindable props
+    value: Item | Item[] | string | string[] | null | undefined;
+    items: Item[] | string[] | null;
+    filterText: string;
+    justValue: JustValue | undefined;
+    listOpen: boolean;
+    loading: boolean;
+    focused: boolean;
+    hoverItemIndex: number;
+
+    // Configuration props
+    readonly multiple: boolean;
+    readonly itemId: string;
+    readonly label: string;
+    readonly disabled: boolean;
+    readonly useJustValue: boolean;
+    readonly closeListOnChange: boolean;
+    readonly debounceWait: number;
+    readonly groupBy: ((item: Item) => string) | undefined;
+    readonly loadOptions: ((filterText: string) => Promise<Item[] | string[]>) | undefined;
+    readonly loadOptionsDeps: unknown[];
+
+    // Derived values
+    readonly filteredItems: SelectItem[];
+    readonly normalizedValue: SelectItem | SelectItem[] | null;
+    readonly hasValue: boolean;
+
+    // Internal shared state
+    activeValue: number | undefined;
+    isScrolling: boolean;
+    clearState: boolean;
+    prevValue: Item | Item[] | string | string[] | null | undefined;
+    prevFilterText: string | undefined;
+    prevMultiple: boolean | undefined;
+}
+
+/** The subset of {@link SelectState} that keyboard navigation needs; any object with these fields works. */
+export interface KeyboardNavigationState<Item extends SelectItem = SelectItem> {
+    listOpen: boolean;
+    readonly filteredItems: SelectItem[];
+    hoverItemIndex: number;
+    readonly multiple: boolean;
+    readonly value: Item | Item[] | string | string[] | null | undefined;
+    readonly filterText: string;
+    activeValue: number | undefined;
+    readonly itemId: string;
+    readonly focused: boolean;
+}
+
+export interface KeyboardNavigationActions {
+    closeList: () => void;
+    setHoverIndex: (increment: number) => void;
+    handleSelect: (item: SelectItem) => void;
+    handleMultiItemClear: (index: number) => void | Promise<void>;
+}
+
+export interface ValueActions {
+    closeList: () => void;
+    oninput: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
+    onchange: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
+    onclear: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
+    onselect: (selection: SelectItem) => void;
+}
+
+export interface LoadOptionsActions {
+    debounce: (fn: () => void, wait: number) => void;
+    onloaded: (options: SelectItem[]) => void;
+    onerror: (error: ErrorEvent) => void;
+}
+
+export interface ScrollActionParams {
+    scroll: boolean;
 }
 
 export interface SelectProps<Item extends SelectItem = SelectItem> {
@@ -148,7 +130,7 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     items?: Item[] | string[] | null;
     justValue?: JustValue;
     label?: string;
-    value?: Item | Item[] | string | null;
+    value?: Item | Item[] | string | string[] | null;
 
     // UI props
     disabled?: boolean;
@@ -185,15 +167,15 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     debounceWait?: number;
     floatingConfig?: FloatingConfig;
     hoverItemIndex?: number;
-    inputAttributes?: Record<string, any>;
+    inputAttributes?: HTMLInputAttributes;
     listAutoWidth?: boolean;
     listOffset?: number;
-    loadOptionsDeps?: any[];
+    loadOptionsDeps?: unknown[];
 
     // Function props
     createGroupHeaderItem?: (groupValue: string, item: Item) => SelectItem;
     debounce?: (fn: () => void, wait: number) => void;
-    filter?: (config: FilterConfig) => SelectItem[];
+    filter?: (config: FilterConfig<Item>) => SelectItem[];
     groupBy?: ((item: Item) => string) | undefined;
     groupFilter?: (groups: string[]) => string[];
     itemFilter?: (label: string, filterText: string, option: Item) => boolean;

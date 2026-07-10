@@ -1,59 +1,31 @@
-import type { ValueContext, SelectItem, JustValue } from './types';
-import { hasValueChanged } from './utils';
+import { untrack } from 'svelte';
+import type { JustValue, SelectItem, SelectState, ValueActions } from './types';
+import { getItemProperty, hasValueChanged } from './utils';
 
-export function useValue(context: ValueContext) {
-    function findItemByValue(id: string | number): SelectItem | undefined {
-        const { items, itemId } = context.getState();
-        return (items as SelectItem[])?.find((item) => item[itemId] === id);
+export function useValue<Item extends SelectItem = SelectItem>(state: SelectState<Item>, actions: ValueActions) {
+    function findItemByValue(id: unknown): Item | undefined {
+        const { items, itemId } = state;
+        return (items as Item[] | null)?.find((item) => getItemProperty(item, itemId) === id);
     }
 
-    function findItem(selection?: SelectItem): SelectItem | undefined {
-        const { normalizedValue, items, itemId } = context.getState();
-        const matchTo = selection ? selection[itemId] : (normalizedValue as SelectItem)[itemId];
-        return (items as SelectItem[])?.find((item) => item[itemId] === matchTo);
-    }
-
-    function setValue() {
-        const { value, multiple, itemId } = context.getState();
+    // Normalizes raw string values into items, resolving against `items` when possible
+    function normalizeValue() {
+        const { value, multiple, itemId } = state;
         if (typeof value === 'string') {
-            const item = findItemByValue(value);
-            context.setValue(
-                item || {
-                    [itemId]: value,
-                    label: value,
-                },
-            );
+            state.value = findItemByValue(value) || ({ [itemId]: value, label: value } as Item);
         } else if (multiple && Array.isArray(value) && value.length > 0) {
-            context.setValue(
-                value.map((val: any) => {
-                    if (typeof val === 'string') {
-                        const item = findItemByValue(val);
-                        return item || { value: val, label: val };
-                    }
-                    return val;
-                }),
-            );
-        }
-    }
-
-    function updateValueDisplay(items?: SelectItem[] | string[] | null): void {
-        const { value, itemId } = context.getState();
-        if (!items || items.length === 0 || items.some((item: any) => typeof item !== 'object')) return;
-        if (!value) return;
-
-        if (Array.isArray(value)) {
-            if (value.some((selection: SelectItem) => !selection || !(selection as Record<string, any>)[itemId]))
-                return;
-            context.setValue(value.map((selection: SelectItem) => findItem(selection) || selection));
-        } else if (typeof value === 'object') {
-            if (!(value as Record<string, any>)[itemId]) return;
-            context.setValue(findItem() || value);
+            state.value = (value as (Item | string)[]).map((val) => {
+                if (typeof val === 'string') {
+                    return findItemByValue(val) || ({ value: val, label: val } as Item);
+                }
+                return val;
+            });
         }
     }
 
     // Command: when an initial justValue is supplied without a value, resolve it against items and set value
     function hydrateValueFromJustValue(): void {
-        const { multiple, value, itemId, useJustValue, justValue, clearState } = context.getState();
+        const { multiple, value, itemId, useJustValue, justValue, clearState } = state;
 
         const hasJustValue = multiple
             ? Array.isArray(justValue) && justValue.length > 0
@@ -61,23 +33,21 @@ export function useValue(context: ValueContext) {
 
         if (!useJustValue || value || clearState || !hasJustValue) return;
 
-        const typedItems = (context.getState().items as SelectItem[]) || [];
+        const typedItems = (state.items as Item[] | null) || [];
         if (multiple && Array.isArray(justValue)) {
             const justValueArr = justValue as (string | number)[];
-            context.setValue(
-                typedItems.filter((item: SelectItem) => justValueArr.includes((item as Record<string, any>)[itemId])),
+            state.value = typedItems.filter((item) =>
+                justValueArr.includes(getItemProperty(item, itemId) as string | number),
             );
         } else {
-            context.setValue(
-                typedItems.filter((item: SelectItem) => (item as Record<string, any>)[itemId] === justValue)[0],
-            );
+            state.value = typedItems.filter((item) => getItemProperty(item, itemId) === justValue)[0];
         }
     }
 
     // Query: pure derivation of justValue from a state snapshot
     function deriveJustValue(
         snapshot: Pick<
-            ReturnType<ValueContext['getState']>,
+            SelectState<Item>,
             'multiple' | 'value' | 'itemId' | 'useJustValue' | 'justValue' | 'clearState'
         >,
     ): JustValue | undefined {
@@ -88,131 +58,164 @@ export function useValue(context: ValueContext) {
         }
 
         if (multiple && Array.isArray(value)) {
-            return value.map((item: SelectItem) => item[itemId]);
+            return (value as (SelectItem | string)[]).map((item) => getItemProperty(item, itemId)) as
+                | string[]
+                | number[];
         }
 
         if (!value || typeof value === 'string' || Array.isArray(value)) {
             return value as JustValue | undefined;
         }
 
-        return value[itemId];
+        return getItemProperty(value, itemId) as JustValue;
     }
 
     function syncJustValue(): JustValue | undefined {
-        const snapshot = context.getState();
+        // Snapshot before hydration so the derivation sees the pre-hydration state
+        const snapshot = {
+            multiple: state.multiple,
+            value: state.value,
+            itemId: state.itemId,
+            useJustValue: state.useJustValue,
+            justValue: state.justValue,
+            clearState: state.clearState,
+        };
         hydrateValueFromJustValue();
-        context.setClearState(false);
+        state.clearState = false;
         return deriveJustValue(snapshot);
     }
 
     function checkValueForDuplicates(): boolean {
-        const { value, itemId } = context.getState();
+        const { value, itemId } = state;
         if (!Array.isArray(value) || value.length === 0) return true;
 
         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local dedup scratch, not reactive state
-        const seen = new Set();
-        const uniqueValues = value.filter((val: SelectItem) => {
-            const id = val[itemId];
+        const seen = new Set<unknown>();
+        const uniqueValues = (value as (Item | string)[]).filter((val) => {
+            const id = getItemProperty(val, itemId);
             if (seen.has(id)) return false;
             seen.add(id);
             return true;
         });
 
         const noDuplicates = uniqueValues.length === value.length;
-        if (!noDuplicates) context.setValue(uniqueValues);
+        if (!noDuplicates) state.value = uniqueValues as Item[] | string[];
 
         return noDuplicates;
     }
 
     function dispatchSelectedItem() {
-        const { multiple, value, prevValue, itemId } = context.getState();
+        const { multiple, value, prevValue, itemId } = state;
 
         if (!value) {
-            if (prevValue) context.oninput([]);
-            context.setPrevValue(value);
+            if (prevValue) actions.oninput([]);
+            state.prevValue = value;
             return;
         }
 
         if (multiple) {
-            if (hasValueChanged(value, prevValue) && checkValueForDuplicates()) {
-                context.oninput(value);
+            if (hasValueChanged(value, prevValue, itemId) && checkValueForDuplicates()) {
+                actions.oninput(value);
             }
-        } else if (!prevValue || hasValueChanged((value as SelectItem)[itemId], (prevValue as SelectItem)[itemId])) {
-            context.oninput(value);
+        } else if (!prevValue || hasValueChanged(value, prevValue, itemId)) {
+            actions.oninput(value);
         }
 
-        context.setPrevValue(value);
+        state.prevValue = value;
     }
 
     function setupMulti() {
-        const { value } = context.getState();
+        const { value } = state;
         if (value) {
             if (Array.isArray(value)) {
-                context.setValue([...value]);
+                state.value = [...value] as Item[] | string[];
             } else {
-                context.setValue([value]);
+                // A raw string value stays a string here; normalizeValue resolves it to an item
+                state.value = [value] as Item[] | string[];
             }
         }
     }
 
     async function handleMultiItemClear(i: number): Promise<void> {
-        const { value } = context.getState();
+        const { value } = state;
         if (!Array.isArray(value)) return;
 
         const itemToRemove = value[i];
 
-        context.setClearState(true);
+        state.clearState = true;
         if (value.length === 1) {
-            context.setValue(undefined);
+            state.value = undefined;
         } else {
-            context.setValue(
-                value.filter((item: SelectItem) => {
-                    return item !== itemToRemove;
-                }),
-            );
+            state.value = (value as (Item | string)[]).filter((item) => item !== itemToRemove) as Item[] | string[];
         }
-        context.onclear(itemToRemove);
-    }
-
-    function convertStringItemsToObjects(_items: string[]): SelectItem[] {
-        return _items.map((item, index) => {
-            return {
-                index,
-                value: item,
-                label: `${item}`,
-            };
-        });
+        actions.onclear(itemToRemove);
     }
 
     function itemSelected(selection: SelectItem) {
-        const { multiple, value, closeListOnChange } = context.getState();
-        if (selection) {
-            context.setFilterText('');
-            const item = Object.assign({}, selection);
+        if (!selection) return;
+        const { multiple, value, closeListOnChange } = state;
 
-            if (item.groupHeader && !item.selectable) return;
-            setValue();
-            updateValueDisplay(context.getState().items);
-            context.setValue(multiple ? (value ? value.concat([item]) : [item]) : item);
+        state.filterText = '';
+        const item = { ...selection } as Item;
 
-            if (closeListOnChange) context.closeList();
-            context.setActiveValue(undefined);
-            context.onchange(context.getState().value);
-            context.onselect(selection);
-        }
+        if (item.groupHeader && !item.selectable) return;
+
+        state.value = multiple ? (value ? (value as Item[]).concat([item]) : [item]) : item;
+
+        if (closeListOnChange) actions.closeList();
+        state.activeValue = undefined;
+        actions.onchange(state.value);
+        actions.onselect(selection);
     }
 
+    // Normalize string values against items whenever hasValue flips
+    $effect(() => {
+        state.hasValue;
+        untrack(() => {
+            if (state.items) normalizeValue();
+        });
+    });
+
+    // Multiple-mode transitions (single<->multi) and duplicate guard
+    $effect(() => {
+        state.multiple;
+        const value = state.value;
+        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
+        untrack(() => {
+            const wasMultiple = state.prevMultiple;
+            state.prevMultiple = state.multiple;
+            if (state.multiple !== wasMultiple) {
+                if (state.multiple) {
+                    setupMulti();
+                } else if (wasMultiple && state.value) {
+                    state.value = null;
+                    return;
+                }
+            }
+            if (state.multiple && Array.isArray(state.value) && state.value.length > 1) {
+                checkValueForDuplicates();
+            }
+        });
+    });
+
+    // Dispatch oninput when value changes (selection, update, or clear)
+    $effect(() => {
+        state.value;
+        untrack(() => dispatchSelectedItem());
+    });
+
+    // Hydrate value from an initial justValue, then keep justValue in sync
+    $effect(() => {
+        state.multiple;
+        state.itemId;
+        state.value;
+        untrack(() => {
+            state.justValue = syncJustValue();
+        });
+    });
+
     return {
-        setValue,
-        updateValueDisplay,
-        syncJustValue,
-        checkValueForDuplicates,
-        findItem,
-        findItemByValue,
-        dispatchSelectedItem,
         itemSelected,
-        setupMulti,
         handleMultiItemClear,
-        convertStringItemsToObjects,
     };
 }

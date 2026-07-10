@@ -1,6 +1,12 @@
 // tests/src/lib/utils.test.ts
 import { describe, it, expect } from 'vitest';
-import { areItemsEqual } from '$lib/utils';
+import {
+    areItemsEqual,
+    convertStringItemsToObjects,
+    createGroupHeaderItem,
+    hasValueChanged,
+    normalizeItem,
+} from '$lib/utils';
 
 describe('areItemsEqual', () => {
     it('returns true for matching items', () => {
@@ -31,5 +37,80 @@ describe('areItemsEqual', () => {
     it('handles non-object values', () => {
         expect(areItemsEqual('string' as any, { value: 'a' }, 'value')).toBe(false);
         expect(areItemsEqual(123 as any, { value: 'a' }, 'value')).toBe(false);
+    });
+});
+
+describe('normalizeItem', () => {
+    it('converts a string into a value/label item', () => {
+        expect(normalizeItem('cake')).toEqual({ value: 'cake', label: 'cake' });
+    });
+
+    it('passes items and arrays through unchanged', () => {
+        const item = { value: 'a', label: 'A' };
+        const arr = [item];
+
+        expect(normalizeItem(item)).toBe(item);
+        expect(normalizeItem(arr)).toBe(arr);
+    });
+
+    it('normalizes empty values to null', () => {
+        expect(normalizeItem(null)).toBeNull();
+        expect(normalizeItem(undefined)).toBeNull();
+        expect(normalizeItem('')).toBeNull();
+    });
+});
+
+describe('hasValueChanged', () => {
+    it('compares single items by itemId', () => {
+        expect(hasValueChanged({ value: 'a', label: 'A' }, { value: 'a', label: 'Other' }, 'value')).toBe(false);
+        expect(hasValueChanged({ value: 'a' }, { value: 'b' }, 'value')).toBe(true);
+    });
+
+    it('compares strings by identity', () => {
+        expect(hasValueChanged('cake', 'cake', 'value')).toBe(false);
+        expect(hasValueChanged('cake', 'pizza', 'value')).toBe(true);
+    });
+
+    it('treats string-to-item normalization as a change', () => {
+        expect(hasValueChanged({ value: 'cake', label: 'cake' }, 'cake', 'value')).toBe(true);
+    });
+
+    it('compares arrays pairwise by itemId', () => {
+        const a = [{ value: 'a' }, { value: 'b' }];
+
+        expect(hasValueChanged(a, [{ value: 'a' }, { value: 'b' }], 'value')).toBe(false);
+        expect(hasValueChanged(a, [{ value: 'a' }, { value: 'c' }], 'value')).toBe(true);
+        expect(hasValueChanged(a, [{ value: 'b' }, { value: 'a' }], 'value')).toBe(true);
+        expect(hasValueChanged(a, [{ value: 'a' }], 'value')).toBe(true);
+    });
+
+    it('detects array/non-array transitions', () => {
+        expect(hasValueChanged([{ value: 'a' }], { value: 'a' }, 'value')).toBe(true);
+        expect(hasValueChanged({ value: 'a' }, [{ value: 'a' }], 'value')).toBe(true);
+    });
+
+    it('handles null and undefined', () => {
+        expect(hasValueChanged(null, null, 'value')).toBe(false);
+        expect(hasValueChanged(undefined, null, 'value')).toBe(true);
+        expect(hasValueChanged({ value: 'a' }, null, 'value')).toBe(true);
+    });
+});
+
+describe('convertStringItemsToObjects', () => {
+    it('converts strings into indexed items', () => {
+        expect(convertStringItemsToObjects(['one', 'two'])).toEqual([
+            { index: 0, value: 'one', label: 'one' },
+            { index: 1, value: 'two', label: 'two' },
+        ]);
+    });
+});
+
+describe('createGroupHeaderItem', () => {
+    it('uses the group value for value and label', () => {
+        expect(createGroupHeaderItem('Sweet')).toEqual({ value: 'Sweet', label: 'Sweet' });
+    });
+
+    it('honors a custom label key', () => {
+        expect(createGroupHeaderItem('Sweet', 'name')).toEqual({ value: 'Sweet', name: 'Sweet' });
     });
 });

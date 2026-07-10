@@ -1,7 +1,7 @@
 import type { FilterConfig, SelectItem } from './types';
 import { areItemsEqual, isStringArray } from '$lib/utils';
 
-export default function filter({
+export default function filter<Item extends SelectItem = SelectItem>({
     loadOptions,
     filterText = '',
     items,
@@ -14,7 +14,7 @@ export default function filter({
     convertStringItemsToObjects,
     filterGroupedItems,
     label,
-}: FilterConfig): SelectItem[] {
+}: FilterConfig<Item>): SelectItem[] {
     // If no items, return empty array
     if (!items) {
         return [];
@@ -29,8 +29,9 @@ export default function filter({
 
     // Filter items based on filter text and selection.
     // With loadOptions the results are already filtered remotely, so skip itemFilter.
+    // String items were converted to plain SelectItems above, hence the Item cast.
     let filterResults: SelectItem[] = typedItems.filter((item: SelectItem): boolean => {
-        let matchesFilter: boolean = loadOptions ? true : itemFilter(item[label], filterText, item);
+        let matchesFilter: boolean = loadOptions ? true : itemFilter(item[label] as string, filterText, item as Item);
 
         if (matchesFilter && multiple && Array.isArray(value) && value.length > 0) {
             matchesFilter = !value.some((x: SelectItem): boolean => {

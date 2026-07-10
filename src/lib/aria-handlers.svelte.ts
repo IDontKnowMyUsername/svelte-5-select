@@ -7,7 +7,7 @@ interface AriaHandlersConfig {
 }
 
 interface AriaHandlersContext {
-    value: string | SelectItem | SelectItem[] | null | undefined;
+    value: string | SelectItem | (SelectItem | string)[] | null | undefined;
     filteredItems: SelectItem[];
     hoverItemIndex: number;
     listOpen: boolean;
@@ -27,9 +27,9 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
         if (typeof value === 'string') {
             selected = value;
         } else if (multiple && Array.isArray(value) && value.length > 0) {
-            selected = value.map((v: SelectItem) => v[label]).join(', ');
+            selected = (value as SelectItem[]).map((v) => v[label]).join(', ');
         } else if (!multiple && value) {
-            selected = (value as SelectItem)[label];
+            selected = (value as SelectItem)[label] as string | undefined;
         }
 
         return config.ariaValues(selected || '');
@@ -44,7 +44,7 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
 
         if (listOpen && _item) {
             const count = filteredItems.length;
-            return config.ariaListOpen(_item[label], count);
+            return config.ariaListOpen(_item[label] as string, count);
         } else {
             return config.ariaFocused();
         }

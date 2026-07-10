@@ -1,87 +1,104 @@
-import type { LoadOptionsContext, SelectItem } from './types';
+import { untrack } from 'svelte';
+import type { LoadOptionsActions, SelectItem, SelectState } from './types';
+import { convertStringItemsToObjects, getItemProperty } from './utils';
 
-export function useLoadOptions(context: LoadOptionsContext) {
-    function handleLoadOptions(currentFilterText: string, _currentDeps: any[]) {
-        const { loadOptions, disabled, prevFilterText, debounceWait, listOpen } = context.getState();
+export function useLoadOptions<Item extends SelectItem = SelectItem>(
+    state: SelectState<Item>,
+    actions: LoadOptionsActions,
+) {
+    // Monotonic token so responses that resolve after a newer request started are discarded
+    let requestSequence = 0;
+
+    function handleLoadOptions(currentFilterText: string) {
+        const { loadOptions, disabled, prevFilterText, debounceWait, listOpen } = state;
 
         if (loadOptions && !disabled) {
-            context.setLoading(true);
+            state.loading = true;
 
+            const token = ++requestSequence;
             const isFilterTextChange = currentFilterText !== prevFilterText;
 
             const executeLoad = async () => {
                 try {
                     const result = await loadOptions(currentFilterText);
+                    if (token !== requestSequence) return; // superseded by a newer request
 
                     if (result && result.length > 0 && typeof result[0] === 'string') {
-                        context.setItems(context.convertStringItemsToObjects(result as string[]));
+                        state.items = convertStringItemsToObjects(result as string[]) as Item[];
                     } else {
-                        context.setItems(result ? (result.slice() as SelectItem[]) : null);
+                        state.items = result ? (result.slice() as Item[]) : null;
                     }
 
-                    // Re-read state after async operation
-                    const state = context.getState();
+                    // Re-read state after the async boundary
+                    const { value, items, multiple, itemId, useJustValue } = state;
 
-                    if (state.value && state.items && (state.items as any[]).length > 0) {
-                        const items = state.items as SelectItem[];
-                        const valueExists = state.multiple
-                            ? Array.isArray(state.value) &&
-                              state.value.every((v: any) =>
-                                  items.some(
-                                      (item: any) =>
-                                          (typeof item === 'string' ? item : item[state.itemId]) ===
-                                          (typeof v === 'string' ? v : v[state.itemId]),
-                                  ),
+                    if (value && items && items.length > 0) {
+                        const idOf = (entry: SelectItem | string) =>
+                            typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
+                        const valueExists = multiple
+                            ? Array.isArray(value) &&
+                              (value as (SelectItem | string)[]).every((v) =>
+                                  items.some((item) => idOf(item) === idOf(v)),
                               )
-                            : items.some(
-                                  (item: any) =>
-                                      (typeof item === 'string' ? item : item[state.itemId]) ===
-                                      (typeof state.value === 'string'
-                                          ? state.value
-                                          : (state.value as any)[state.itemId]),
-                              );
+                            : items.some((item) => idOf(item) === idOf(value as SelectItem | string));
 
                         if (!valueExists) {
-                            context.setValue(state.multiple ? [] : undefined);
-                            if (state.useJustValue) {
-                                context.setJustValue(state.multiple ? [] : '');
+                            state.value = multiple ? [] : undefined;
+                            if (useJustValue) {
+                                state.justValue = multiple ? [] : '';
                             }
                         }
-                    } else if (state.value && (!state.items || (state.items as any[]).length === 0)) {
-                        context.setValue(state.multiple ? [] : undefined);
+                    } else if (value && (!items || items.length === 0)) {
+                        state.value = multiple ? [] : undefined;
                     }
 
-                    context.setLoading(false);
-                    const finalState = context.getState();
-                    context.onloaded(((finalState.items as SelectItem[]) || []) as SelectItem[]);
+                    state.loading = false;
+                    actions.onloaded((state.items as SelectItem[]) || []);
                 } catch (err) {
+                    if (token !== requestSequence) return; // superseded; the newer request manages state
                     console.error('loadOptions error:', err);
-                    context.onerror({ type: 'loadOptions', details: err });
-                    context.setItems(null);
-                    context.setLoading(false);
+                    actions.onerror({ type: 'loadOptions', details: err });
+                    state.items = null;
+                    state.loading = false;
                 }
             };
 
             if (isFilterTextChange) {
-                context.debounce(executeLoad, debounceWait);
+                actions.debounce(executeLoad, debounceWait);
             } else {
                 executeLoad();
             }
 
             if (currentFilterText.length > 0 && !listOpen) {
-                context.setListOpen(true);
+                state.listOpen = true;
             }
         } else if (loadOptions && disabled) {
-            const state = context.getState();
             if (state.value || (state.useJustValue && state.justValue)) {
-                context.setValue(state.multiple ? [] : undefined);
+                state.value = state.multiple ? [] : undefined;
                 if (state.useJustValue) {
-                    context.setJustValue(state.multiple ? [] : '');
+                    state.justValue = state.multiple ? [] : '';
                 }
             }
-            context.setItems(null);
+            state.items = null;
         }
     }
+
+    // Run loadOptions when its inputs change. listOpen and disabled stay tracked on
+    // purpose: opening the list re-fetches, and disabling clears the loaded state.
+    $effect(() => {
+        const currentFilterText = state.filterText;
+        [...state.loadOptionsDeps];
+
+        if (state.loadOptions) {
+            untrack(() => {
+                handleLoadOptions(currentFilterText);
+            });
+
+            if (!state.disabled && currentFilterText.length > 0 && !state.listOpen) {
+                state.listOpen = true;
+            }
+        }
+    });
 
     return {
         handleLoadOptions,

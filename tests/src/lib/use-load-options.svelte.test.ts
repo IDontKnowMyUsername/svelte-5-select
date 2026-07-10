@@ -1,0 +1,312 @@
+import { describe, it, expect, vi, afterEach } from 'vitest';
+import { flushSync } from 'svelte';
+import { useLoadOptions } from '$lib/use-load-options.svelte';
+import type { SelectItem, SelectState } from '$lib/types';
+
+function flush(): Promise<void> {
+    return new Promise((resolve) => setTimeout(resolve, 0));
+}
+
+type Writable<T> = { -readonly [K in keyof T]: T[K] };
+type MockState = Writable<
+    Pick<
+        SelectState,
+        | 'filterText'
+        | 'prevFilterText'
+        | 'loadOptionsDeps'
+        | 'loadOptions'
+        | 'disabled'
+        | 'multiple'
+        | 'value'
+        | 'items'
+        | 'itemId'
+        | 'useJustValue'
+        | 'justValue'
+        | 'listOpen'
+        | 'loading'
+        | 'debounceWait'
+    >
+>;
+
+const cleanups: Array<() => void> = [];
+
+// The composable registers its own load effect, so it must be created inside an
+// effect root. The mock state is a plain (non-reactive) object: the effect runs
+// once on flushSync with loadOptions still unset and never re-runs, so tests
+// drive handleLoadOptions manually. A Proxy records writes so tests can
+// distinguish "wrote the same value" from "did not write".
+function createHarness(overrides: Partial<MockState> = {}) {
+    const { loadOptions, ...rest } = overrides;
+
+    const writes: Partial<Record<keyof MockState, unknown[]>> = {};
+    const target: MockState = {
+        filterText: '',
+        prevFilterText: '',
+        loadOptionsDeps: [],
+        loadOptions: undefined,
+        disabled: false,
+        multiple: false,
+        value: null,
+        items: null,
+        itemId: 'value',
+        useJustValue: false,
+        justValue: undefined,
+        listOpen: false,
+        loading: false,
+        debounceWait: 100,
+        ...rest,
+    };
+
+    const state = new Proxy(target, {
+        set(obj, prop, v) {
+            (writes[prop as keyof MockState] ??= []).push(v);
+            return Reflect.set(obj, prop, v);
+        },
+    }) as SelectState;
+
+    const actions = {
+        // Run debounced work immediately so tests stay synchronous
+        debounce: vi.fn((fn: () => void, _wait: number) => fn()),
+        onloaded: vi.fn(),
+        onerror: vi.fn(),
+    };
+
+    let manager!: ReturnType<typeof useLoadOptions>;
+    const cleanup = $effect.root(() => {
+        manager = useLoadOptions(state, actions);
+    });
+    cleanups.push(cleanup);
+    // Run the composable's effect now, before loadOptions exists, so it no-ops
+    flushSync();
+
+    if (loadOptions) {
+        target.loadOptions = loadOptions;
+    }
+
+    return { state, writes, actions, handleLoadOptions: manager.handleLoadOptions };
+}
+
+describe('useLoadOptions', () => {
+    afterEach(() => {
+        while (cleanups.length) cleanups.pop()?.();
+        vi.restoreAllMocks();
+    });
+
+    it('loads items and fires onloaded', async () => {
+        const loaded = [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+        ];
+        const { writes, actions, handleLoadOptions } = createHarness({ loadOptions: () => Promise.resolve(loaded) });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.loading).toEqual([true, false]);
+        expect(writes.items).toEqual([loaded]);
+        expect(actions.onloaded).toHaveBeenCalledWith(loaded);
+    });
+
+    it('converts string results to item objects', async () => {
+        const { writes, handleLoadOptions } = createHarness({ loadOptions: () => Promise.resolve(['one', 'two']) });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.items).toEqual([
+            [
+                { value: 'one', label: 'one', index: 0 },
+                { value: 'two', label: 'two', index: 1 },
+            ],
+        ]);
+    });
+
+    it('sets items to null when loadOptions resolves with nothing', async () => {
+        const { writes, actions, handleLoadOptions } = createHarness({
+            loadOptions: () => Promise.resolve(null as unknown as SelectItem[]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.items).toEqual([null]);
+        expect(actions.onloaded).toHaveBeenCalledWith([]);
+    });
+
+    it('keeps the value when it exists in the loaded items', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'a', label: 'A' },
+            loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.value).toBeUndefined();
+    });
+
+    it('clears a single value missing from the loaded items', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'gone', label: 'Gone' },
+            loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.value).toEqual([undefined]);
+        expect(writes.justValue).toBeUndefined();
+    });
+
+    it('clears justValue too when useJustValue is set', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'gone', label: 'Gone' },
+            useJustValue: true,
+            loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.value).toEqual([undefined]);
+        expect(writes.justValue).toEqual(['']);
+    });
+
+    it('clears a multiple value when any entry is missing from the loaded items', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            multiple: true,
+            useJustValue: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'gone', label: 'Gone' },
+            ],
+            loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.value).toEqual([[]]);
+        expect(writes.justValue).toEqual([[]]);
+    });
+
+    it('clears the value when the load resolves with an empty list', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'a', label: 'A' },
+            loadOptions: () => Promise.resolve([]),
+        });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(writes.value).toEqual([undefined]);
+    });
+
+    it('reports errors and resets items when loadOptions rejects', async () => {
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const failure = new Error('load failed');
+        const { writes, actions, handleLoadOptions } = createHarness({ loadOptions: () => Promise.reject(failure) });
+
+        handleLoadOptions('');
+        await flush();
+
+        expect(actions.onerror).toHaveBeenCalledWith({ type: 'loadOptions', details: failure });
+        expect(writes.items).toEqual([null]);
+        expect(writes.loading).toEqual([true, false]);
+        expect(actions.onloaded).not.toHaveBeenCalled();
+    });
+
+    it('debounces the load when filter text changed', () => {
+        const loadOptions = vi.fn(() => Promise.resolve([]));
+        const { actions, handleLoadOptions } = createHarness({ prevFilterText: 'a', loadOptions });
+        actions.debounce.mockImplementation(() => {}); // capture without executing
+
+        handleLoadOptions('ab');
+
+        expect(actions.debounce).toHaveBeenCalledWith(expect.any(Function), 100);
+        expect(loadOptions).not.toHaveBeenCalled();
+    });
+
+    it('loads immediately when filter text is unchanged', async () => {
+        const loadOptions = vi.fn(() => Promise.resolve([]));
+        const { actions, handleLoadOptions } = createHarness({ filterText: 'ab', prevFilterText: 'ab', loadOptions });
+
+        handleLoadOptions('ab');
+        await flush();
+
+        expect(actions.debounce).not.toHaveBeenCalled();
+        expect(loadOptions).toHaveBeenCalledWith('ab');
+    });
+
+    it('opens the list when filter text is present and the list is closed', () => {
+        const { writes, handleLoadOptions } = createHarness({ loadOptions: () => Promise.resolve([]) });
+
+        handleLoadOptions('ab');
+
+        expect(writes.listOpen).toEqual([true]);
+    });
+
+    it('discards a stale response that resolves after a newer request', async () => {
+        let resolveFirst!: (items: SelectItem[]) => void;
+        let resolveSecond!: (items: SelectItem[]) => void;
+        const loadOptions = vi
+            .fn()
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveFirst = r)))
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveSecond = r)));
+        const { state, writes, actions, handleLoadOptions } = createHarness({ loadOptions });
+
+        // Same filter text on both calls, so both execute immediately (no debounce)
+        handleLoadOptions('');
+        handleLoadOptions('');
+
+        resolveSecond([{ value: 'new', label: 'New' }]);
+        await flush();
+        resolveFirst([{ value: 'old', label: 'Old' }]);
+        await flush();
+
+        expect(state.items).toEqual([{ value: 'new', label: 'New' }]);
+        expect(writes.items).toEqual([[{ value: 'new', label: 'New' }]]);
+        expect(actions.onloaded).toHaveBeenCalledTimes(1);
+    });
+
+    it('clears value, justValue, and items when disabled', () => {
+        const { writes, handleLoadOptions } = createHarness({
+            disabled: true,
+            multiple: true,
+            useJustValue: true,
+            value: [{ value: 'a', label: 'A' }],
+            loadOptions: () => Promise.resolve([]),
+        });
+
+        handleLoadOptions('');
+
+        expect(writes.value).toEqual([[]]);
+        expect(writes.justValue).toEqual([[]]);
+        expect(writes.items).toEqual([null]);
+        expect(writes.loading).toBeUndefined();
+    });
+
+    it('clears a lingering justValue when disabled with no value', () => {
+        const { writes, handleLoadOptions } = createHarness({
+            disabled: true,
+            useJustValue: true,
+            justValue: 'a',
+            loadOptions: () => Promise.resolve([]),
+        });
+
+        handleLoadOptions('');
+
+        expect(writes.value).toEqual([undefined]);
+        expect(writes.justValue).toEqual(['']);
+        expect(writes.items).toEqual([null]);
+    });
+
+    it('does nothing when no loadOptions function is provided', () => {
+        const { writes, handleLoadOptions } = createHarness();
+
+        handleLoadOptions('');
+
+        expect(writes.loading).toBeUndefined();
+        expect(writes.items).toBeUndefined();
+    });
+});

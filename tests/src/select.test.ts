@@ -3354,7 +3354,9 @@ describe('Select Component', () => {
                     items,
                     inputAttributes: {
                         id: 'testId',
-                        autocomplete: 'custom-value',
+                        // Deliberately non-standard: pins that arbitrary values pass through to the DOM
+                        autocomplete:
+                            'custom-value' as unknown as import('svelte/elements').HTMLInputAttributes['autocomplete'],
                     },
                 },
             });

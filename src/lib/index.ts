@@ -10,7 +10,7 @@ export { default as LoadingIcon } from './LoadingIcon.svelte';
 export { default as filter } from './filter';
 export { useKeyboardNavigation } from './keyboard-navigation.svelte';
 
-export { isStringArray, isCancelled, areItemsEqual } from './utils';
+export { isStringArray, areItemsEqual, normalizeItem } from './utils';
 
 // Type exports for TypeScript users
 export type {
@@ -20,6 +20,8 @@ export type {
     JustValue,
     FloatingConfig,
     FilterConfig,
-    KeyboardNavigationContext,
+    SelectState,
+    KeyboardNavigationState,
+    KeyboardNavigationActions,
     ErrorEvent,
 } from './types';

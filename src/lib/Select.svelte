@@ -14,11 +14,17 @@
     import LoadingIcon from './LoadingIcon.svelte';
     import type { SelectItem } from '$lib/types';
     import type { HTMLInputAttributes } from 'svelte/elements';
+    import { createSelectState } from '$lib/select-state.svelte';
     import { useKeyboardNavigation } from '$lib/keyboard-navigation.svelte';
     import { useHover } from '$lib/use-hover.svelte';
     import { useValue } from '$lib/use-value.svelte';
     import { useLoadOptions } from '$lib/use-load-options.svelte';
-    import { areItemsEqual, isItemSelectableCheck, createGroupHeaderItem as _createGroupHeaderItem } from '$lib/utils';
+    import {
+        areItemsEqual,
+        convertStringItemsToObjects,
+        normalizeItem,
+        createGroupHeaderItem as _createGroupHeaderItem,
+    } from '$lib/utils';
 
     const defaultItemFilter = (label: string, filterText: string, _option: SelectItem): boolean =>
         `${label}`.toLowerCase().includes(filterText?.toLowerCase());
@@ -27,7 +33,6 @@
     const defaultOnLoaded = (_options: SelectItem[]): void => {};
 
     let timeout = $state<ReturnType<typeof setTimeout>>();
-    let clearState = $state(false);
 
     let {
         // Core data props
@@ -78,8 +83,8 @@
         loadOptionsDeps = [],
 
         // Function props
-        createGroupHeaderItem = (groupValue: string, item: SelectItem) => {
-            return _createGroupHeaderItem(groupValue, item, label);
+        createGroupHeaderItem = (groupValue: string, _item: Item) => {
+            return _createGroupHeaderItem(groupValue, label);
         },
         debounce = (fn: () => void, wait = 1) => {
             clearTimeout(timeout);
@@ -139,9 +144,7 @@
         ...rest
     }: SelectProps<Item> = $props();
 
-    let normalizedValue = $derived<SelectItem | SelectItem[] | null>(
-        !value ? null : typeof value === 'string' ? { value, label: value } : value,
-    );
+    let normalizedValue = $derived<SelectItem | SelectItem[] | null>(normalizeItem(value));
 
     const _uid = $props.id();
     const _generatedId = `svelte-select-${_uid}`;
@@ -173,7 +176,7 @@
     });
 
     function internalHandleClear(_e?: MouseEvent): void {
-        clearState = true;
+        selectState.clearState = true;
         onclear(value as SelectValue<Item>);
         value = undefined;
         closeList();
@@ -189,11 +192,11 @@
             multiple,
             value: normalizedValue,
             itemId,
-            groupBy: groupBy as ((item: SelectItem) => string) | undefined,
+            groupBy,
             label,
             filterSelectedItems,
-            itemFilter: itemFilter as (label: string, filterText: string, option: SelectItem) => boolean,
-            convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
+            itemFilter,
+            convertStringItemsToObjects,
             filterGroupedItems,
         }),
     );
@@ -214,18 +217,12 @@
         id: id ? id : undefined,
         ...inputAttributes,
     });
-    let activeValue = $state<number | undefined>(undefined);
-    // Seeded with the initial value so mount does not dispatch oninput
-    let prev_value = $state<SelectItem | SelectItem[] | string | null | undefined>(value);
-    let prev_filterText: string | undefined = $state();
-    let prev_multiple = $state<boolean | undefined>();
-    let isScrolling = $state(false);
     let prefloat = $state(true);
-    let hasValue = $derived(multiple ? !!(value && value.length > 0) : !!value);
+    let hasValue = $derived(multiple ? Array.isArray(value) && value.length > 0 : !!value);
     let placeholderText = $derived(
         placeholderAlwaysShow && multiple
             ? placeholder
-            : multiple && value?.length === 0
+            : multiple && Array.isArray(value) && value.length === 0
               ? placeholder
               : value
                 ? ''
@@ -269,28 +266,101 @@
         autoUpdate: false,
     });
 
-    // Initialize composables
-    const valueManager = useValue({
-        getState: () => ({
-            value,
-            prevValue: prev_value,
-            items,
-            multiple,
-            itemId,
-            label,
-            hasValue,
-            normalizedValue,
-            useJustValue,
-            justValue,
-            clearState,
-            closeListOnChange,
-        }),
-        setValue: (v) => (value = v as typeof value),
-        setJustValue: (v) => (justValue = v),
-        setPrevValue: (v) => (prev_value = v),
-        setClearState: (v) => (clearState = v),
-        setActiveValue: (v) => (activeValue = v),
-        setFilterText: (v) => (filterText = v),
+    // The shared reactive state object: live accessors over the props and derived
+    // values above, plus internal shared state owned by the factory. Composables
+    // read and write these fields directly.
+    const selectState = createSelectState<Item>({
+        get value() {
+            return value;
+        },
+        set value(v) {
+            value = v;
+        },
+        get items() {
+            return items;
+        },
+        set items(v) {
+            items = v;
+        },
+        get filterText() {
+            return filterText;
+        },
+        set filterText(v) {
+            filterText = v;
+        },
+        get justValue() {
+            return justValue;
+        },
+        set justValue(v) {
+            justValue = v;
+        },
+        get listOpen() {
+            return listOpen;
+        },
+        set listOpen(v) {
+            listOpen = v;
+        },
+        get loading() {
+            return loading;
+        },
+        set loading(v) {
+            loading = v;
+        },
+        get focused() {
+            return focused;
+        },
+        set focused(v) {
+            focused = v;
+        },
+        get hoverItemIndex() {
+            return hoverItemIndex;
+        },
+        set hoverItemIndex(v) {
+            hoverItemIndex = v;
+        },
+        get multiple() {
+            return multiple;
+        },
+        get itemId() {
+            return itemId;
+        },
+        get label() {
+            return label;
+        },
+        get disabled() {
+            return disabled;
+        },
+        get useJustValue() {
+            return useJustValue;
+        },
+        get closeListOnChange() {
+            return closeListOnChange;
+        },
+        get debounceWait() {
+            return debounceWait;
+        },
+        get groupBy() {
+            return groupBy;
+        },
+        get loadOptions() {
+            return loadOptions;
+        },
+        get loadOptionsDeps() {
+            return loadOptionsDeps;
+        },
+        get filteredItems() {
+            return filteredItems;
+        },
+        get normalizedValue() {
+            return normalizedValue;
+        },
+        get hasValue() {
+            return hasValue;
+        },
+    });
+
+    // Initialize composables (creation order is effect order: value, hover, load options)
+    const valueManager = useValue(selectState, {
         closeList,
         oninput: (v) => oninput?.(v as SelectValue<Item>),
         onchange: (v) => onchange?.(v as SelectValue<Item>),
@@ -298,63 +368,15 @@
         onselect: (s) => onselect?.(s as Item),
     });
 
-    const hoverManager = useHover({
-        getState: () => ({
-            listOpen,
-            filteredItems,
-            hoverItemIndex,
-            multiple,
-            value,
-            isScrolling,
-            groupBy: groupBy as ((item: SelectItem) => string) | undefined,
-            itemId,
-        }),
-        setHoverItemIndex: (v) => (hoverItemIndex = v),
-        setIsScrolling: (v) => (isScrolling = v),
-    });
+    const hoverManager = useHover(selectState);
 
-    const loadOptionsManager = useLoadOptions({
-        getState: () => ({
-            filterText,
-            prevFilterText: prev_filterText,
-            loadOptionsDeps,
-            loadOptions,
-            disabled,
-            multiple,
-            value,
-            items,
-            itemId,
-            useJustValue,
-            justValue,
-            listOpen,
-            debounceWait,
-        }),
-        setItems: (v) => (items = v as typeof items),
-        setValue: (v) => (value = v as typeof value),
-        setJustValue: (v) => (justValue = v),
-        setLoading: (v) => (loading = v),
-        setListOpen: (v) => (listOpen = v),
+    useLoadOptions(selectState, {
         debounce: (fn, wait) => debounce(fn, wait),
-        convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
         onloaded: (opts) => onloaded(opts as Item[]),
         onerror: (err) => onerror(err),
     });
 
-    const keyboardNav = useKeyboardNavigation({
-        getState: () => ({
-            listOpen,
-            filteredItems,
-            hoverItemIndex,
-            multiple,
-            value,
-            filterText,
-            activeValue,
-            itemId,
-            focused,
-        }),
-        setListOpen: (v) => (listOpen = v),
-        setHoverItemIndex: (v) => (hoverItemIndex = v),
-        setActiveValue: (v) => (activeValue = v),
+    const keyboardNav = useKeyboardNavigation(selectState, {
         closeList,
         setHoverIndex: hoverManager.setHoverIndex,
         handleSelect,
@@ -380,42 +402,6 @@
         });
     });
 
-    // Set value on hasValue change
-    $effect(() => {
-        hasValue;
-        untrack(() => {
-            if (items) valueManager.setValue();
-        });
-    });
-
-    // Setup multi when multiple changes
-    $effect(() => {
-        if (multiple) {
-            untrack(() => valueManager.setupMulti());
-        }
-    });
-
-    // Clear value when switching from multiple to single
-    $effect(() => {
-        if (prev_multiple && !multiple && value) {
-            value = null;
-        }
-        prev_multiple = multiple;
-    });
-
-    // Check for duplicates
-    $effect(() => {
-        if (multiple && value && value.length > 1) {
-            untrack(() => valueManager.checkValueForDuplicates());
-        }
-    });
-
-    // Dispatch oninput when value changes (selection, update, or clear)
-    $effect(() => {
-        value;
-        untrack(() => valueManager.dispatchSelectedItem());
-    });
-
     // Close list on unfocus
     $effect(() => {
         if (!focused && input) closeList();
@@ -425,47 +411,13 @@
     $effect(() => {
         filterText;
         untrack(() => {
-            if (filterText !== prev_filterText) setupFilterText();
+            if (filterText !== selectState.prevFilterText) setupFilterText();
         });
-    });
-
-    // Set value index as hover when list opens
-    $effect(() => {
-        if (!multiple && listOpen && value && filteredItems) {
-            untrack(() => hoverManager.setValueIndexAsHoverIndex());
-        }
     });
 
     // Fire onhoveritem
     $effect(() => {
         onhoveritem?.(hoverItemIndex);
-    });
-
-    // Hydrate value from an initial justValue, then keep justValue in sync
-    $effect(() => {
-        multiple;
-        itemId;
-        value;
-        untrack(() => {
-            justValue = valueManager.syncJustValue();
-        });
-    });
-
-    // Check hover selectable
-    $effect(() => {
-        filteredItems;
-        value;
-        multiple;
-        listOpen;
-        untrack(() => {
-            if (listOpen && filteredItems.length > 0) {
-                if (!isItemSelectableCheck(filteredItems[hoverItemIndex])) {
-                    hoverManager.checkHoverSelectable();
-                } else if (groupBy && hoverItemIndex === 0) {
-                    hoverManager.checkHoverSelectable();
-                }
-            }
-        });
     });
 
     // Fire onfilter
@@ -492,15 +444,6 @@
         if (input && listOpen && !focused) handleFocus();
     });
 
-    // Reset hover on filterText change
-    $effect(() => {
-        if (filterText) {
-            untrack(() => {
-                hoverItemIndex = hoverManager.getFirstSelectableIndex();
-            });
-        }
-    });
-
     // Auto update floating config
     $effect(() => {
         if (container && floatingConfig?.autoUpdate === undefined) {
@@ -513,23 +456,6 @@
         if (disabled) {
             listOpen = false;
             filterText = '';
-        }
-    });
-
-    // Load options handler
-    $effect(() => {
-        const currentFilterText = filterText;
-        const currentDeps = [...loadOptionsDeps];
-
-        if (loadOptions) {
-            untrack(() => {
-                loadOptionsManager.handleLoadOptions(currentFilterText, currentDeps);
-            });
-
-            // Keep outside untrack for proper reactivity
-            if (!disabled && currentFilterText.length > 0 && !listOpen) {
-                listOpen = true;
-            }
         }
     });
 
@@ -581,7 +507,7 @@
         listOpen = true;
 
         if (multiple) {
-            activeValue = undefined;
+            selectState.activeValue = undefined;
         }
     }
 
@@ -595,12 +521,12 @@
     }
 
     async function handleBlur(e?: FocusEvent): Promise<void> {
-        if (isScrolling) return;
+        if (selectState.isScrolling) return;
         if (listOpen || focused) {
             if (e) onblur?.(e);
             closeList();
             focused = false;
-            activeValue = undefined;
+            selectState.activeValue = undefined;
             input?.blur();
         }
     }
@@ -639,7 +565,8 @@
 
     function handleItemClick(item: SelectItem, i: number): void {
         if (item?.selectable === false) return;
-        if (!multiple && areItemsEqual(normalizedValue, item, itemId)) return closeList();
+        if (!multiple && !Array.isArray(normalizedValue) && areItemsEqual(normalizedValue, item, itemId))
+            return closeList();
         if (hoverManager.isItemSelectable(item)) {
             hoverItemIndex = i;
             handleSelect(item);
@@ -662,17 +589,17 @@
     function handleInput(ev: Event): void {
         const target = ev.target as HTMLInputElement;
         listOpen = true;
-        prev_filterText = filterText;
+        selectState.prevFilterText = filterText;
         filterText = target.value;
     }
 
     export function reset(): void {
-        clearState = true;
+        selectState.clearState = true;
         value = undefined;
         filterText = '';
         listOpen = false;
         hoverItemIndex = 0;
-        activeValue = undefined;
+        selectState.activeValue = undefined;
         justValue = undefined;
         focused = false;
     }
@@ -736,19 +663,17 @@
                         tabindex="-1"
                         role={isPresentationalHeader(item) ? 'presentation' : 'option'}
                         id="listbox-{_id}-item-{i}"
-                        aria-selected={isPresentationalHeader(item)
-                            ? undefined
-                            : hoverManager.isItemActive(item, normalizedValue, itemId)}>
+                        aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}>
                         <div
                             class="item"
                             class:list-group-title={item.groupHeader}
-                            class:active={hoverManager.isItemActive(item, normalizedValue, itemId)}
+                            class:active={hoverManager.isItemActive(item)}
                             class:first={i === 0}
                             class:hover={hoverItemIndex === i}
                             class:group-item={item.groupItem}
                             class:not-selectable={item?.selectable === false}
                             role={item.groupHeader ? 'group' : undefined}
-                            aria-label={item.groupHeader ? item[label] : undefined}>
+                            aria-label={item.groupHeader ? (item[label] as string) : undefined}>
                             {#if itemSnippet}
                                 {@render itemSnippet(item as Item, i)}
                             {:else}
@@ -790,10 +715,10 @@
     <div class="value-container">
         {#if hasValue}
             {#if multiple}
-                {#each Array.isArray(value) ? value : [] as item, i}
+                {#each Array.isArray(value) ? (value as Item[]) : [] as item, i}
                     <div
                         class="multi-item"
-                        class:active={activeValue === i}
+                        class:active={selectState.activeValue === i}
                         class:disabled
                         onclick={(ev) => {
                             ev.preventDefault();
@@ -890,14 +815,14 @@
     {#if inputHiddenSnippet}
         {@render inputHiddenSnippet(value as SelectValue<Item>)}
     {:else if multiple && Array.isArray(value) && value.length > 0}
-        {#each value as item}
+        {#each value as Item[] as item}
             <input {name} type="hidden" value={useJustValue ? item[itemId] : JSON.stringify(item)} />
         {/each}
     {:else if !multiple}
         <input {name} type="hidden" value={value ? (useJustValue ? justValue : JSON.stringify(value)) : ''} />
     {/if}
 
-    {#if required && (!value || value.length === 0)}
+    {#if required && (!value || (Array.isArray(value) && value.length === 0))}
         {#if requiredSnippet}
             {@render requiredSnippet(value as SelectValue<Item>)}
         {:else}

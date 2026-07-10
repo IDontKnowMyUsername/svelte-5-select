@@ -1,10 +1,13 @@
 import { describe, it, expect, vi } from 'vitest';
 import { useKeyboardNavigation } from '$lib/keyboard-navigation.svelte';
-import type { SelectItem } from '$lib/types';
+import type { KeyboardNavigationState, SelectItem } from '$lib/types';
 
 describe('useKeyboardNavigation', () => {
-    function createMockContext() {
-        const state = {
+    // The composable writes state fields directly; a Proxy records every write so
+    // tests can still distinguish "wrote the same value" from "did not write".
+    function createMock(overrides: Partial<KeyboardNavigationState> = {}) {
+        const writes: Partial<Record<keyof KeyboardNavigationState, unknown[]>> = {};
+        const target: KeyboardNavigationState = {
             listOpen: false,
             filteredItems: [
                 { value: 'a', label: 'A' },
@@ -12,537 +15,495 @@ describe('useKeyboardNavigation', () => {
             ] as SelectItem[],
             hoverItemIndex: 0,
             multiple: false,
-            value: null as SelectItem | SelectItem[] | null,
+            value: null,
             filterText: '',
-            activeValue: undefined as number | undefined,
+            activeValue: undefined,
             itemId: 'value',
             focused: true,
+            ...overrides,
         };
 
-        return {
-            getState: () => state,
-            setListOpen: vi.fn((v) => (state.listOpen = v)),
-            setHoverItemIndex: vi.fn((v) => (state.hoverItemIndex = v)),
-            setActiveValue: vi.fn((v) => (state.activeValue = v)),
+        const state = new Proxy(target, {
+            set(obj, prop, v) {
+                (writes[prop as keyof KeyboardNavigationState] ??= []).push(v);
+                return Reflect.set(obj, prop, v);
+            },
+        });
+
+        const actions = {
             closeList: vi.fn(),
             setHoverIndex: vi.fn(),
             handleSelect: vi.fn(),
             handleMultiItemClear: vi.fn(),
         };
+
+        return { state, writes, actions };
     }
 
     it('handles Escape key', () => {
-        const context = createMockContext();
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, actions } = createMock();
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Escape' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.closeList).toHaveBeenCalled();
+        expect(actions.closeList).toHaveBeenCalled();
     });
 
     it('handles ArrowDown when list is closed', () => {
-        const context = createMockContext();
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock();
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'ArrowDown' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.setListOpen).toHaveBeenCalledWith(true);
-        expect(context.setActiveValue).toHaveBeenCalledWith(undefined);
+        expect(writes.listOpen).toEqual([true]);
+        expect(writes.activeValue).toEqual([undefined]);
     });
 
     it('handles Enter key to select item', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, actions } = createMock({ listOpen: true });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Enter' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.handleSelect).toHaveBeenCalledWith(context.getState().filteredItems[0]);
+        expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[0]);
     });
 
     it('does nothing when not focused', () => {
-        const context = createMockContext();
-        context.getState().focused = false;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, actions } = createMock({ focused: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Enter' });
         Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.handleSelect).not.toHaveBeenCalled();
-        expect(context.closeList).not.toHaveBeenCalled();
+        expect(actions.handleSelect).not.toHaveBeenCalled();
+        expect(actions.closeList).not.toHaveBeenCalled();
     });
 
     it('handles Tab key when value equals hover item', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-        context.getState().focused = true;
-        context.getState().value = { value: 'a', label: 'A' };
-        context.getState().hoverItemIndex = 0;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: { value: 'a', label: 'A' },
+            hoverItemIndex: 0,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Tab' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.closeList).toHaveBeenCalled();
-        expect(context.handleSelect).not.toHaveBeenCalled();
+        expect(actions.closeList).toHaveBeenCalled();
+        expect(actions.handleSelect).not.toHaveBeenCalled();
     });
 
     it('handles Tab key to select item when different from hover', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-        context.getState().focused = true;
-        context.getState().value = { value: 'b', label: 'B' };
-        context.getState().hoverItemIndex = 0;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: { value: 'b', label: 'B' },
+            hoverItemIndex: 0,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Tab' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.handleSelect).toHaveBeenCalledWith(context.getState().filteredItems[0]);
-        expect(context.closeList).toHaveBeenCalled();
+        expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[0]);
+        expect(actions.closeList).toHaveBeenCalled();
     });
 
     it('handles Backspace in multiple mode with activeValue', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C' },
-        ];
-        context.getState().activeValue = 1;
-        context.getState().filterText = '';
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C' },
+            ],
+            activeValue: 1,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Backspace' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.handleMultiItemClear).toHaveBeenCalledWith(1);
-        expect(context.setActiveValue).toHaveBeenCalledWith(0);
+        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(1);
+        expect(writes.activeValue).toEqual([0]);
     });
 
     it('handles Backspace in multiple mode when activeValue is 0', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 0;
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 0,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).toHaveBeenCalledWith(0);
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(0);
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowLeft in multiple mode when activeValue is defined and not 0', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C' },
-        ];
-        context.getState().activeValue = 2;
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C' },
+            ],
+            activeValue: 2,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).toHaveBeenCalledWith(1);
+        expect(writes.activeValue).toEqual([1]);
     });
 
     it('handles ArrowRight in multiple mode at last position', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 1; // last item
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 1, // last item
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).toHaveBeenCalledWith(undefined);
+        expect(writes.activeValue).toEqual([undefined]);
     });
 
     it('handles ArrowRight in multiple mode to increment activeValue', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C' },
-        ];
-        context.getState().activeValue = 0;
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C' },
+            ],
+            activeValue: 0,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).toHaveBeenCalledWith(1);
+        expect(writes.activeValue).toEqual([1]);
     });
 
     it('handles ArrowUp when list is closed', () => {
-        const context = createMockContext();
-        context.getState().listOpen = false;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({ listOpen: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'ArrowUp' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.setListOpen).toHaveBeenCalledWith(true);
-        expect(context.setActiveValue).toHaveBeenCalledWith(undefined);
+        expect(writes.listOpen).toEqual([true]);
+        expect(writes.activeValue).toEqual([undefined]);
     });
 
     it('handles Tab key when list is not open', () => {
-        const context = createMockContext();
-        context.getState().listOpen = false;
-        context.getState().focused = true;
+        const { state, actions } = createMock({ listOpen: false, focused: true });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Tab' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Tab' });
-
-        handleKeyDown(event);
-
-        expect(context.closeList).not.toHaveBeenCalled();
-        expect(context.handleSelect).not.toHaveBeenCalled();
+        expect(actions.closeList).not.toHaveBeenCalled();
+        expect(actions.handleSelect).not.toHaveBeenCalled();
     });
 
     it('handles Backspace without multiple mode', () => {
-        const context = createMockContext();
-        context.getState().multiple = false;
-        context.getState().value = { value: 'a', label: 'A' };
-        context.getState().filterText = '';
+        const { state, actions } = createMock({
+            multiple: false,
+            value: { value: 'a', label: 'A' },
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).not.toHaveBeenCalled();
+        expect(actions.handleMultiItemClear).not.toHaveBeenCalled();
     });
 
     it('handles Backspace in multiple mode with filterText', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().filterText = 'test';
+        const { state, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            filterText: 'test',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).not.toHaveBeenCalled();
+        expect(actions.handleMultiItemClear).not.toHaveBeenCalled();
     });
 
     it('handles Backspace in multiple mode when value length exceeds activeValue', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C' },
-            { value: 'd', label: 'D' },
-        ];
-        context.getState().activeValue = 2;
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C' },
+                { value: 'd', label: 'D' },
+            ],
+            activeValue: 2,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).toHaveBeenCalledWith(2);
-        expect(context.setActiveValue).toHaveBeenCalledWith(1);
+        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(2);
+        expect(writes.activeValue).toEqual([1]);
     });
 
     it('handles ArrowLeft when value is not array', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = { value: 'a', label: 'A' }; // Not an array
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: { value: 'a', label: 'A' }, // Not an array
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowLeft when activeValue is 0', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 0;
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 0,
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowLeft decrementing when conditions met', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C' },
-        ];
-        context.getState().activeValue = 1; // Middle item, not 0
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C' },
+            ],
+            activeValue: 1, // Middle item, not 0
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
-
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
         // value.length (3) > activeValue (1) && activeValue !== 0
-        expect(context.setActiveValue).toHaveBeenCalledWith(0);
+        expect(writes.activeValue).toEqual([0]);
     });
 
     it('handles Backspace when value.length equals activeValue', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [{ value: 'a', label: 'A' }];
-        context.getState().activeValue = 1; // After removal, value.length will be 1
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [{ value: 'a', label: 'A' }],
+            activeValue: 1, // After removal, value.length will be 1
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).toHaveBeenCalledWith(1);
+        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(1);
         // After removal, value.length is 1, activeValue is 1
         // Since 1 is NOT > 1, newActiveValue = undefined
-        expect(context.setActiveValue).toHaveBeenCalledWith(undefined);
+        expect(writes.activeValue).toEqual([undefined]);
     });
 
     it('handles ArrowLeft when activeValue equals value.length', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 2; // Equal to value.length
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 2, // Equal to value.length
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
-
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
         // value.length (2) is NOT > activeValue (2), so condition is false
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowRight when activeValue exceeds bounds', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [{ value: 'a', label: 'A' }];
-        context.getState().activeValue = 5; // Way beyond bounds
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [{ value: 'a', label: 'A' }],
+            activeValue: 5, // Way beyond bounds
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
-
-        const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
-
-        handleKeyDown(event);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
 
         // Neither condition matches
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles Backspace in multiple mode with undefined activeValue', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = undefined; // Explicitly undefined
-        context.getState().filterText = '';
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: undefined, // Explicitly undefined
+            filterText: '',
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'Backspace' });
-
-        handleKeyDown(event);
-
-        expect(context.handleMultiItemClear).toHaveBeenCalledWith(1);
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(1);
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowLeft with filterText present', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 1;
-        context.getState().filterText = 'test'; // Has filterText
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 1,
+            filterText: 'test', // Has filterText
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowLeft' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles ArrowRight with filterText present', () => {
-        const context = createMockContext();
-        context.getState().multiple = true;
-        context.getState().value = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().activeValue = 0;
-        context.getState().filterText = 'test'; // Has filterText
+        const { state, writes, actions } = createMock({
+            multiple: true,
+            value: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            activeValue: 0,
+            filterText: 'test', // Has filterText
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowRight' }));
 
-        const event = new KeyboardEvent('keydown', { key: 'ArrowRight' });
-
-        handleKeyDown(event);
-
-        expect(context.setActiveValue).not.toHaveBeenCalled();
+        expect(writes.activeValue).toBeUndefined();
     });
 
     it('handles Home key to move hover to first selectable item', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-        context.getState().filteredItems = [
-            { value: 'header', label: 'Header', selectable: false },
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-        ];
-        context.getState().hoverItemIndex = 2;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({
+            listOpen: true,
+            filteredItems: [
+                { value: 'header', label: 'Header', selectable: false },
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ],
+            hoverItemIndex: 2,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Home' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.setHoverItemIndex).toHaveBeenCalledWith(1);
+        expect(writes.hoverItemIndex).toEqual([1]);
         expect(event.preventDefault).toHaveBeenCalled();
     });
 
     it('handles End key to move hover to last selectable item', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-        context.getState().filteredItems = [
-            { value: 'a', label: 'A' },
-            { value: 'b', label: 'B' },
-            { value: 'c', label: 'C', selectable: false },
-        ];
-        context.getState().hoverItemIndex = 0;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({
+            listOpen: true,
+            filteredItems: [
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+                { value: 'c', label: 'C', selectable: false },
+            ],
+            hoverItemIndex: 0,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'End' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.setHoverItemIndex).toHaveBeenCalledWith(1);
+        expect(writes.hoverItemIndex).toEqual([1]);
         expect(event.preventDefault).toHaveBeenCalled();
     });
 
     it('ignores Home and End when the list is closed', () => {
-        const context = createMockContext();
-        context.getState().listOpen = false;
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({ listOpen: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }));
         handleKeyDown(new KeyboardEvent('keydown', { key: 'End' }));
 
-        expect(context.setHoverItemIndex).not.toHaveBeenCalled();
+        expect(writes.hoverItemIndex).toBeUndefined();
     });
 
     it('ignores Home and End while filter text is entered so the caret can move', () => {
-        const context = createMockContext();
-        context.getState().listOpen = true;
-        context.getState().filterText = 'ab';
-
-        const { handleKeyDown } = useKeyboardNavigation(context);
+        const { state, writes, actions } = createMock({ listOpen: true, filterText: 'ab' });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Home' });
         Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
 
         handleKeyDown(event);
 
-        expect(context.setHoverItemIndex).not.toHaveBeenCalled();
+        expect(writes.hoverItemIndex).toBeUndefined();
         expect(event.preventDefault).not.toHaveBeenCalled();
     });
 });

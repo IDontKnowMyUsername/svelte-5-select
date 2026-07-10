@@ -1,7 +1,8 @@
-import type { HoverContext, SelectItem } from './types';
-import { areItemsEqual, isItemSelectableCheck } from './utils';
+import { untrack } from 'svelte';
+import type { SelectItem, SelectState } from './types';
+import { areItemsEqual, getItemProperty, isItemSelectableCheck, normalizeItem } from './utils';
 
-export function useHover(context: HoverContext) {
+export function useHover<Item extends SelectItem = SelectItem>(state: SelectState<Item>) {
     function computeNextIndex(filteredItems: SelectItem[], fromIndex: number, increment: number): number {
         const selectableFilteredItems = filteredItems.filter(
             (item) => !Object.hasOwn(item, 'selectable') || item.selectable === true,
@@ -35,39 +36,35 @@ export function useHover(context: HoverContext) {
     }
 
     function setHoverIndex(increment: number) {
-        const { filteredItems, hoverItemIndex } = context.getState();
-        context.setHoverItemIndex(computeNextIndex(filteredItems, hoverItemIndex, increment));
+        const { filteredItems, hoverItemIndex } = state;
+        state.hoverItemIndex = computeNextIndex(filteredItems, hoverItemIndex, increment);
     }
 
     function setValueIndexAsHoverIndex() {
-        const { value, filteredItems, itemId } = context.getState();
-        const normalizedValue = !value ? null : typeof value === 'string' ? { value, label: value } : value;
-
+        const { normalizedValue, filteredItems, itemId } = state;
         if (!normalizedValue || Array.isArray(normalizedValue)) return;
 
-        const singleValue: SelectItem = normalizedValue;
-
-        const valueIndex = filteredItems.findIndex((i: SelectItem) => {
-            return (i as Record<string, any>)[itemId] === (singleValue as Record<string, any>)[itemId];
-        });
+        const valueIndex = filteredItems.findIndex(
+            (item) => getItemProperty(item, itemId) === getItemProperty(normalizedValue, itemId),
+        );
 
         checkHoverSelectable(valueIndex, true);
     }
 
     function checkHoverSelectable(startingIndex = 0, ignoreGroup?: boolean) {
-        const { groupBy, filteredItems } = context.getState();
+        const { groupBy, filteredItems } = state;
         const idx = startingIndex < 0 ? 0 : startingIndex;
 
         if (!ignoreGroup && groupBy && filteredItems[idx] && !filteredItems[idx].selectable) {
             // Compute the final index without intermediate state writes
-            context.setHoverItemIndex(computeNextIndex(filteredItems, idx, 1));
+            state.hoverItemIndex = computeNextIndex(filteredItems, idx, 1);
         } else {
-            context.setHoverItemIndex(idx);
+            state.hoverItemIndex = idx;
         }
     }
 
     function getFirstSelectableIndex(): number {
-        const { groupBy, filteredItems } = context.getState();
+        const { groupBy, filteredItems } = state;
         if (!groupBy || filteredItems.length === 0) return 0;
 
         if (!isItemSelectableCheck(filteredItems[0])) {
@@ -78,19 +75,15 @@ export function useHover(context: HoverContext) {
         return 0;
     }
 
-    function isItemActive(
-        item: SelectItem,
-        val: SelectItem | SelectItem[] | null | undefined,
-        itemId: string,
-    ): boolean {
-        const { multiple } = context.getState();
+    function isItemActive(item: SelectItem): boolean {
+        const { multiple, normalizedValue, itemId } = state;
         if (multiple) {
-            if (!Array.isArray(val)) return false;
-            return val.some((v) => areItemsEqual(typeof v === 'string' ? { value: v, label: v } : v, item, itemId));
+            if (!Array.isArray(normalizedValue)) return false;
+            // Array entries may still be raw strings; normalize each before comparing
+            return normalizedValue.some((v) => areItemsEqual(normalizeItem(v as SelectItem | string), item, itemId));
         }
-        const normalized = !val ? null : typeof val === 'string' ? { value: val, label: val } : val;
-        if (Array.isArray(normalized)) return false;
-        return areItemsEqual(normalized, item, itemId);
+        if (Array.isArray(normalizedValue)) return false;
+        return areItemsEqual(normalizedValue, item, itemId);
     }
 
     function isItemSelectable(item: SelectItem) {
@@ -98,25 +91,53 @@ export function useHover(context: HoverContext) {
     }
 
     function handleHover(i: number): void {
-        const { isScrolling } = context.getState();
-        if (isScrolling) return;
-        context.setHoverItemIndex(i);
+        if (state.isScrolling) return;
+        state.hoverItemIndex = i;
     }
 
     function handleListScroll() {
-        context.setIsScrolling(true);
+        state.isScrolling = true;
     }
 
     function handleListScrollEnd() {
-        context.setIsScrolling(false);
+        state.isScrolling = false;
     }
 
+    // Set value index as hover when list opens
+    $effect(() => {
+        if (!state.multiple && state.listOpen && state.value && state.filteredItems) {
+            untrack(() => setValueIndexAsHoverIndex());
+        }
+    });
+
+    // Keep hover on a selectable item
+    $effect(() => {
+        state.filteredItems;
+        state.value;
+        state.multiple;
+        state.listOpen;
+        untrack(() => {
+            if (state.listOpen && state.filteredItems.length > 0) {
+                if (!isItemSelectableCheck(state.filteredItems[state.hoverItemIndex])) {
+                    checkHoverSelectable();
+                } else if (state.groupBy && state.hoverItemIndex === 0) {
+                    checkHoverSelectable();
+                }
+            }
+        });
+    });
+
+    // Reset hover to the first selectable item on filterText change
+    $effect(() => {
+        if (state.filterText) {
+            untrack(() => {
+                state.hoverItemIndex = getFirstSelectableIndex();
+            });
+        }
+    });
+
     return {
-        computeNextIndex,
         setHoverIndex,
-        setValueIndexAsHoverIndex,
-        checkHoverSelectable,
-        getFirstSelectableIndex,
         isItemActive,
         isItemSelectable,
         handleHover,
