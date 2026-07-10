@@ -1,17 +1,26 @@
 {
-  "git": {
-    "commitMessage": "chore: release v${version}",
-    "tagName": "v${version}"
-  },
-  "npm": {
-    "publish": true,
-    "tag": "latest"
-  },
-  "github": {
-    "release": true
-  },
-  "hooks": {
-    "before:init": ["pnpm run check", "pnpm run test:run"],
-    "after:bump": "pnpm run package"
-  }
+    "git": {
+        "commitMessage": "chore: release v${version}",
+        "tagName": "v${version}"
+    },
+    "npm": {
+        "publish": false
+    },
+    "github": {
+        "release": true
+    },
+    "hooks": {
+        "before:init": ["pnpm run check", "pnpm run test:run"],
+        "after:bump": "pnpm run package",
+        "before:git:release": "pnpm run lint:package && pnpm run smoke"
+    },
+    "plugins": {
+        "@release-it/conventional-changelog": {
+            "preset": {
+                "name": "conventionalcommits"
+            },
+            "infile": "CHANGELOG.md",
+            "header": "# svelte-5-select changelog"
+        }
+    }
 }

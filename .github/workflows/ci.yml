@@ -1,20 +1,50 @@
 name: CI
 
 on:
-  push:
-    branches: [master]
-  pull_request:
+    push:
+        branches: [master]
+    pull_request:
 
 jobs:
-  test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-      - run: pnpm install --frozen-lockfile
-      - run: pnpm run check
-      - run: pnpm run test:run
+    test:
+        runs-on: ubuntu-latest
+        strategy:
+            matrix:
+                node-version: [20, 22]
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: ${{ matrix.node-version }}
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm run check
+            - run: pnpm run test:run
+
+    lint:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm run lint
+            - run: pnpm run format:check
+
+    package:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm run package
+            - run: pnpm run lint:package
+            - run: pnpm run smoke

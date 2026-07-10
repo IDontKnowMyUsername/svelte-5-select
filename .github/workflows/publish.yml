@@ -1,0 +1,51 @@
+# Publishes to npm via trusted publishing (OIDC) with provenance.
+# Requires the package to have trusted publishing configured on npmjs.com
+# for this repository and workflow file.
+#
+# - Tag push (v*): full gate, then real `npm publish --provenance`.
+# - Manual dispatch: same gate, but `npm publish --dry-run` (dress rehearsal).
+name: Publish
+
+on:
+    push:
+        tags: ['v*']
+    workflow_dispatch:
+
+permissions:
+    contents: read
+    id-token: write
+
+jobs:
+    publish:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v4
+            - uses: pnpm/action-setup@v4
+            - uses: actions/setup-node@v4
+              with:
+                  node-version: 22
+                  cache: pnpm
+                  registry-url: 'https://registry.npmjs.org'
+            - name: Verify tag matches package.json version
+              if: github.event_name == 'push'
+              run: |
+                  TAG="${GITHUB_REF_NAME#v}"
+                  PKG="$(node -p "require('./package.json').version")"
+                  if [ "$TAG" != "$PKG" ]; then
+                    echo "tag v$TAG does not match package.json version $PKG" >&2
+                    exit 1
+                  fi
+            - run: pnpm install --frozen-lockfile
+            - run: pnpm run check
+            - run: pnpm run test:run
+            - run: pnpm run package
+            - run: pnpm run lint:package
+            - run: pnpm run smoke
+            # Trusted publishing needs npm >= 11.5.1; Node 22 bundles npm 10
+            - run: npm install -g npm@latest
+            - name: Dry-run publish (dress rehearsal)
+              if: github.event_name == 'workflow_dispatch'
+              run: npm publish --dry-run
+            - name: Publish with provenance
+              if: github.event_name == 'push'
+              run: npm publish --provenance
