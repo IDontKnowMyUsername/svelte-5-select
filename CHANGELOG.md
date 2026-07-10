@@ -1,5 +1,20 @@
 # svelte-5-select changelog
 
+## 1.0.2 (2026-04-07)
+
+* Fixed: `pointerup` `preventDefault` is now gated on mouse input only, restoring touch interaction
+* Dropped `svelte-preprocess`; pinned `typescript` to `^5.9.3` and bumped the `svelte` peer range
+* Updated dependencies
+
+## 1.0.0 (2026-02-16)
+
+* First stable release of the fork
+* Refactored `Select.svelte` into composables (`use-value`, `use-hover`, `use-load-options`, `keyboard-navigation`, `aria-handlers`) and improved ARIA handling and type safety
+* Fixed clearing behavior when using `justValue`, with new tests and `load-dependencies` examples
+* Migrated the codebase from JavaScript to TypeScript
+* Added a Tailwind stylesheet (`svelte-5-select/tailwind.css`)
+* Updated all dependencies
+
 ## 1.0.0-beta
 * Forked from [kodaicoder/svelte-5-select](https://github.com/kodaicoder/svelte-5-select), which was forked from [rob-balfre/svelte-select](https://github.com/rob-balfre/svelte-select)
 * Updated dependencies and associated code to Typescript
