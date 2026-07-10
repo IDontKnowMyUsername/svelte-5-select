@@ -45,7 +45,18 @@ jobs:
             - run: npm install -g npm@latest
             - name: Dry-run publish (dress rehearsal)
               if: github.event_name == 'workflow_dispatch'
-              run: npm publish --dry-run
+              # `npm publish --dry-run` rejects versions that are already on the
+              # registry, which is the normal state between releases — fall back
+              # to validating the pack only.
+              run: |
+                  NAME="$(node -p "require('./package.json').name")"
+                  VERSION="$(node -p "require('./package.json').version")"
+                  if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null)" ]; then
+                    echo "$NAME@$VERSION is already published - validating pack only"
+                    npm pack --dry-run
+                  else
+                    npm publish --dry-run
+                  fi
             - name: Publish with provenance
               if: github.event_name == 'push'
               run: npm publish --provenance
