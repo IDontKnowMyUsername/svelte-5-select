@@ -49,7 +49,6 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--indicators-right`
 - `--indicators-top`
 - `--input-color`
-- `--input-left`
 - `--input-letter-spacing`
 - `--input-margin`
 - `--input-padding`
