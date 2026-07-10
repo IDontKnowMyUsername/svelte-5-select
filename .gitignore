@@ -12,3 +12,4 @@ node_modules
 /dist
 .claude/
 /docs
+/coverage
