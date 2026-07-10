@@ -41,8 +41,9 @@ jobs:
             - run: pnpm run package
             - run: pnpm run lint:package
             - run: pnpm run smoke
-            # Trusted publishing needs npm >= 11.5.1; Node 22 bundles npm 10
-            - run: npm install -g npm@latest
+            # Trusted publishing needs npm >= 11.5.1; Node 22 bundles npm 10.
+            # Pinned to major 11 so a broken npm@latest can't take down releases.
+            - run: npm install -g npm@11
             - name: Dry-run publish (dress rehearsal)
               if: github.event_name == 'workflow_dispatch'
               # `npm publish --dry-run` rejects versions that are already on the
