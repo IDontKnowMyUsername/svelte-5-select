@@ -2,7 +2,7 @@
     import Select from '$lib/Select.svelte';
     import type { SelectItem } from '$lib';
 
-    let items = [
+    let items: SelectItem[] = [
         { value: 'one', label: 'One' },
         { value: 'two', label: 'Two' },
         { value: 'three', label: 'Three' },

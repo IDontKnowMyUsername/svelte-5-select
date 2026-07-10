@@ -3564,6 +3564,104 @@ describe('Select Component', () => {
             expect(listbox!.id).toBe('listbox-test');
         });
 
+        it('input has aria-required when required', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    required: true,
+                },
+            });
+
+            const input = document.querySelector('[role="combobox"]');
+            expect(input!.getAttribute('aria-required')).toBe('true');
+        });
+
+        it('input has no aria-required by default', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                },
+            });
+
+            const input = document.querySelector('[role="combobox"]');
+            expect(input!.hasAttribute('aria-required')).toBe(false);
+        });
+
+        it('input has aria-invalid when hasError', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    hasError: true,
+                },
+            });
+
+            const input = document.querySelector('[role="combobox"]');
+            expect(input!.getAttribute('aria-invalid')).toBe('true');
+        });
+
+        it('input has no aria-invalid by default', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                },
+            });
+
+            const input = document.querySelector('[role="combobox"]');
+            expect(input!.hasAttribute('aria-invalid')).toBe(false);
+        });
+
+        it('listbox has aria-multiselectable when multiple', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    multiple: true,
+                    listOpen: true,
+                },
+            });
+
+            const listbox = document.querySelector('[role="listbox"]');
+            expect(listbox!.getAttribute('aria-multiselectable')).toBe('true');
+        });
+
+        it('listbox has no aria-multiselectable in single mode', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                },
+            });
+
+            const listbox = document.querySelector('[role="listbox"]');
+            expect(listbox!.hasAttribute('aria-multiselectable')).toBe(false);
+        });
+
+        it('live region announces text updates', () => {
+            render(Select, {
+                props: {
+                    items: items,
+                },
+            });
+
+            const liveRegion = document.querySelector('[aria-live="polite"]');
+            expect(liveRegion!.getAttribute('aria-relevant')).toBe('additions text');
+        });
+
+        it('Home and End move hover to first and last item', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    hoverItemIndex: 2,
+                },
+            });
+
+            await handleKeyboard('Home');
+            expect(document.querySelector('.item.hover')!.textContent!.trim()).toBe('Chocolate');
+
+            await handleKeyboard('End');
+            expect(document.querySelector('.item.hover')!.textContent!.trim()).toBe('Ice Cream');
+        });
+
         it('items have role="option" with aria-selected', () => {
             render(Select, {
                 props: {

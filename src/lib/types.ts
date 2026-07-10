@@ -1,7 +1,7 @@
 import type { Snippet } from 'svelte';
 import type { ComputePositionConfig } from 'svelte-floating-ui/dom';
 
-export type SelectValue = SelectItem | SelectItem[] | null;
+export type SelectValue<Item extends SelectItem = SelectItem> = Item | Item[] | null;
 
 export interface ErrorEvent {
     type: string;
@@ -142,14 +142,14 @@ export interface SelectItem {
     [key: string]: any;
 }
 
-export interface SelectProps {
+export interface SelectProps<Item extends SelectItem = SelectItem> {
     // Core data props
     filterText?: string;
     itemId?: string;
-    items?: SelectItem[] | string[] | null;
+    items?: Item[] | string[] | null;
     justValue?: JustValue;
     label?: string;
-    value?: SelectItem | SelectItem[] | string | null;
+    value?: Item | Item[] | string | null;
 
     // UI props
     disabled?: boolean;
@@ -192,13 +192,13 @@ export interface SelectProps {
     loadOptionsDeps?: any[];
 
     // Function props
-    createGroupHeaderItem?: (groupValue: string, item: SelectItem) => SelectItem;
+    createGroupHeaderItem?: (groupValue: string, item: Item) => SelectItem;
     debounce?: (fn: () => void, wait: number) => void;
     filter?: (config: FilterConfig) => SelectItem[];
-    groupBy?: ((item: SelectItem) => string) | undefined;
+    groupBy?: ((item: Item) => string) | undefined;
     groupFilter?: (groups: string[]) => string[];
-    itemFilter?: (label: string, filterText: string, option: SelectItem) => boolean;
-    loadOptions?: (filterText: string) => Promise<SelectItem[] | string[]>;
+    itemFilter?: (label: string, filterText: string, option: Item) => boolean;
+    loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
 
     // ARIA props
     ariaFocused?: () => string;
@@ -211,30 +211,30 @@ export interface SelectProps {
 
     // Event handlers
     onblur?: (e: FocusEvent) => void;
-    onchange?: (value: SelectValue) => void;
-    onclear?: (value: SelectValue) => void;
+    onchange?: (value: SelectValue<Item>) => void;
+    onclear?: (value: SelectValue<Item>) => void;
     onerror?: (error: ErrorEvent) => void;
-    onfilter?: (items: SelectItem[]) => void;
+    onfilter?: (items: Item[]) => void;
     onfocus?: (e: FocusEvent) => void;
     onhoveritem?: (index: number) => void;
-    oninput?: (value: SelectValue) => void;
-    onloaded?: (options: SelectItem[]) => void;
-    onselect?: (selection: SelectItem) => void;
+    oninput?: (value: SelectValue<Item>) => void;
+    onloaded?: (options: Item[]) => void;
+    onselect?: (selection: Item) => void;
 
     // Snippet props
     chevronIconSnippet?: Snippet<[boolean]>;
     clearIconSnippet?: Snippet;
     emptySnippet?: Snippet;
-    inputHiddenSnippet?: Snippet<[SelectValue]>;
-    itemSnippet?: Snippet<[SelectItem, number]>;
+    inputHiddenSnippet?: Snippet<[SelectValue<Item>]>;
+    itemSnippet?: Snippet<[Item, number]>;
     listAppendSnippet?: Snippet;
     listPrependSnippet?: Snippet;
-    listSnippet?: Snippet<[SelectItem[]]>;
+    listSnippet?: Snippet<[Item[]]>;
     loadingIconSnippet?: Snippet;
     multiClearIconSnippet?: Snippet;
     prependSnippet?: Snippet;
-    requiredSnippet?: Snippet<[SelectValue]>;
-    selectionSnippet?: Snippet<[SelectItem | SelectItem[], number?]>;
+    requiredSnippet?: Snippet<[SelectValue<Item>]>;
+    selectionSnippet?: Snippet<[Item | Item[], number?]>;
 
     // DOM references (for binding)
     container?: HTMLDivElement;

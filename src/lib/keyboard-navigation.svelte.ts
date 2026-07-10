@@ -1,5 +1,5 @@
 import type { KeyboardNavigationContext, SelectItem } from './types';
-import { areItemsEqual } from '$lib/utils';
+import { areItemsEqual, isItemSelectableCheck } from '$lib/utils';
 
 export function useKeyboardNavigation(context: KeyboardNavigationContext) {
     function handleKeyDown(e: KeyboardEvent): void {
@@ -17,6 +17,8 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
             Backspace: handleBackspaceKey,
             ArrowLeft: handleArrowLeftKey,
             ArrowRight: handleArrowRightKey,
+            Home: handleHomeKey,
+            End: handleEndKey,
         };
 
         const handler = handlers[e.key];
@@ -121,6 +123,32 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         }
     }
 
+    // Home/End only take over list navigation while no filter text is
+    // entered, so text-caret movement in the input keeps working
+    function handleHomeKey(e: KeyboardEvent): void {
+        const { listOpen, filteredItems, filterText } = context.getState();
+
+        if (!listOpen || filterText.length > 0) return;
+
+        e.preventDefault();
+        const firstSelectable = filteredItems.findIndex((item) => isItemSelectableCheck(item));
+        if (firstSelectable >= 0) context.setHoverItemIndex(firstSelectable);
+    }
+
+    function handleEndKey(e: KeyboardEvent): void {
+        const { listOpen, filteredItems, filterText } = context.getState();
+
+        if (!listOpen || filterText.length > 0) return;
+
+        e.preventDefault();
+        for (let i = filteredItems.length - 1; i >= 0; i--) {
+            if (isItemSelectableCheck(filteredItems[i])) {
+                context.setHoverItemIndex(i);
+                return;
+            }
+        }
+    }
+
     function handleArrowRightKey(_e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = context.getState();
 
@@ -143,5 +171,7 @@ export function useKeyboardNavigation(context: KeyboardNavigationContext) {
         handleBackspaceKey,
         handleArrowLeftKey,
         handleArrowRightKey,
+        handleHomeKey,
+        handleEndKey,
     };
 }

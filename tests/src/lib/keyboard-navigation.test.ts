@@ -475,4 +475,74 @@ describe('useKeyboardNavigation', () => {
 
         expect(context.setActiveValue).not.toHaveBeenCalled();
     });
+
+    it('handles Home key to move hover to first selectable item', () => {
+        const context = createMockContext();
+        context.getState().listOpen = true;
+        context.getState().filteredItems = [
+            { value: 'header', label: 'Header', selectable: false },
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+        ];
+        context.getState().hoverItemIndex = 2;
+
+        const { handleKeyDown } = useKeyboardNavigation(context);
+
+        const event = new KeyboardEvent('keydown', { key: 'Home' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(context.setHoverItemIndex).toHaveBeenCalledWith(1);
+        expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it('handles End key to move hover to last selectable item', () => {
+        const context = createMockContext();
+        context.getState().listOpen = true;
+        context.getState().filteredItems = [
+            { value: 'a', label: 'A' },
+            { value: 'b', label: 'B' },
+            { value: 'c', label: 'C', selectable: false },
+        ];
+        context.getState().hoverItemIndex = 0;
+
+        const { handleKeyDown } = useKeyboardNavigation(context);
+
+        const event = new KeyboardEvent('keydown', { key: 'End' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(context.setHoverItemIndex).toHaveBeenCalledWith(1);
+        expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it('ignores Home and End when the list is closed', () => {
+        const context = createMockContext();
+        context.getState().listOpen = false;
+
+        const { handleKeyDown } = useKeyboardNavigation(context);
+
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }));
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'End' }));
+
+        expect(context.setHoverItemIndex).not.toHaveBeenCalled();
+    });
+
+    it('ignores Home and End while filter text is entered so the caret can move', () => {
+        const context = createMockContext();
+        context.getState().listOpen = true;
+        context.getState().filterText = 'ab';
+
+        const { handleKeyDown } = useKeyboardNavigation(context);
+
+        const event = new KeyboardEvent('keydown', { key: 'Home' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(context.setHoverItemIndex).not.toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
 });

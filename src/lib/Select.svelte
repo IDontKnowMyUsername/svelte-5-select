@@ -1,6 +1,6 @@
 <svelte:options runes={true} />
 
-<script lang="ts">
+<script lang="ts" generics="Item extends SelectItem = SelectItem">
     import { onDestroy, onMount, untrack } from 'svelte';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
     import { createFloatingActions } from 'svelte-floating-ui';
@@ -33,7 +33,7 @@
         // Core data props
         filterText = $bindable(''),
         itemId = 'value',
-        items = $bindable<SelectItem[] | string[] | null>(null),
+        items = $bindable<Item[] | string[] | null>(null),
         justValue = $bindable(),
         label = 'label',
         value = $bindable(),
@@ -137,7 +137,7 @@
         container = undefined,
         input = undefined,
         ...rest
-    }: SelectProps = $props();
+    }: SelectProps<Item> = $props();
 
     let normalizedValue = $derived<SelectItem | SelectItem[] | null>(
         !value ? null : typeof value === 'string' ? { value, label: value } : value,
@@ -164,7 +164,7 @@
 
     function internalHandleClear(_e?: MouseEvent): void {
         clearState = true;
-        onclear(value as SelectValue);
+        onclear(value as SelectValue<Item>);
         value = undefined;
         closeList();
         handleFocus();
@@ -179,6 +179,8 @@
         'aria-haspopup': 'listbox',
         'aria-activedescendant': listOpen ? `listbox-${_id}-item-${hoverItemIndex}` : undefined,
         'aria-label': ariaLabel ?? placeholder,
+        'aria-required': required || undefined,
+        'aria-invalid': hasError || undefined,
         tabindex: 0,
         readonly: !searchable,
         id: id ? id : undefined,
@@ -205,8 +207,8 @@
     let filteredItems = $state<SelectItem[]>([]);
 
     // Instance export — call via a bind:this reference
-    export function getFilteredItems(): SelectItem[] {
-        return filteredItems;
+    export function getFilteredItems(): Item[] {
+        return filteredItems as Item[];
     }
 
     let ariaContext = $derived(
@@ -255,17 +257,17 @@
             clearState,
             closeListOnChange,
         }),
-        setValue: (v) => (value = v),
+        setValue: (v) => (value = v as typeof value),
         setJustValue: (v) => (justValue = v),
         setPrevValue: (v) => (prev_value = v),
         setClearState: (v) => (clearState = v),
         setActiveValue: (v) => (activeValue = v),
         setFilterText: (v) => (filterText = v),
         closeList,
-        oninput: (v) => oninput?.(v as SelectValue),
-        onchange: (v) => onchange?.(v as SelectValue),
-        onclear: (v) => onclear(v as SelectValue),
-        onselect: (s) => onselect?.(s),
+        oninput: (v) => oninput?.(v as SelectValue<Item>),
+        onchange: (v) => onchange?.(v as SelectValue<Item>),
+        onclear: (v) => onclear(v as SelectValue<Item>),
+        onselect: (s) => onselect?.(s as Item),
     });
 
     const hoverManager = useHover({
@@ -276,7 +278,7 @@
             multiple,
             value,
             isScrolling,
-            groupBy,
+            groupBy: groupBy as ((item: SelectItem) => string) | undefined,
             itemId,
         }),
         setHoverItemIndex: (v) => (hoverItemIndex = v),
@@ -300,14 +302,14 @@
             listOpen,
             debounceWait,
         }),
-        setItems: (v) => (items = v),
-        setValue: (v) => (value = v),
+        setItems: (v) => (items = v as typeof items),
+        setValue: (v) => (value = v as typeof value),
         setJustValue: (v) => (justValue = v),
         setLoading: (v) => (loading = v),
         setListOpen: (v) => (listOpen = v),
         debounce,
         convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
-        onloaded: (opts) => onloaded(opts),
+        onloaded: (opts) => onloaded(opts as Item[]),
         onerror: (err) => onerror(err),
     });
 
@@ -354,10 +356,10 @@
                     multiple,
                     value: normalizedValue,
                     itemId,
-                    groupBy,
+                    groupBy: groupBy as ((item: SelectItem) => string) | undefined,
                     label,
                     filterSelectedItems,
-                    itemFilter,
+                    itemFilter: itemFilter as (label: string, filterText: string, option: SelectItem) => boolean,
                     convertStringItemsToObjects: valueManager.convertStringItemsToObjects,
                     filterGroupedItems,
                 })),
@@ -404,7 +406,7 @@
     // Value cleared notification
     $effect(() => {
         if (prev_value && !value) {
-            oninput?.((value || []) as SelectValue);
+            oninput?.((value || []) as SelectValue<Item>);
         }
     });
 
@@ -471,7 +473,7 @@
 
     // Fire onfilter
     $effect(() => {
-        if (filteredItems && listOpen) onfilter?.(filteredItems);
+        if (filteredItems && listOpen) onfilter?.(filteredItems as Item[]);
     });
 
     // Floating UI config
@@ -541,14 +543,14 @@
         const groups: Record<string, SelectItem[]> = {};
 
         _items.forEach((item) => {
-            const groupValue: string = groupBy(item);
+            const groupValue: string = groupBy(item as Item);
 
             if (!groupValues.includes(groupValue)) {
                 groupValues.push(groupValue);
                 groups[groupValue] = [];
                 if (groupValue) {
                     groups[groupValue].push(
-                        Object.assign(createGroupHeaderItem(groupValue, item), {
+                        Object.assign(createGroupHeaderItem(groupValue, item as Item), {
                             id: groupValue,
                             groupHeader: true,
                             selectable: groupHeaderSelectable,
@@ -712,12 +714,13 @@
                 ev.stopPropagation();
             }}
             role="listbox"
+            aria-multiselectable={multiple || undefined}
             id="listbox-{_id}">
             {#if listPrependSnippet}
                 {@render listPrependSnippet()}
             {/if}
             {#if listSnippet}
-                {@render listSnippet(filteredItems)}
+                {@render listSnippet(filteredItems as Item[])}
             {:else if filteredItems?.length > 0}
                 {#each filteredItems as item, i}
                     <div
@@ -749,7 +752,7 @@
                             role={item.groupHeader ? 'group' : undefined}
                             aria-label={item.groupHeader ? item[label] : undefined}>
                             {#if itemSnippet}
-                                {@render itemSnippet(item, i)}
+                                {@render itemSnippet(item as Item, i)}
                             {:else}
                                 {item?.[label]}
                             {/if}
@@ -771,7 +774,7 @@
         </div>
     {/if}
 
-    <span aria-live="polite" aria-atomic="false" aria-relevant="additions" class="a11y-text">
+    <span aria-live="polite" aria-atomic="false" aria-relevant="additions text" class="a11y-text">
         {#if focused}
             <span id="aria-selection">{ariaSelection}</span>
             <span id="aria-context">
@@ -834,7 +837,7 @@
             {:else}
                 <div class="selected-item" class:hide-selected-item={hideSelectedItem}>
                     {#if selectionSnippet}
-                        {@render selectionSnippet(value as SelectItem)}
+                        {@render selectionSnippet(value as Item)}
                     {:else}
                         {!Array.isArray(normalizedValue) ? normalizedValue?.[label] : ''}
                     {/if}
@@ -888,7 +891,7 @@
         {/if}
     </div>
     {#if inputHiddenSnippet}
-        {@render inputHiddenSnippet(value as SelectValue)}
+        {@render inputHiddenSnippet(value as SelectValue<Item>)}
     {:else if multiple && Array.isArray(value) && value.length > 0}
         {#each value as item}
             <input {name} type="hidden" value={useJustValue ? item[itemId] : JSON.stringify(item)} />
@@ -899,7 +902,7 @@
 
     {#if required && (!value || value.length === 0)}
         {#if requiredSnippet}
-            {@render requiredSnippet(value as SelectValue)}
+            {@render requiredSnippet(value as SelectValue<Item>)}
         {:else}
             <select class="required" required tabindex="-1" aria-hidden="true"></select>
         {/if}
