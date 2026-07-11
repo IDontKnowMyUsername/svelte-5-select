@@ -2,24 +2,58 @@ import { untrack } from 'svelte';
 import type { LoadOptionsActions, SelectItem, SelectState } from './types';
 import { convertStringItemsToObjects, getItemProperty } from './utils';
 
+export interface HandleLoadOptionsOptions {
+    /** Clear the selection when it is missing from the loaded items (dependency-driven reloads). */
+    validateValue?: boolean;
+    /** Defer the fetch through the debounce action (typing); defaults to the legacy prevFilterText comparison. */
+    debounce?: boolean;
+    /** Clear value/items in the disabled branch; the load effect only passes true on an actual disabled transition. */
+    clearValueOnDisabled?: boolean;
+}
+
 export function useLoadOptions<Item extends SelectItem = SelectItem>(
     state: SelectState<Item>,
     actions: LoadOptionsActions,
 ) {
     // Monotonic token so responses that resolve after a newer request started are discarded
     let requestSequence = 0;
+    // Whether the newest armed/in-flight load came from typing; only those may be
+    // cancelled by selection or list close — dependency reloads must still land
+    let latestLoadIsFilterDriven = false;
 
-    function handleLoadOptions(currentFilterText: string, options: { validateValue?: boolean } = {}) {
+    // Invalidate every pending and in-flight load: a pending one never fetches,
+    // an in-flight response is discarded. Does not touch reactive state, so it
+    // is safe to call during component teardown.
+    function invalidateLoads(): void {
+        requestSequence++;
+        latestLoadIsFilterDriven = false;
+    }
+
+    // A filter-driven load becomes moot when the user selects an item, empties
+    // the filter text, or closes the list before the debounce fires.
+    function cancelPendingFilterLoad(): void {
+        if (!latestLoadIsFilterDriven) return;
+        invalidateLoads();
+        if (state.loading) state.loading = false;
+    }
+
+    function handleLoadOptions(currentFilterText: string, options: HandleLoadOptionsOptions = {}) {
         const { loadOptions, disabled, prevFilterText, debounceWait } = state;
-        const { validateValue = false } = options;
+        const {
+            validateValue = false,
+            debounce: shouldDebounce = currentFilterText !== prevFilterText,
+            clearValueOnDisabled = true,
+        } = options;
 
         if (loadOptions && !disabled) {
             state.loading = true;
 
             const token = ++requestSequence;
-            const isFilterTextChange = currentFilterText !== prevFilterText;
+            latestLoadIsFilterDriven = shouldDebounce;
 
             const executeLoad = async () => {
+                // Cancelled or superseded while waiting in the debounce queue: never fetch
+                if (token !== requestSequence) return;
                 try {
                     const result = await loadOptions(currentFilterText);
                     if (token !== requestSequence) return; // superseded by a newer request
@@ -70,19 +104,25 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
                 }
             };
 
-            if (isFilterTextChange) {
+            if (shouldDebounce) {
                 actions.debounce(executeLoad, debounceWait);
             } else {
                 executeLoad();
             }
         } else if (loadOptions && disabled) {
-            if (state.value || (state.useJustValue && state.justValue)) {
-                state.value = state.multiple ? [] : undefined;
-                if (state.useJustValue) {
-                    state.justValue = state.multiple ? [] : '';
+            // A response arriving after the disable must not repopulate the control
+            invalidateLoads();
+            if (state.loading) state.loading = false;
+
+            if (clearValueOnDisabled) {
+                if (state.value || (state.useJustValue && state.justValue)) {
+                    state.value = state.multiple ? [] : undefined;
+                    if (state.useJustValue) {
+                        state.justValue = state.multiple ? [] : '';
+                    }
                 }
+                state.items = null;
             }
-            state.items = null;
         }
     }
 
@@ -90,10 +130,11 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
     let prevRun: { filterText: string; deps: unknown[]; disabled: boolean } | undefined;
 
     // Run loadOptions when its inputs change: typing non-empty filter text
-    // re-queries, a loadOptionsDeps change re-queries and re-validates the value,
-    // and toggling disabled clears or reloads the loaded state. listOpen is
-    // deliberately NOT an input — opening or closing the list must never fetch,
-    // and clearing the filter text on close must not fire a loadOptions('').
+    // re-queries (debounced), a loadOptionsDeps change re-queries and re-validates
+    // the value, and toggling disabled clears or reloads the loaded state; mount,
+    // deps, and disabled loads fire immediately. listOpen is deliberately NOT an
+    // input — opening or closing the list must never fetch, and clearing the
+    // filter text on close must not fire a loadOptions('').
     $effect(() => {
         const filterText = state.filterText;
         const deps = [...state.loadOptionsDeps];
@@ -111,11 +152,22 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
         const disabledChanged = !isFirstRun && disabled !== prev.disabled;
 
         if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0)) {
-            untrack(() => handleLoadOptions(filterText, { validateValue: depsChanged }));
+            untrack(() =>
+                handleLoadOptions(filterText, {
+                    validateValue: depsChanged,
+                    debounce: filterTextChanged && !depsChanged && !disabledChanged,
+                    clearValueOnDisabled: disabledChanged,
+                }),
+            );
+        } else if (filterTextChanged) {
+            // Filter text was emptied: a load armed for the old text is moot now
+            untrack(() => cancelPendingFilterLoad());
         }
     });
 
     return {
         handleLoadOptions,
+        cancelPendingFilterLoad,
+        invalidateLoads,
     };
 }

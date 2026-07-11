@@ -19,6 +19,8 @@ describe('useKeyboardNavigation', () => {
             filterText: '',
             activeValue: undefined,
             itemId: 'value',
+            label: 'label',
+            searchable: true,
             focused: true,
             ...overrides,
         };
@@ -536,5 +538,143 @@ describe('useKeyboardNavigation', () => {
 
         expect(writes.hoverItemIndex).toBeUndefined();
         expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    describe('type-ahead (searchable={false})', () => {
+        const fruits = [
+            { value: 'apple', label: 'Apple' },
+            { value: 'banana', label: 'Banana' },
+            { value: 'blueberry', label: 'Blueberry' },
+            { value: 'cherry', label: 'Cherry' },
+        ] as SelectItem[];
+
+        function keyEvent(key: string, timeStamp: number, init: KeyboardEventInit = {}) {
+            const event = new KeyboardEvent('keydown', { key, ...init });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+            Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+            Object.defineProperty(event, 'timeStamp', { value: timeStamp });
+            return event;
+        }
+
+        it('moves hover to the next option starting with the typed character and claims the event', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: fruits,
+                hoverItemIndex: 0,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = keyEvent('b', 1000);
+            handleKeyDown(event);
+
+            expect(writes.hoverItemIndex).toEqual([1]);
+            expect(event.preventDefault).toHaveBeenCalled();
+            expect(event.stopPropagation).toHaveBeenCalled();
+        });
+
+        it('opens the list when it is closed', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: false,
+                filteredItems: fruits,
+                hoverItemIndex: 1,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('c', 1000));
+
+            expect(writes.listOpen).toEqual([true]);
+            expect(writes.hoverItemIndex).toEqual([3]);
+        });
+
+        it('refines the match as characters accumulate within the pause window', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: fruits,
+                hoverItemIndex: 0,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('b', 1000)); // Banana
+            handleKeyDown(keyEvent('l', 1100)); // "bl" -> Blueberry
+
+            expect(writes.hoverItemIndex).toEqual([1, 2]);
+        });
+
+        it('cycles through options with the same initial on a repeated character', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: fruits,
+                hoverItemIndex: 1,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('b', 1000)); // from Banana -> Blueberry
+            handleKeyDown(keyEvent('b', 1100)); // wraps back to Banana
+
+            expect(writes.hoverItemIndex).toEqual([2, 1]);
+        });
+
+        it('starts a fresh query after the pause window', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: fruits,
+                hoverItemIndex: 0,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('b', 1000)); // Banana
+            handleKeyDown(keyEvent('c', 2500)); // stale "b" dropped -> Cherry, not "bc"
+
+            expect(writes.hoverItemIndex).toEqual([1, 3]);
+        });
+
+        it('skips non-selectable options', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: [
+                    { value: 'apple', label: 'Apple' },
+                    { value: 'banana', label: 'Banana', selectable: false },
+                    { value: 'blueberry', label: 'Blueberry' },
+                ] as SelectItem[],
+                hoverItemIndex: 0,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('b', 1000));
+
+            expect(writes.hoverItemIndex).toEqual([2]);
+        });
+
+        it('does nothing when the select is searchable', () => {
+            const { state, writes, actions } = createMock({ searchable: true, listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = keyEvent('b', 1000);
+            handleKeyDown(event);
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('ignores modifier chords so shortcuts keep working', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: fruits,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = keyEvent('b', 1000, { ctrlKey: true });
+            handleKeyDown(event);
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+        });
     });
 });

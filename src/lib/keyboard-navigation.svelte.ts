@@ -1,5 +1,5 @@
 import type { KeyboardNavigationActions, KeyboardNavigationState, SelectItem } from './types';
-import { areItemsEqual, isItemSelectableCheck } from '$lib/utils';
+import { areItemsEqual, getItemProperty, isItemSelectableCheck } from '$lib/utils';
 
 export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
     state: KeyboardNavigationState<Item>,
@@ -29,6 +29,57 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         const handler = handlers[e.key];
         if (handler) {
             handler(e);
+            return;
+        }
+
+        handleTypeAheadKey(e);
+    }
+
+    // Type-ahead for select-only mode (APG combobox pattern): the input is
+    // readonly when searchable is false, so printable characters move hover to
+    // the next option whose label starts with what was typed. Searchable
+    // selects filter by typing instead and never enter this path.
+    let typeAheadQuery = '';
+    let typeAheadLastKeyTime = 0;
+    const TYPE_AHEAD_RESET_MS = 700;
+
+    function handleTypeAheadKey(e: KeyboardEvent): void {
+        if (state.searchable) return;
+        if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (e.key === ' ' && typeAheadQuery === '') return; // a bare Space is not a query
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        // Event timestamps instead of a reset timer: nothing to clean up on destroy
+        if (e.timeStamp - typeAheadLastKeyTime > TYPE_AHEAD_RESET_MS) typeAheadQuery = '';
+        typeAheadLastKeyTime = e.timeStamp;
+        typeAheadQuery += e.key.toLowerCase();
+
+        if (!state.listOpen) {
+            state.listOpen = true;
+            state.activeValue = undefined;
+        }
+
+        const { filteredItems, hoverItemIndex, label } = state;
+        if (filteredItems.length === 0) return;
+
+        // Repeating one character cycles through the options with that initial;
+        // a growing query refines the match starting from the current option
+        const isSameCharRun =
+            typeAheadQuery.length > 1 && typeAheadQuery.split('').every((ch) => ch === typeAheadQuery[0]);
+        const query = isSameCharRun ? typeAheadQuery[0] : typeAheadQuery;
+        const startOffset = isSameCharRun || typeAheadQuery.length === 1 ? 1 : 0;
+
+        for (let step = 0; step < filteredItems.length; step++) {
+            const i = (hoverItemIndex + startOffset + step) % filteredItems.length;
+            const item = filteredItems[i];
+            if (!isItemSelectableCheck(item)) continue;
+            const itemLabel = String(getItemProperty(item, label) ?? '').toLowerCase();
+            if (itemLabel.startsWith(query)) {
+                state.hoverItemIndex = i;
+                return;
+            }
         }
     }
 

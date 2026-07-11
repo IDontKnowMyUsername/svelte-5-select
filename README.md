@@ -49,7 +49,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | clearable              | `boolean` | `true`          | Enable clearing of value(s)                                    |
 | disabled               | `boolean` | `false`         | Disable select                                                 |
 | multiple               | `boolean` | `false`         | Enable multi-select                                            |
-| searchable             | `boolean` | `true`          | If `false` search/filtering is disabled                        |
+| searchable             | `boolean` | `true`          | If `false` search/filtering is disabled; typing moves to the next matching option (type-ahead) |
 | groupHeaderSelectable  | `boolean` | `false`         | Enable selectable group headers                                |
 | focused                | `boolean` | `false`         | Controls input focus                                           |
 | listAutoWidth          | `boolean` | `true`          | If `false` will ignore width of select                         |

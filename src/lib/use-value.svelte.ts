@@ -8,18 +8,53 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         return (items as Item[] | null)?.find((item) => getItemProperty(item, itemId) === id);
     }
 
-    // Normalizes raw string values into items, resolving against `items` when possible
+    // Exactly the shape synthesized below: an id-as-label item with no other keys
+    function isSynthesizedFallback(entry: Item): boolean {
+        const id = getItemProperty(entry, state.itemId);
+        if (id == null || id !== (entry as SelectItem).label) return false;
+        return Object.keys(entry).every((key) => key === state.itemId || key === 'label');
+    }
+
+    // Comparisons here must be structural: Svelte's state proxies mean an item
+    // written into `value` is never identical (===) to the same item re-read
+    // from `items`, so an identity check would re-write (and loop) forever
+    function shallowEqualItems(a: Item, b: Item): boolean {
+        const aKeys = Object.keys(a);
+        const bKeys = Object.keys(b);
+        return aKeys.length === bKeys.length && aKeys.every((key) => (a as SelectItem)[key] === (b as SelectItem)[key]);
+    }
+
+    // Resolves one value entry: a raw string becomes the matching item, or a
+    // synthesized fallback (label = id) so the control can render before items
+    // load; an earlier fallback upgrades to the real item once it exists.
+    function resolveEntry(entry: Item | string): Item {
+        const { itemId } = state;
+        if (typeof entry === 'string') {
+            return findItemByValue(entry) || ({ [itemId]: entry, label: entry } as Item);
+        }
+        if (isSynthesizedFallback(entry)) {
+            const found = findItemByValue(getItemProperty(entry, itemId));
+            if (found && !shallowEqualItems(found, entry)) return found;
+        }
+        return entry;
+    }
+
+    // Normalizes raw string values into items, resolving against `items` when
+    // possible. Only writes when an entry actually changed — the effect below
+    // tracks `value`, so an unconditional write would loop.
     function normalizeValue() {
-        const { value, multiple, itemId } = state;
-        if (typeof value === 'string') {
-            state.value = findItemByValue(value) || ({ [itemId]: value, label: value } as Item);
-        } else if (multiple && Array.isArray(value) && value.length > 0) {
-            state.value = (value as (Item | string)[]).map((val) => {
-                if (typeof val === 'string') {
-                    return findItemByValue(val) || ({ [itemId]: val, label: val } as Item);
-                }
-                return val;
-            });
+        const { value, multiple } = state;
+        if (value == null) return;
+
+        if (multiple && Array.isArray(value)) {
+            if (value.length === 0) return;
+            const resolved = (value as (Item | string)[]).map(resolveEntry);
+            if (resolved.some((item, i) => item !== value[i])) {
+                state.value = resolved;
+            }
+        } else if (!Array.isArray(value)) {
+            const resolved = resolveEntry(value as Item | string);
+            if (resolved !== value) state.value = resolved;
         }
     }
 
@@ -31,16 +66,24 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
             ? Array.isArray(justValue) && justValue.length > 0
             : justValue !== '' && justValue != null;
 
-        if (!useJustValue || value || clearState || !hasJustValue) return;
+        // An empty array means "nothing hydrated yet", not a real selection —
+        // hydration must still run once async items arrive
+        const hasRealValue = multiple ? Array.isArray(value) && value.length > 0 : !!value;
+        if (!useJustValue || hasRealValue || clearState || !hasJustValue) return;
 
+        // Hydration is all-or-nothing and retries when items change: writing a
+        // partial (or empty) match would silently narrow justValue and block
+        // later hydration against fuller items
         const typedItems = (state.items as Item[] | null) || [];
         if (multiple && Array.isArray(justValue)) {
             const justValueArr = justValue as (string | number)[];
-            state.value = typedItems.filter((item) =>
+            const matches = typedItems.filter((item) =>
                 justValueArr.includes(getItemProperty(item, itemId) as string | number),
             );
+            if (matches.length === justValueArr.length) state.value = matches;
         } else {
-            state.value = typedItems.filter((item) => getItemProperty(item, itemId) === justValue)[0];
+            const match = typedItems.find((item) => getItemProperty(item, itemId) === justValue);
+            if (match) state.value = match;
         }
     }
 
@@ -170,12 +213,13 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         actions.onselect(selection);
     }
 
-    // Normalize string values against items whenever hasValue flips
+    // Normalize string values on every value change (not just the hasValue
+    // flip — replacing one string with another must re-resolve), and again when
+    // async items arrive so fallback entries upgrade to the real item
     $effect(() => {
-        state.hasValue;
-        untrack(() => {
-            if (state.items) normalizeValue();
-        });
+        state.value;
+        state.items;
+        untrack(() => normalizeValue());
     });
 
     // Multiple-mode transitions (single<->multi) and duplicate guard
@@ -206,11 +250,13 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         untrack(() => dispatchSelectedItem());
     });
 
-    // Hydrate value from an initial justValue, then keep justValue in sync
+    // Hydrate value from an initial justValue, then keep justValue in sync.
+    // items is a tracked trigger so hydration retries when async items arrive.
     $effect(() => {
         state.multiple;
         state.itemId;
         state.value;
+        state.items;
         untrack(() => {
             state.justValue = syncJustValue();
         });

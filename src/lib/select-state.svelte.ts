@@ -89,6 +89,9 @@ export function createSelectState<Item extends SelectItem = SelectItem>(
         get label() {
             return props.label;
         },
+        get searchable() {
+            return props.searchable;
+        },
         get disabled() {
             return props.disabled;
         },

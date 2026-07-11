@@ -83,7 +83,14 @@ function createHarness(overrides: Partial<MockState> = {}) {
         target.loadOptions = loadOptions;
     }
 
-    return { state, writes, actions, handleLoadOptions: manager.handleLoadOptions };
+    return {
+        state,
+        writes,
+        actions,
+        handleLoadOptions: manager.handleLoadOptions,
+        cancelPendingFilterLoad: manager.cancelPendingFilterLoad,
+        invalidateLoads: manager.invalidateLoads,
+    };
 }
 
 describe('useLoadOptions', () => {
@@ -323,5 +330,88 @@ describe('useLoadOptions', () => {
 
         expect(writes.loading).toBeUndefined();
         expect(writes.items).toBeUndefined();
+    });
+
+    it('a cancelled filter-driven load never fetches and resets loading', async () => {
+        const loadOptions = vi.fn(() => Promise.resolve([]));
+        const { writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({ loadOptions });
+        let armed: (() => void) | undefined;
+        actions.debounce.mockImplementation((fn: () => void) => {
+            armed = fn;
+        });
+
+        handleLoadOptions('ab', { debounce: true });
+        expect(writes.loading).toEqual([true]);
+
+        cancelPendingFilterLoad();
+        armed!(); // the debounce timer fires anyway — e.g. a custom debounce prop
+        await flush();
+
+        expect(loadOptions).not.toHaveBeenCalled();
+        expect(writes.loading).toEqual([true, false]);
+        expect(actions.onloaded).not.toHaveBeenCalled();
+    });
+
+    it('cancelPendingFilterLoad leaves a dependency-driven load alone', async () => {
+        let resolveLoad!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));
+        const { writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({ loadOptions });
+
+        handleLoadOptions('', { debounce: false, validateValue: true });
+        cancelPendingFilterLoad();
+
+        resolveLoad([{ value: 'a', label: 'A' }]);
+        await flush();
+
+        expect(writes.items).toEqual([[{ value: 'a', label: 'A' }]]);
+        expect(actions.onloaded).toHaveBeenCalledTimes(1);
+    });
+
+    it('invalidateLoads discards an in-flight response', async () => {
+        let resolveLoad!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));
+        const { writes, actions, handleLoadOptions, invalidateLoads } = createHarness({ loadOptions });
+
+        handleLoadOptions('', { debounce: false });
+        invalidateLoads();
+
+        resolveLoad([{ value: 'a', label: 'A' }]);
+        await flush();
+
+        expect(writes.items).toBeUndefined();
+        expect(actions.onloaded).not.toHaveBeenCalled();
+    });
+
+    it('a disabled call invalidates the load already in flight', async () => {
+        let resolveLoad!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));
+        const { state, writes, actions, handleLoadOptions } = createHarness({ loadOptions });
+
+        handleLoadOptions('', { debounce: false });
+        (state as MockState).disabled = true;
+        handleLoadOptions('');
+
+        resolveLoad([{ value: 'a', label: 'A' }]);
+        await flush();
+
+        // Only the disabled wipe touched items; the stale response was discarded
+        expect(writes.items).toEqual([null]);
+        expect(writes.loading).toEqual([true, false]);
+        expect(actions.onloaded).not.toHaveBeenCalled();
+    });
+
+    it('keeps value and items when disabled without a disabled transition (mount)', () => {
+        const { writes, handleLoadOptions } = createHarness({
+            disabled: true,
+            value: { value: 'a', label: 'A' },
+            loadOptions: () => Promise.resolve([]),
+        });
+
+        handleLoadOptions('', { clearValueOnDisabled: false });
+
+        expect(writes.value).toBeUndefined();
+        expect(writes.justValue).toBeUndefined();
+        expect(writes.items).toBeUndefined();
+        expect(writes.loading).toBeUndefined();
     });
 });

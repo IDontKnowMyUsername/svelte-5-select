@@ -1,29 +1,59 @@
 # svelte-5-select changelog
 
+<!-- Maintainer note: this file is hand-written. On release, retitle "Unreleased"
+     to "x.y.z (yyyy-mm-dd)". release-it's conventional-changelog plugin only
+     computes the version bump and the GitHub release notes; it does not write
+     to this file. -->
+
 ## Unreleased
 
 ### ⚠ Breaking changes
 
 * Composable API reworked around a shared reactive state store: `useKeyboardNavigation` now takes `(state: KeyboardNavigationState, actions)`; `KeyboardNavigationContext` and `isCancelled` were removed
-* `loadOptions` is no longer re-run when the list opens or closes — it fires on typing (non-empty filter text), `loadOptionsDeps` changes, and mount; closing the list never triggers a fetch
+* `KeyboardNavigationState` (and the shared `SelectState`) gained required `label` and `searchable` fields to support type-ahead
+* `loadOptions` is no longer re-run when the list opens or closes — it fires on typing (non-empty filter text), `loadOptionsDeps` changes, mount, and disabled toggles; closing the list never triggers a fetch. Mount and dependency loads now fire immediately instead of inheriting the typing debounce
 * A filter-driven `loadOptions` result no longer clears a selection that is missing from the narrowed results; only dependency-driven reloads (`loadOptionsDeps`) validate and clear stale values
+* A pending debounced `loadOptions` fetch is cancelled when it becomes moot — an item is selected, the filter text is emptied, the list closes, the select is disabled, or the component unmounts. In-flight responses arriving after a disable are discarded
+* `loadOptions` results are no longer re-filtered by the label substring filter — what the loader returns is what the list shows (apps no longer need an `itemFilter={() => true}` workaround)
 * Enter and Escape pass through when the list is closed, so implicit form submission and dialog-close keep working; keys only stop propagation when the component actually handles them
 * Group headers no longer render `role="group"`/`aria-label` — an element with `role="option"`/`role="presentation"` may not contain a group, and the group wrapped only the header text
+* The multi-select tag remove control is now a real `<button>` in the tab order (was an unreachable `tabindex="-1"` div); removal is activated on `click` instead of `pointerup`, and removing an item refocuses the input
+* Arrow-key navigation now uses the same selectability rule as click/Enter (`selectable !== false`), so an item with an explicit `selectable: undefined` is reachable by keyboard
 * Removed the vestigial `build:lib` script and `vite.lib.config.ts` (a Svelte-4-era bundle build that clobbered `dist/`); `npm run package` is the library build
+
+### Added
+
+* Generic item typing: `<Select>` and the composables are generic over `Item extends SelectItem`, flowing into props, snippets, callbacks, and instance exports
+* Type-ahead for select-only mode: with `searchable={false}`, printable characters move hover to the next matching option (APG combobox pattern), open the closed list, and support repeated-initial cycling
+* Home/End move hover to the first/last selectable option while no filter text is entered
+* `aria-required`, `aria-invalid`, and `aria-multiselectable` reflect the `required`, `hasError`, and `multiple` props
+* `aria-disabled` marks non-selectable options, matching the keyboard-navigation skip
+* The active tag in multi mode (ArrowLeft/ArrowRight + Backspace) is announced via the live region; previously it was only a CSS outline
+* Accessible names on the combobox input (`ariaLabel` prop), clear button, and tag remove buttons
 
 ### Fixed
 
+* `bind:container` and `bind:input` now work as documented (the props were never `$bindable`, so following the README threw `bind_not_bindable`)
 * List could not be closed (and refetched on every attempt) with `loadOptions` + `clearFilterTextOnBlur={false}`
-* Selecting an item in an async select fired a spurious `loadOptions('')` and showed the loading spinner on the closed control
+* Selecting an item in an async select fired a spurious `loadOptions('')` and showed the loading spinner on the closed control; a fetch armed by typing could still fire after selection or close — both are cancelled now
+* Mounting a disabled select with `loadOptions` and a preset `value` no longer wipes the value; only an actual disabled transition clears state
+* Replacing one string `value` with another re-resolves it against `items` (previously only the empty↔non-empty flip re-normalized), and an initial string value now resolves to the real item once async items arrive
+* `justValue` hydration waits for items instead of writing an empty selection: no more spurious `oninput([])` at mount, and hydration retries when async items arrive (single and multi mode)
 * Multiple string values collapsed to a single entry when items were not yet resolvable (dedup keyed every raw string on `undefined`); multi-mode fallback normalization also respects a custom `itemId` now
 * Keyboard navigation scrolls the hovered option into view again (`block: 'nearest'`), and opening the list scrolls to the selected option — lost in the composable refactor
 * Custom `floatingConfig` (e.g. `placement`) was silently reverted by svelte-floating-ui's deferred recompute right after mount; overrides now merge into the config object the library holds a reference to
 * `isScrolling` no longer wedges hover and blur permanently on browsers without `scrollend` (e.g. Safari < 18.2); a 150 ms fallback clears it
+* Debounce and scroll-fallback timers are cleared on unmount, so a pending fetch can no longer run (and invoke `onloaded`/`onerror`) on a destroyed component
+* A user-supplied `handleClear` prop is respected instead of always running the internal clear
+* `getFilteredItems` is restored as a `bind:this` instance export (broken in the released 1.0.x line)
+* Repaired `tailwind.css` selectors and removed the dead camelCase CSS shim
+* Added the README-documented no-styles, `tailwind.css`, and styles subpath exports that failed to resolve under strict exports, and corrected the license metadata (custom permissive text, not ISC)
 * Removed the provably no-op window click handler; outside clicks keep closing the list via the input's native blur
 
 ### Tests
 
 * New real-browser layout suite (`pnpm run test:browser`, vitest browser mode + Playwright) asserting floating placement, `listOffset`, list width, and scroll-into-view geometry; the corresponding happy-dom tests were vacuous (no layout engine) and were removed or rewritten as `scrollIntoView` spies
+* Regression coverage for load cancellation, disabled-at-mount values, string-value re-resolution, late `justValue` hydration, type-ahead, `aria-disabled`, keyboard tag removal, and `bind:container`/`bind:input`
 
 ## 1.0.2 (2026-04-07)
 

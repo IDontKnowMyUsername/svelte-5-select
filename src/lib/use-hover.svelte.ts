@@ -4,9 +4,9 @@ import { areItemsEqual, getItemProperty, isItemSelectableCheck, normalizeItem } 
 
 export function useHover<Item extends SelectItem = SelectItem>(state: SelectState<Item>) {
     function computeNextIndex(filteredItems: SelectItem[], fromIndex: number, increment: number): number {
-        const selectableFilteredItems = filteredItems.filter(
-            (item) => !Object.hasOwn(item, 'selectable') || item.selectable === true,
-        );
+        // Same predicate as click/Enter selection: arrow keys must be able to
+        // reach every item the user can otherwise select
+        const selectableFilteredItems = filteredItems.filter((item) => isItemSelectableCheck(item));
 
         if (selectableFilteredItems.length === 0) {
             return 0;
@@ -111,6 +111,12 @@ export function useHover<Item extends SelectItem = SelectItem>(state: SelectStat
         clearTimeout(scrollEndFallback);
         state.isScrolling = false;
     }
+
+    // Teardown-only effect (not onDestroy: composables are also created inside
+    // $effect.root in tests, where onDestroy has no component context)
+    $effect(() => {
+        return () => clearTimeout(scrollEndFallback);
+    });
 
     // Set value index as hover when list opens
     $effect(() => {

@@ -63,6 +63,7 @@ export interface SelectState<Item extends SelectItem = SelectItem> {
     readonly multiple: boolean;
     readonly itemId: string;
     readonly label: string;
+    readonly searchable: boolean;
     readonly disabled: boolean;
     readonly useJustValue: boolean;
     readonly closeListOnChange: boolean;
@@ -95,6 +96,8 @@ export interface KeyboardNavigationState<Item extends SelectItem = SelectItem> {
     readonly filterText: string;
     activeValue: number | undefined;
     readonly itemId: string;
+    readonly label: string;
+    readonly searchable: boolean;
     readonly focused: boolean;
 }
 

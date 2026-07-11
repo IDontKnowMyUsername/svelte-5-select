@@ -219,10 +219,16 @@ input:focus {
 }
 
 .multi-item-clear {
+    all: unset;
     display: flex;
     align-items: center;
     justify-content: center;
+    cursor: pointer;
     --clear-icon-color: var(--multi-item-clear-icon-color, #000);
+}
+
+.multi-item-clear:focus-visible {
+    outline: var(--multi-item-clear-focus-outline, 1px solid #006fe8);
 }
 
 .multi-item.active {

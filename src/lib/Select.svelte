@@ -22,6 +22,7 @@
     import {
         areItemsEqual,
         convertStringItemsToObjects,
+        isItemSelectableCheck,
         normalizeItem,
         createGroupHeaderItem as _createGroupHeaderItem,
     } from '$lib/utils';
@@ -139,8 +140,8 @@
         selectionSnippet,
 
         // DOM references (for binding)
-        container = undefined,
-        input = undefined,
+        container = $bindable(undefined),
+        input = $bindable(undefined),
         ...rest
     }: SelectProps<Item> = $props();
 
@@ -236,16 +237,6 @@
         return filteredItems as Item[];
     }
 
-    let ariaContext = $derived(
-        ariaHandlers.handleAriaContent({
-            value,
-            filteredItems,
-            hoverItemIndex,
-            listOpen,
-            multiple,
-            label,
-        }),
-    );
     let ariaSelection = $derived(
         value
             ? ariaHandlers.handleAriaSelection({
@@ -327,6 +318,9 @@
         get label() {
             return label;
         },
+        get searchable() {
+            return searchable;
+        },
         get disabled() {
             return disabled;
         },
@@ -359,6 +353,26 @@
         },
     });
 
+    // The active-tag mechanism (ArrowLeft/ArrowRight + Backspace) is otherwise
+    // only visible as a CSS outline; announce it so non-sighted users can use it
+    let activeTagLabel = $derived(
+        multiple && selectState.activeValue !== undefined && Array.isArray(value)
+            ? ((value as Item[])[selectState.activeValue]?.[label] as string | undefined)
+            : undefined,
+    );
+    let ariaContext = $derived(
+        activeTagLabel !== undefined
+            ? `${activeTagLabel} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`
+            : ariaHandlers.handleAriaContent({
+                  value,
+                  filteredItems,
+                  hoverItemIndex,
+                  listOpen,
+                  multiple,
+                  label,
+              }),
+    );
+
     // Initialize composables (creation order is effect order: value, hover, load options)
     const valueManager = useValue(selectState, {
         closeList,
@@ -370,7 +384,7 @@
 
     const hoverManager = useHover(selectState);
 
-    useLoadOptions(selectState, {
+    const loadOptionsManager = useLoadOptions(selectState, {
         debounce: (fn, wait) => debounce(fn, wait),
         onloaded: (opts) => onloaded(opts as Item[]),
         onerror: (err) => onerror(err),
@@ -388,7 +402,8 @@
     // triggers scrolling.
     function handleKeyDown(e: KeyboardEvent): void {
         keyboardNav.handleKeyDown(e);
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+        const isTypeAhead = !searchable && e.key.length === 1;
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End' || isTypeAhead) {
             void tick().then(scrollHoveredItemIntoView);
         }
     }
@@ -572,12 +587,20 @@
             filterText = '';
         }
         listOpen = false;
+        // A load armed by typing must not fire (spinner + stale items) on a closed list;
+        // reads through the effect miss this when clearFilterTextOnBlur is false
+        loadOptionsManager.cancelPendingFilterLoad();
     }
 
     onDestroy(() => {
         // The floating list can outlive the component's own tree; remove it explicitly
         // eslint-disable-next-line svelte/no-dom-manipulating
         list?.remove();
+        // A debounced load firing after unmount would fetch and invoke callbacks
+        // on a dead component
+        clearTimeout(timeout);
+        clearTimeout(prefloatTimeout);
+        loadOptionsManager.invalidateLoads();
     });
 
     function handleSelect(item: SelectItem): void {
@@ -601,9 +624,11 @@
         list.style.width = listAutoWidth ? width + 'px' : 'auto';
     }
 
+    let prefloatTimeout: ReturnType<typeof setTimeout> | undefined;
     function listMounted(list: HTMLDivElement | undefined, listOpen: boolean) {
         if (!list || !listOpen) return (prefloat = true);
-        setTimeout(() => {
+        clearTimeout(prefloatTimeout);
+        prefloatTimeout = setTimeout(() => {
             prefloat = false;
         }, 0);
     }
@@ -686,7 +711,8 @@
                         tabindex="-1"
                         role={isPresentationalHeader(item) ? 'presentation' : 'option'}
                         id="listbox-{_id}-item-{i}"
-                        aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}>
+                        aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}
+                        aria-disabled={isPresentationalHeader(item) || isItemSelectableCheck(item) ? undefined : true}>
                         <!-- No role="group" here: in this flat listbox the header row is a sibling
                              of its options, and option/presentation roles may not contain a group -->
                         <div
@@ -747,10 +773,6 @@
                             ev.preventDefault();
                             return multiFullItemClearable ? valueManager.handleMultiItemClear(i) : {};
                         }}
-                        onkeydown={(ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                        }}
                         role="none">
                         <span class="multi-item-text">
                             {#if selectionSnippet}
@@ -761,22 +783,26 @@
                         </span>
 
                         {#if !disabled && !multiFullItemClearable && ClearIcon}
-                            <div
+                            <!-- A real button: keyboard-focusable, Enter/Space activate via click.
+                                 mousedown is prevented so a mouse removal never steals focus from
+                                 the input; pointerup must not bubble to the container's list toggle. -->
+                            <button
+                                type="button"
                                 class="multi-item-clear"
-                                role="button"
-                                tabindex="-1"
                                 aria-label={`Remove ${item[label]}`}
-                                onpointerup={(ev) => {
-                                    if (ev.pointerType === 'mouse') ev.preventDefault();
+                                onmousedown={(ev) => ev.preventDefault()}
+                                onpointerup={(ev) => ev.stopPropagation()}
+                                onclick={(ev) => {
                                     ev.stopPropagation();
                                     valueManager.handleMultiItemClear(i);
+                                    handleFocus();
                                 }}>
                                 {#if multiClearIconSnippet}
                                     {@render multiClearIconSnippet()}
                                 {:else}
                                     <ClearIcon />
                                 {/if}
-                            </div>
+                            </button>
                         {/if}
                     </div>
                 {/each}

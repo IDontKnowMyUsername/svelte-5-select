@@ -18,9 +18,7 @@
         "@release-it/conventional-changelog": {
             "preset": {
                 "name": "conventionalcommits"
-            },
-            "infile": "CHANGELOG.md",
-            "header": "# svelte-5-select changelog"
+            }
         }
     }
 }

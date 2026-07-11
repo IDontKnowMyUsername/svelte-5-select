@@ -84,6 +84,7 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--multi-item-active-outline`
 - `--multi-item-bg`
 - `--multi-item-border-radius`
+- `--multi-item-clear-focus-outline`
 - `--multi-item-clear-icon-color`
 - `--multi-item-color`
 - `--multi-item-disabled-hover-bg`

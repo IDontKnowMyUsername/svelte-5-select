@@ -16,6 +16,7 @@ import ItemHeightTest from './ItemHeightTest.svelte';
 import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
+import BindRefsTest from './BindRefsTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
 import FormTest from './FormTest.svelte';
 import type { SelectItem, SelectValue } from '$lib/types';
@@ -1057,6 +1058,22 @@ describe('Select Component', () => {
             const elem = document.querySelector('.svelte-select input') as HTMLElement;
             expect(elem.hasAttribute('readonly')).toBeTruthy();
         });
+
+        it('moves hover by type-ahead when searchable is false', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    searchable: false,
+                    listOpen: true,
+                },
+            });
+
+            await handleKeyboard('p');
+            await tick();
+
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered?.textContent?.trim()).toBe('Pizza');
+        });
     });
 
     describe('Loading', () => {
@@ -1471,6 +1488,36 @@ describe('Select Component', () => {
             await tick();
 
             expect(JSON.stringify(capturedValue)).toBe(JSON.stringify([{ value: 'pizza', label: 'Pizza' }]));
+        });
+
+        it('exposes tag removal as a focusable, keyboard-activatable button', async () => {
+            const user = userEvent.setup();
+
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
+            });
+
+            const removeButton = document.querySelector('.multi-item-clear') as HTMLButtonElement;
+            expect(removeButton.tagName).toBe('BUTTON');
+            expect(removeButton.getAttribute('aria-label')).toBe('Remove Chocolate');
+            expect(removeButton.tabIndex).toBe(0);
+
+            removeButton.focus();
+            expect(document.activeElement).toBe(removeButton);
+
+            await user.keyboard('{Enter}');
+            await tick();
+
+            const remaining = document.querySelectorAll('.multi-item');
+            expect(remaining.length).toBe(1);
+            expect(remaining[0].textContent).toContain('Pizza');
         });
 
         it('shows placeholder and hides clear all when all items removed', async () => {
@@ -3445,6 +3492,57 @@ describe('Select Component', () => {
             expect(aria!.innerHTML.includes('Pizza')).toBeTruthy();
         });
 
+        it('marks non-selectable options with aria-disabled', () => {
+            render(Select, {
+                props: {
+                    listOpen: true,
+                    items: [
+                        { value: 'a', label: 'A' },
+                        { value: 'b', label: 'B', selectable: false },
+                    ],
+                },
+            });
+
+            const options = document.querySelectorAll('[role="option"]');
+            expect(options[0].getAttribute('aria-disabled')).toBeNull();
+            expect(options[1].getAttribute('aria-disabled')).toBe('true');
+        });
+
+        it('leaves presentational group headers without aria-disabled', () => {
+            render(Select, {
+                props: {
+                    listOpen: true,
+                    items: itemsWithGroup,
+                    groupBy: (item: SelectItem) => item.group as string,
+                },
+            });
+
+            const headers = document.querySelectorAll('[role="presentation"]');
+            expect(headers.length).toBeGreaterThan(0);
+            headers.forEach((header) => expect(header.getAttribute('aria-disabled')).toBeNull());
+        });
+
+        it('announces the active tag when navigating selected options with arrow keys', async () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [
+                        { value: 'cake', label: 'Cake' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    focused: true,
+                },
+            });
+
+            await handleKeyboard('ArrowLeft');
+            await tick();
+
+            const aria = document.querySelector('#aria-context');
+            expect(aria!.textContent).toContain('Pizza is active');
+            expect(aria!.textContent).toContain('Backspace');
+        });
+
         it('describes value in aria-selection', () => {
             render(Select, {
                 props: {
@@ -4565,8 +4663,9 @@ describe('Select Component', () => {
             await wait(300);
             await tick();
 
-            // Rapid keystrokes collapse into exactly one trailing-edge call
-            expect(loadSpy.mock.calls.length).toBe(1);
+            // The immediate mount fetch plus exactly one trailing-edge call for
+            // the rapid keystrokes
+            expect(loadSpy.mock.calls.map((call) => call[0])).toEqual(['', 'abc']);
         });
 
         it('clears value when disabled with loadOptions', async () => {
@@ -4788,6 +4887,211 @@ describe('Select Component', () => {
             await tick();
 
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
+        });
+
+        it('cancels a pending debounced fetch when an item is selected within the window', async () => {
+            const user = userEvent.setup();
+            const loadSpy = vi.fn().mockResolvedValue([
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    focused: true,
+                    debounceWait: 200,
+                },
+            });
+
+            await wait(0);
+            await tick();
+            const callsAfterMount = loadSpy.mock.calls.length;
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'a');
+            await tick();
+
+            // Select before the 200ms debounce fires
+            await querySelectorClick('.list-item');
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('A');
+            expect(document.querySelector('.loading')).toBeFalsy();
+
+            await wait(300);
+            await tick();
+
+            expect(loadSpy.mock.calls.length).toBe(callsAfterMount);
+            expect(document.querySelector('.loading')).toBeFalsy();
+        });
+
+        it('cancels a pending fetch when the list closes with retained filter text', async () => {
+            const user = userEvent.setup();
+            const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    clearFilterTextOnBlur: false,
+                    focused: true,
+                    debounceWait: 200,
+                },
+            });
+
+            await wait(0);
+            await tick();
+            const callsAfterMount = loadSpy.mock.calls.length;
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'a');
+
+            // Close before the debounce fires; the filter text stays "a"
+            await handleKeyboard('Escape');
+            await wait(300);
+            await tick();
+
+            expect(loadSpy.mock.calls.length).toBe(callsAfterMount);
+            expect(document.querySelector('.loading')).toBeFalsy();
+        });
+
+        it('keeps a preset value when mounted disabled', async () => {
+            const loadSpy = vi.fn().mockResolvedValue([]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    disabled: true,
+                    value: { value: 'chocolate', label: 'Chocolate' },
+                },
+            });
+
+            await wait(0);
+            await tick();
+
+            // Regression: the disabled branch used to wipe the value at mount,
+            // so a read-only async select could never display its selection
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Chocolate');
+            expect(loadSpy).not.toHaveBeenCalled();
+        });
+
+        it('discards an in-flight fetch response after the select becomes disabled', async () => {
+            let resolveLoad!: (loaded: SelectItem[]) => void;
+            const slowLoad = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));
+            const onloaded = vi.fn();
+
+            const { rerender } = render(Select, {
+                props: {
+                    loadOptions: slowLoad,
+                    onloaded,
+                },
+            });
+
+            await tick();
+            expect(slowLoad).toHaveBeenCalledTimes(1);
+
+            await rerender({ disabled: true });
+            await tick();
+
+            resolveLoad([{ value: 'a', label: 'A' }]);
+            await wait(0);
+            await tick();
+
+            expect(onloaded).not.toHaveBeenCalled();
+            expect(document.querySelector('.loading')).toBeFalsy();
+        });
+    });
+
+    describe('Value normalization and justValue hydration', () => {
+        it('re-resolves the value when one string value is replaced by another', async () => {
+            const { rerender } = render(Select, {
+                props: {
+                    items,
+                    value: 'chocolate',
+                },
+            });
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Chocolate');
+
+            await rerender({ value: 'pizza' });
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Pizza');
+        });
+
+        it('resolves an initial string value once async items arrive', async () => {
+            let resolveLoad!: (loaded: SelectItem[]) => void;
+
+            render(Select, {
+                props: {
+                    loadOptions: () => new Promise<SelectItem[]>((r) => (resolveLoad = r)),
+                    value: 'chocolate',
+                },
+            });
+
+            await tick();
+            resolveLoad([{ value: 'chocolate', label: 'Chocolate', calories: 500 }]);
+            await wait(0);
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Chocolate');
+        });
+
+        it('waits for items before hydrating a multiple justValue and never dispatches an empty hydration', async () => {
+            const oninput = vi.fn();
+
+            const { rerender } = render(Select, {
+                props: {
+                    multiple: true,
+                    useJustValue: true,
+                    justValue: ['chocolate', 'pizza'],
+                    items: null,
+                    oninput,
+                },
+            });
+
+            await tick();
+
+            // Regression: hydration against not-yet-loaded items used to write
+            // value = [] — a spurious oninput([]) that also blocked hydration forever
+            expect(oninput).not.toHaveBeenCalled();
+            expect(document.querySelectorAll('.multi-item').length).toBe(0);
+
+            await rerender({ items });
+            await tick();
+
+            const multiItems = document.querySelectorAll('.multi-item');
+            expect(multiItems.length).toBe(2);
+            expect(multiItems[0].textContent).toContain('Chocolate');
+            expect(multiItems[1].textContent).toContain('Pizza');
+        });
+
+        it('hydrates a single-mode justValue when items arrive late', async () => {
+            const { rerender } = render(Select, {
+                props: {
+                    useJustValue: true,
+                    justValue: 'chocolate',
+                    items: null,
+                },
+            });
+
+            await tick();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+
+            await rerender({ items });
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Chocolate');
+        });
+    });
+
+    describe('Bindable DOM references', () => {
+        it('binds container and input element references out to the parent', async () => {
+            render(BindRefsTest);
+            await tick();
+
+            expect(document.querySelector('[data-testid="bound-container-tag"]')?.textContent).toBe('DIV');
+            expect(document.querySelector('[data-testid="bound-input-tag"]')?.textContent).toBe('INPUT');
         });
     });
 
