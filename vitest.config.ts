@@ -25,7 +25,8 @@ export default defineConfig({
         environment: 'happy-dom',
         include: ['tests/**/*.test.ts'],
         setupFiles: ['tests/setup.ts'],
-        exclude: ['**/examples/**'],
+        // tests/browser needs a real layout engine — run via vitest.browser.config.ts
+        exclude: ['**/examples/**', 'tests/browser/**'],
         coverage: {
             provider: 'v8',
             exclude: [

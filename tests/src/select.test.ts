@@ -198,8 +198,19 @@ describe('Select Component', () => {
         });
     });
 
+    // happy-dom has no layout engine, so these tests assert the scrollIntoView
+    // calls rather than resulting geometry; real geometry is covered by the
+    // browser-mode suite in tests/browser/
     describe('List scrolling', () => {
-        it('scrolls to active item', () => {
+        function spyOnScrollIntoView() {
+            if (!Element.prototype.scrollIntoView) {
+                Element.prototype.scrollIntoView = () => {};
+            }
+            return vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(function () {});
+        }
+
+        it('scrolls the hovered (selected) item into view when the list opens', async () => {
+            const spy = spyOnScrollIntoView();
             const extras = [
                 { value: 'chicken', label: 'Chicken', index: 5 },
                 { value: 'fried-chicken', label: 'Fried Chicken', index: 6 },
@@ -214,61 +225,34 @@ describe('Select Component', () => {
                 },
             });
 
-            let offsetBounding;
-            const container = document.querySelector('.svelte-select-list');
-            if (container) {
-                const focusedElemBounding = container.querySelector('.list-item .active');
-                if (focusedElemBounding) {
-                    offsetBounding =
-                        container.getBoundingClientRect().bottom - focusedElemBounding.getBoundingClientRect().bottom;
-                }
-            }
+            await tick();
+            await tick();
 
-            expect(offsetBounding).toBe(0);
+            expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+            const target = spy.mock.instances.at(-1) as unknown as HTMLElement;
+            expect(target.id).toMatch(/-item-7$/); // hover starts on the selected item
+            spy.mockRestore();
         });
 
-        it('scrolls to hovered item when navigating with keys', async () => {
-            const extras = [
-                { value: 'chicken', label: 'Chicken', index: 5 },
-                { value: 'fried-chicken', label: 'Fried Chicken', index: 6 },
-                { value: 'sunday-roast', label: 'Sunday Roast', index: 7 },
-            ];
+        it('scrolls the hovered item into view when navigating with keys', async () => {
+            const spy = spyOnScrollIntoView();
 
             render(Select, {
                 props: {
                     listOpen: true,
-                    items: itemsWithIndex.concat(extras),
+                    items: itemsWithIndex,
                 },
             });
+            await tick();
+            spy.mockClear();
 
-            const container = document.querySelector('.svelte-select-list');
-            if (container) {
-                const totalListItems = container.querySelectorAll('.list-item').length;
+            await handleKeyboard('ArrowDown');
+            await tick();
 
-                let selectedItemsAreWithinBounds = true;
-                let loopCount = 1;
-
-                do {
-                    await handleKeyboard('ArrowDown');
-
-                    const hoveredItem = container.querySelector('.list-item .hover');
-
-                    if (!hoveredItem) {
-                        expect.fail('No hovered item found');
-                    }
-
-                    const isInViewport =
-                        container.getBoundingClientRect().bottom - hoveredItem.getBoundingClientRect().bottom >= 0;
-
-                    selectedItemsAreWithinBounds = selectedItemsAreWithinBounds && isInViewport;
-
-                    loopCount += 1;
-                } while (loopCount < totalListItems);
-
-                expect(selectedItemsAreWithinBounds).toBeTruthy();
-            } else {
-                expect.fail("container doesn't exist");
-            }
+            expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+            const target = spy.mock.instances.at(-1) as unknown as HTMLElement;
+            expect(target.id).toMatch(/-item-1$/);
+            spy.mockRestore();
         });
     });
 
@@ -419,49 +403,8 @@ describe('Select Component', () => {
         });
     });
 
-    describe('Floating positioning', () => {
-        it('positions list above input when placement is top', async () => {
-            render(Select, {
-                props: {
-                    items,
-                    listOpen: true,
-                    floatingConfig: { placement: 'top-start' },
-                },
-            });
-
-            const container = document.querySelector('.svelte-select') as HTMLElement;
-            container.style.margin = '300px 0 0 0';
-            await tick();
-            const distanceOfListBottomFromViewportTop = document
-                .querySelector('.svelte-select-list')!
-                .getBoundingClientRect().bottom;
-            const distanceOfInputTopFromViewportTop = document
-                .querySelector('.svelte-select')!
-                .getBoundingClientRect().top;
-            expect(distanceOfListBottomFromViewportTop).toBeLessThanOrEqual(distanceOfInputTopFromViewportTop);
-            container.style.margin = '0';
-        });
-
-        it('positions list below input when placement is bottom', async () => {
-            render(Select, {
-                props: {
-                    items,
-                    listOpen: true,
-                    floatingConfig: { placement: 'bottom-start' },
-                },
-            });
-
-            await tick();
-            const distanceOfListTopFromViewportTop = document
-                .querySelector('.svelte-select-list')!
-                .getBoundingClientRect().top;
-            const distanceOfInputBottomFromViewportTop = document
-                .querySelector('.svelte-select')!
-                .getBoundingClientRect().bottom;
-
-            expect(distanceOfListTopFromViewportTop).toBeGreaterThanOrEqual(distanceOfInputBottomFromViewportTop);
-        });
-    });
+    // Floating placement and list geometry are asserted in tests/browser/layout.test.ts;
+    // happy-dom has no layout engine, so geometry assertions here would be vacuous
 
     describe('Blur behavior', () => {
         it('closes list and removes focus on blur', async () => {
@@ -580,32 +523,6 @@ describe('Select Component', () => {
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
-        });
-    });
-
-    describe('List width', () => {
-        it('keeps width of parent Select', async () => {
-            render(Select, {
-                props: {
-                    items,
-                    focused: true,
-                },
-            });
-
-            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
-            input.focus();
-
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            await tick();
-
-            const selectContainer = document.querySelector('.svelte-select') as HTMLElement | null;
-            const listContainer = document.querySelector('.svelte-select-list') as HTMLElement | null;
-
-            if (selectContainer && listContainer) {
-                expect(selectContainer.offsetWidth).toBe(listContainer.offsetWidth);
-            } else {
-                expect.fail('Containers not found');
-            }
         });
     });
 
@@ -2325,21 +2242,12 @@ describe('Select Component', () => {
             await tick();
             await new Promise((resolve) => setTimeout(resolve, 50));
 
-            console.log('List open?', document.querySelector('.svelte-select-list'));
-            console.log('Items:', document.querySelectorAll('.list-item'));
-            console.log('Group titles:', document.querySelectorAll('.list-group-title'));
-
-            console.log('Actual items in DOM:', document.querySelector('.list-item .item')?.textContent);
-            console.log('Item classes:', document.querySelector('.list-item .item')?.className);
-
             expect(document.querySelectorAll('.list-group-title').length).toBe(1);
 
             input.value = 'cr';
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await tick();
             await new Promise((resolve) => setTimeout(resolve, 50));
-
-            console.log('After second input - Group titles:', document.querySelectorAll('.list-group-title'));
 
             expect(document.querySelectorAll('.list-group-title').length).toBe(1);
         });
@@ -2942,19 +2850,7 @@ describe('Select Component', () => {
             expect(listWidth).toBe('auto');
         });
 
-        it.skip('uses listOffset for positioning', async () => {
-            render(Select, {
-                props: {
-                    items,
-                    listOffset: 0,
-                    listOpen: true,
-                },
-            });
-
-            await tick();
-            const elem = document.querySelector('.svelte-select-list') as HTMLElement;
-            expect(elem.style.top).toBe('41px');
-        });
+        // listOffset positioning is asserted with real geometry in tests/browser/layout.test.ts
     });
 
     describe('Active item selection', () => {
@@ -3811,7 +3707,7 @@ describe('Select Component', () => {
             expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
         });
 
-        it('group headers have role="group" with aria-label', () => {
+        it('group headers carry no group role (option/presentation may not contain a group)', () => {
             render(Select, {
                 props: {
                     items: itemsWithGroup,
@@ -3820,10 +3716,11 @@ describe('Select Component', () => {
                 },
             });
 
-            const groups = document.querySelectorAll('[role="group"]');
-            expect(groups.length).toBe(2);
-            expect(groups[0].getAttribute('aria-label')).toBe('Sweet');
-            expect(groups[1].getAttribute('aria-label')).toBe('Savory');
+            expect(document.querySelectorAll('[role="group"]').length).toBe(0);
+            const headers = document.querySelectorAll('.list-group-title');
+            expect(headers.length).toBe(2);
+            expect(headers[0].textContent?.trim()).toBe('Sweet');
+            expect(headers[1].textContent?.trim()).toBe('Savory');
         });
 
         it('group header list-items have role="presentation"', () => {
@@ -3965,6 +3862,40 @@ describe('Select Component', () => {
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('claims Escape while the list is open', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    listOpen: true,
+                },
+            });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+            input.dispatchEvent(escape);
+            await tick();
+
+            expect(escape.defaultPrevented).toBe(true);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('lets Escape bubble when the list is already closed (dialog interop)', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    focused: true,
+                },
+            });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            const escape = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true });
+            input.dispatchEvent(escape);
+
+            expect(escape.defaultPrevented).toBe(false);
         });
     });
 
@@ -4634,8 +4565,8 @@ describe('Select Component', () => {
             await wait(300);
             await tick();
 
-            // Should have been debounced - not called once per character
-            expect(loadSpy.mock.calls.length).toBeLessThan(4);
+            // Rapid keystrokes collapse into exactly one trailing-edge call
+            expect(loadSpy.mock.calls.length).toBe(1);
         });
 
         it('clears value when disabled with loadOptions', async () => {
@@ -4741,6 +4672,122 @@ describe('Select Component', () => {
 
             const listItems = document.querySelectorAll('.list-item');
             expect(listItems.length).toBe(0);
+        });
+
+        it('does not refetch or reopen the list when it closes with retained filter text', async () => {
+            const user = userEvent.setup();
+            const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    clearFilterTextOnBlur: false,
+                    focused: true,
+                },
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'ab');
+            await wait(300);
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            const callsAfterTyping = loadSpy.mock.calls.length;
+
+            await handleKeyboard('Escape');
+            await wait(300);
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(loadSpy.mock.calls.length).toBe(callsAfterTyping);
+        });
+
+        it('does not fetch or show loading after selecting an item', async () => {
+            const user = userEvent.setup();
+            const loadSpy = vi.fn().mockResolvedValue([
+                { value: 'a', label: 'A' },
+                { value: 'b', label: 'B' },
+            ]);
+
+            render(Select, {
+                props: {
+                    loadOptions: loadSpy,
+                    focused: true,
+                },
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'a');
+            await wait(300);
+            await tick();
+
+            const callsAfterTyping = loadSpy.mock.calls.length;
+            await querySelectorClick('.list-item');
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('A');
+            expect(document.querySelector('.loading')).toBeFalsy();
+
+            await wait(300);
+            await tick();
+
+            expect(loadSpy.mock.calls.length).toBe(callsAfterTyping);
+            expect(document.querySelector('.loading')).toBeFalsy();
+        });
+
+        it('keeps a multiple selection when typing narrows loadOptions results', async () => {
+            const user = userEvent.setup();
+            const all = [
+                { value: 'apple', label: 'Apple' },
+                { value: 'banana', label: 'Banana' },
+            ];
+            const loadFn = vi.fn((filterText: string) =>
+                Promise.resolve(all.filter((i) => i.label.toLowerCase().includes(filterText.toLowerCase()))),
+            );
+
+            render(Select, {
+                props: {
+                    multiple: true,
+                    loadOptions: loadFn,
+                    value: [{ value: 'apple', label: 'Apple' }],
+                    focused: true,
+                },
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.type(input, 'ban');
+            await wait(300);
+            await tick();
+
+            const multiItems = document.querySelectorAll('.multi-item');
+            expect(multiItems.length).toBe(1);
+            expect(multiItems[0].textContent).toContain('Apple');
+        });
+
+        it('keeps distinct string values in multiple mode while items are still loading', async () => {
+            let resolveLoad!: (items: string[]) => void;
+            const slowLoad = () => new Promise<string[]>((resolve) => (resolveLoad = resolve));
+
+            render(Select, {
+                props: {
+                    multiple: true,
+                    loadOptions: slowLoad,
+                    value: ['red', 'blue'],
+                },
+            });
+
+            await tick();
+            await tick();
+
+            // Regression: string entries used to collapse to one because the dedup
+            // keyed every raw string on undefined
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+
+            await wait(300);
+            resolveLoad(['red', 'blue', 'green']);
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
         });
     });
 

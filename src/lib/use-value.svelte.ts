@@ -16,7 +16,7 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         } else if (multiple && Array.isArray(value) && value.length > 0) {
             state.value = (value as (Item | string)[]).map((val) => {
                 if (typeof val === 'string') {
-                    return findItemByValue(val) || ({ value: val, label: val } as Item);
+                    return findItemByValue(val) || ({ [itemId]: val, label: val } as Item);
                 }
                 return val;
             });
@@ -92,7 +92,9 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         // eslint-disable-next-line svelte/prefer-svelte-reactivity -- local dedup scratch, not reactive state
         const seen = new Set<unknown>();
         const uniqueValues = (value as (Item | string)[]).filter((val) => {
-            const id = getItemProperty(val, itemId);
+            // Raw string entries key on the string itself: getItemProperty returns
+            // undefined for non-objects, which would collapse all strings into one
+            const id = typeof val === 'string' ? val : getItemProperty(val, itemId);
             if (seen.has(id)) return false;
             seen.add(id);
             return true;

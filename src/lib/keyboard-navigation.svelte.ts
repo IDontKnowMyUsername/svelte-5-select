@@ -5,9 +5,12 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
     state: KeyboardNavigationState<Item>,
     actions: KeyboardNavigationActions,
 ) {
+    // Handlers claim an event (preventDefault/stopPropagation) only on branches
+    // that actually act on it. Unclaimed keys keep bubbling so ancestors still
+    // see them — Escape can close a surrounding dialog, Enter can submit a form.
+    // Claimed keys must stop propagation so the component's window listener does
+    // not handle the same bubbled event a second time.
     function handleKeyDown(e: KeyboardEvent): void {
-        e.stopPropagation();
-
         if (!state.focused) return;
 
         const handlers: Record<string, (e: KeyboardEvent) => void> = {
@@ -30,16 +33,21 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
     }
 
     function handleEscapeKey(e: KeyboardEvent): void {
+        if (!state.listOpen) return;
+
         e.preventDefault();
+        e.stopPropagation();
         actions.closeList();
     }
 
     function handleEnterKey(e: KeyboardEvent): void {
-        e.preventDefault();
-
         const { listOpen, filteredItems, hoverItemIndex, value, multiple, itemId } = state;
 
         if (!listOpen) return;
+
+        e.preventDefault();
+        e.stopPropagation();
+
         if (filteredItems.length === 0) return;
 
         const hoverItem = filteredItems[hoverItemIndex];
@@ -53,6 +61,7 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
 
     function handleArrowDownKey(e: KeyboardEvent): void {
         e.preventDefault();
+        e.stopPropagation();
 
         if (state.listOpen) {
             actions.setHoverIndex(1);
@@ -64,6 +73,7 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
 
     function handleArrowUpKey(e: KeyboardEvent): void {
         e.preventDefault();
+        e.stopPropagation();
 
         if (state.listOpen) {
             actions.setHoverIndex(-1);
@@ -78,6 +88,9 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
 
         if (!listOpen || !focused) return;
 
+        // Tab keeps bubbling in both branches: focus traps and other ancestor
+        // handlers must still see it. Re-entry via the window listener is safe
+        // because the list is closed by then.
         if (
             filteredItems.length === 0 ||
             areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)
@@ -91,12 +104,13 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         actions.closeList();
     }
 
-    function handleBackspaceKey(_e: KeyboardEvent): void {
+    function handleBackspaceKey(e: KeyboardEvent): void {
         const { multiple, filterText, value, activeValue } = state;
 
         if (!multiple || filterText.length > 0) return;
 
         if (Array.isArray(value) && value.length > 0) {
+            e.stopPropagation();
             const indexToRemove = activeValue !== undefined ? activeValue : value.length - 1;
             actions.handleMultiItemClear(indexToRemove);
 
@@ -107,12 +121,13 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         }
     }
 
-    function handleArrowLeftKey(_e: KeyboardEvent): void {
+    function handleArrowLeftKey(e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = state;
 
         if (!value || !multiple || filterText.length > 0) return;
 
         if (Array.isArray(value)) {
+            e.stopPropagation();
             if (activeValue === undefined) {
                 state.activeValue = value.length - 1;
             } else if (value.length > activeValue && activeValue !== 0) {
@@ -129,6 +144,7 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         if (!listOpen || filterText.length > 0) return;
 
         e.preventDefault();
+        e.stopPropagation();
         const firstSelectable = filteredItems.findIndex((item) => isItemSelectableCheck(item));
         if (firstSelectable >= 0) state.hoverItemIndex = firstSelectable;
     }
@@ -139,6 +155,7 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         if (!listOpen || filterText.length > 0) return;
 
         e.preventDefault();
+        e.stopPropagation();
         for (let i = filteredItems.length - 1; i >= 0; i--) {
             if (isItemSelectableCheck(filteredItems[i])) {
                 state.hoverItemIndex = i;
@@ -147,12 +164,13 @@ export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
         }
     }
 
-    function handleArrowRightKey(_e: KeyboardEvent): void {
+    function handleArrowRightKey(e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = state;
 
         if (!value || !multiple || filterText.length > 0 || activeValue === undefined) return;
         if (!Array.isArray(value)) return;
 
+        e.stopPropagation();
         if (activeValue === value.length - 1) {
             state.activeValue = undefined;
         } else if (activeValue < value.length - 1) {

@@ -95,11 +95,20 @@ export function useHover<Item extends SelectItem = SelectItem>(state: SelectStat
         state.hoverItemIndex = i;
     }
 
+    let scrollEndFallback: ReturnType<typeof setTimeout> | undefined;
+
     function handleListScroll() {
         state.isScrolling = true;
+        // scrollend never fires on some browsers (e.g. Safari < 18.2); without a
+        // fallback a single scroll would wedge isScrolling and kill hover + blur
+        clearTimeout(scrollEndFallback);
+        scrollEndFallback = setTimeout(() => {
+            state.isScrolling = false;
+        }, 150);
     }
 
     function handleListScrollEnd() {
+        clearTimeout(scrollEndFallback);
         state.isScrolling = false;
     }
 

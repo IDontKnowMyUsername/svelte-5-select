@@ -6,11 +6,11 @@ A `<Select>` component for Svelte 5 apps.
 
 - `npm test` — run vitest in watch mode
 - `npm run test:run` — run vitest once
+- `npm run test:browser` — real-browser layout tests (`tests/browser/`, needs `pnpm exec playwright install chromium`)
 - `npm run check` — type-check with svelte-check
 - `npm run dev` — start dev server
 - `npm run build` — build the app
-- `npm run build:lib` — build the library
-- `npm run package` — build the package for publishing
+- `npm run package` — build the library package for publishing
 
 ## Project Structure
 

@@ -1,7 +1,7 @@
 <svelte:options runes={true} />
 
 <script lang="ts" generics="Item extends SelectItem = SelectItem">
-    import { onDestroy, onMount, untrack } from 'svelte';
+    import { onDestroy, onMount, tick, untrack } from 'svelte';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
     import { createFloatingActions } from 'svelte-floating-ui';
     import type { FloatingConfig, SelectProps, SelectValue, ErrorEvent as SelectErrorEvent } from './types';
@@ -382,7 +382,22 @@
         handleSelect,
         handleMultiItemClear: valueManager.handleMultiItemClear,
     });
-    const handleKeyDown = keyboardNav.handleKeyDown;
+
+    // Keyboard navigation must keep the hovered option visible. This hooks the
+    // key handler rather than an effect on hoverItemIndex so mouse hover never
+    // triggers scrolling.
+    function handleKeyDown(e: KeyboardEvent): void {
+        keyboardNav.handleKeyDown(e);
+        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End') {
+            void tick().then(scrollHoveredItemIntoView);
+        }
+    }
+
+    function scrollHoveredItemIntoView(): void {
+        if (!listOpen || !list) return;
+        const el = document.getElementById(`listbox-${_id}-item-${hoverItemIndex}`);
+        el?.scrollIntoView?.({ block: 'nearest' });
+    }
 
     const [floatingRef, floatingContent, floatingUpdate] = createFloatingActions(_floatingConfig);
 
@@ -391,13 +406,18 @@
         if (focused && input) input.focus();
     });
 
-    // Keep the floating middleware in sync with listOffset
+    // Keep the floating middleware in sync with listOffset. User overrides are
+    // merged INTO _floatingConfig: svelte-floating-ui re-reads that object on its
+    // own deferred/autoUpdate recomputes, so a merge into a throwaway copy would
+    // be reverted one tick later.
     $effect.pre(() => {
         const middleware = [offset(listOffset), flip(), shift()];
+        floatingConfig;
         untrack(() => {
             _floatingConfig.middleware = middleware;
+            if (floatingConfig) Object.assign(_floatingConfig, floatingConfig);
             if (container && list) {
-                floatingUpdate(floatingConfig ? { ..._floatingConfig, ...floatingConfig } : _floatingConfig);
+                floatingUpdate(_floatingConfig);
             }
         });
     });
@@ -427,7 +447,12 @@
 
     // Floating UI config
     $effect(() => {
-        if (container && floatingConfig) floatingUpdate({ ..._floatingConfig, ...floatingConfig });
+        if (container && floatingConfig) {
+            untrack(() => {
+                Object.assign(_floatingConfig, floatingConfig);
+                floatingUpdate(_floatingConfig);
+            });
+        }
     });
 
     // List mounted
@@ -435,7 +460,11 @@
         listOpen;
         untrack(() => {
             listMounted(list, listOpen);
-            if (listOpen && container && list) setListWidth();
+            if (listOpen && container && list) {
+                setListWidth();
+                // Opening with a value starts hovered on that value; bring it into view
+                void tick().then(scrollHoveredItemIntoView);
+            }
         });
     });
 
@@ -545,13 +574,6 @@
         listOpen = false;
     }
 
-    function handleClickOutside(event: MouseEvent): void {
-        const target = event.target as Node;
-        if (!listOpen && !focused && container && !container.contains(target) && !list?.contains(target)) {
-            handleBlur();
-        }
-    }
-
     onDestroy(() => {
         // The floating list can outlive the component's own tree; remove it explicitly
         // eslint-disable-next-line svelte/no-dom-manipulating
@@ -605,7 +627,8 @@
     }
 </script>
 
-<svelte:window onclick={handleClickOutside} onkeydown={handleKeyDown} />
+<!-- Outside clicks close the list via the input's native blur -->
+<svelte:window onkeydown={handleKeyDown} />
 
 <div
     class="svelte-select {rest.class}"
@@ -664,6 +687,8 @@
                         role={isPresentationalHeader(item) ? 'presentation' : 'option'}
                         id="listbox-{_id}-item-{i}"
                         aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}>
+                        <!-- No role="group" here: in this flat listbox the header row is a sibling
+                             of its options, and option/presentation roles may not contain a group -->
                         <div
                             class="item"
                             class:list-group-title={item.groupHeader}
@@ -671,9 +696,7 @@
                             class:first={i === 0}
                             class:hover={hoverItemIndex === i}
                             class:group-item={item.groupItem}
-                            class:not-selectable={item?.selectable === false}
-                            role={item.groupHeader ? 'group' : undefined}
-                            aria-label={item.groupHeader ? (item[label] as string) : undefined}>
+                            class:not-selectable={item?.selectable === false}>
                             {#if itemSnippet}
                                 {@render itemSnippet(item as Item, i)}
                             {:else}

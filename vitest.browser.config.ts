@@ -1,0 +1,38 @@
+import { defineConfig } from 'vitest/config';
+import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { playwright } from '@vitest/browser-playwright';
+import path from 'path';
+
+// Real-browser layout tests (pnpm run test:browser). Geometry — floating
+// placement, list width, scroll-into-view — cannot be asserted under
+// happy-dom, which has no layout engine.
+export default defineConfig({
+    plugins: [
+        svelte({
+            compilerOptions: {
+                hmr: false,
+                runes: true,
+            },
+        }),
+    ],
+    optimizeDeps: {
+        exclude: ['svelte-virtual-list'],
+    },
+    resolve: {
+        alias: {
+            $lib: path.resolve('./src/lib'),
+        },
+    },
+    test: {
+        globals: true,
+        include: ['tests/browser/**/*.test.ts'],
+        setupFiles: ['tests/setup.ts'],
+        browser: {
+            enabled: true,
+            provider: playwright(),
+            headless: true,
+            screenshotFailures: false,
+            instances: [{ browser: 'chromium' }],
+        },
+    },
+});

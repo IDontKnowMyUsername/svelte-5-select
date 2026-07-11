@@ -1,5 +1,30 @@
 # svelte-5-select changelog
 
+## Unreleased
+
+### ⚠ Breaking changes
+
+* Composable API reworked around a shared reactive state store: `useKeyboardNavigation` now takes `(state: KeyboardNavigationState, actions)`; `KeyboardNavigationContext` and `isCancelled` were removed
+* `loadOptions` is no longer re-run when the list opens or closes — it fires on typing (non-empty filter text), `loadOptionsDeps` changes, and mount; closing the list never triggers a fetch
+* A filter-driven `loadOptions` result no longer clears a selection that is missing from the narrowed results; only dependency-driven reloads (`loadOptionsDeps`) validate and clear stale values
+* Enter and Escape pass through when the list is closed, so implicit form submission and dialog-close keep working; keys only stop propagation when the component actually handles them
+* Group headers no longer render `role="group"`/`aria-label` — an element with `role="option"`/`role="presentation"` may not contain a group, and the group wrapped only the header text
+* Removed the vestigial `build:lib` script and `vite.lib.config.ts` (a Svelte-4-era bundle build that clobbered `dist/`); `npm run package` is the library build
+
+### Fixed
+
+* List could not be closed (and refetched on every attempt) with `loadOptions` + `clearFilterTextOnBlur={false}`
+* Selecting an item in an async select fired a spurious `loadOptions('')` and showed the loading spinner on the closed control
+* Multiple string values collapsed to a single entry when items were not yet resolvable (dedup keyed every raw string on `undefined`); multi-mode fallback normalization also respects a custom `itemId` now
+* Keyboard navigation scrolls the hovered option into view again (`block: 'nearest'`), and opening the list scrolls to the selected option — lost in the composable refactor
+* Custom `floatingConfig` (e.g. `placement`) was silently reverted by svelte-floating-ui's deferred recompute right after mount; overrides now merge into the config object the library holds a reference to
+* `isScrolling` no longer wedges hover and blur permanently on browsers without `scrollend` (e.g. Safari < 18.2); a 150 ms fallback clears it
+* Removed the provably no-op window click handler; outside clicks keep closing the list via the input's native blur
+
+### Tests
+
+* New real-browser layout suite (`pnpm run test:browser`, vitest browser mode + Playwright) asserting floating placement, `listOffset`, list width, and scroll-into-view geometry; the corresponding happy-dom tests were vacuous (no layout engine) and were removed or rewritten as `scrollIntoView` spies
+
 ## 1.0.2 (2026-04-07)
 
 * Fixed: `pointerup` `preventDefault` is now gated on mouse input only, restoring touch interaction

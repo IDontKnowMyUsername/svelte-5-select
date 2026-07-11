@@ -139,19 +139,19 @@ describe('useLoadOptions', () => {
             loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
         });
 
-        handleLoadOptions('');
+        handleLoadOptions('', { validateValue: true });
         await flush();
 
         expect(writes.value).toBeUndefined();
     });
 
-    it('clears a single value missing from the loaded items', async () => {
+    it('clears a single value missing from a dependency-driven load', async () => {
         const { writes, handleLoadOptions } = createHarness({
             value: { value: 'gone', label: 'Gone' },
             loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
         });
 
-        handleLoadOptions('');
+        handleLoadOptions('', { validateValue: true });
         await flush();
 
         expect(writes.value).toEqual([undefined]);
@@ -165,14 +165,14 @@ describe('useLoadOptions', () => {
             loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
         });
 
-        handleLoadOptions('');
+        handleLoadOptions('', { validateValue: true });
         await flush();
 
         expect(writes.value).toEqual([undefined]);
         expect(writes.justValue).toEqual(['']);
     });
 
-    it('clears a multiple value when any entry is missing from the loaded items', async () => {
+    it('clears a multiple value when any entry is missing from a dependency-driven load', async () => {
         const { writes, handleLoadOptions } = createHarness({
             multiple: true,
             useJustValue: true,
@@ -183,23 +183,37 @@ describe('useLoadOptions', () => {
             loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
         });
 
-        handleLoadOptions('');
+        handleLoadOptions('', { validateValue: true });
         await flush();
 
         expect(writes.value).toEqual([[]]);
         expect(writes.justValue).toEqual([[]]);
     });
 
-    it('clears the value when the load resolves with an empty list', async () => {
+    it('clears the value when a dependency-driven load resolves with an empty list', async () => {
         const { writes, handleLoadOptions } = createHarness({
             value: { value: 'a', label: 'A' },
             loadOptions: () => Promise.resolve([]),
         });
 
-        handleLoadOptions('');
+        handleLoadOptions('', { validateValue: true });
         await flush();
 
         expect(writes.value).toEqual([undefined]);
+    });
+
+    it('keeps a value missing from a filter-driven load (no validateValue)', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            multiple: true,
+            value: [{ value: 'apple', label: 'Apple' }],
+            loadOptions: () => Promise.resolve([{ value: 'banana', label: 'Banana' }]),
+        });
+
+        handleLoadOptions('ban');
+        await flush();
+
+        expect(writes.value).toBeUndefined();
+        expect(writes.justValue).toBeUndefined();
     });
 
     it('reports errors and resets items when loadOptions rejects', async () => {
@@ -238,12 +252,13 @@ describe('useLoadOptions', () => {
         expect(loadOptions).toHaveBeenCalledWith('ab');
     });
 
-    it('opens the list when filter text is present and the list is closed', () => {
+    it('never touches listOpen (opening the list is the component"s job)', async () => {
         const { writes, handleLoadOptions } = createHarness({ loadOptions: () => Promise.resolve([]) });
 
         handleLoadOptions('ab');
+        await flush();
 
-        expect(writes.listOpen).toEqual([true]);
+        expect(writes.listOpen).toBeUndefined();
     });
 
     it('discards a stale response that resolves after a newer request', async () => {

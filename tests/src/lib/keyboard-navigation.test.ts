@@ -40,8 +40,8 @@ describe('useKeyboardNavigation', () => {
         return { state, writes, actions };
     }
 
-    it('handles Escape key', () => {
-        const { state, actions } = createMock();
+    it('handles Escape key when the list is open', () => {
+        const { state, actions } = createMock({ listOpen: true });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         const event = new KeyboardEvent('keydown', { key: 'Escape' });
@@ -50,6 +50,37 @@ describe('useKeyboardNavigation', () => {
         handleKeyDown(event);
 
         expect(actions.closeList).toHaveBeenCalled();
+        expect(event.preventDefault).toHaveBeenCalled();
+    });
+
+    it('lets Escape pass through when the list is closed (dialog interop)', () => {
+        const { state, actions } = createMock({ listOpen: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Escape' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+        Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(actions.closeList).not.toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+        expect(event.stopPropagation).not.toHaveBeenCalled();
+    });
+
+    it('lets Enter pass through when the list is closed (form submit)', () => {
+        const { state, actions } = createMock({ listOpen: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Enter' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+        Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(actions.handleSelect).not.toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+        expect(event.stopPropagation).not.toHaveBeenCalled();
     });
 
     it('handles ArrowDown when list is closed', () => {
