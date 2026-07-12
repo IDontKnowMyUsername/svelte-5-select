@@ -14,13 +14,16 @@ export { isStringArray, areItemsEqual, normalizeItem } from './utils';
 
 // Type exports for TypeScript users
 export type {
+    ItemLike,
     SelectItem,
     SelectProps,
     SelectValue,
+    SelectValueProp,
     JustValue,
     FloatingConfig,
     FilterConfig,
     SelectState,
+    SelectErrorEvent,
     KeyboardNavigationState,
     KeyboardNavigationActions,
     ErrorEvent,

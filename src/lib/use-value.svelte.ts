@@ -1,8 +1,8 @@
 import { untrack } from 'svelte';
-import type { JustValue, SelectItem, SelectState, ValueActions } from './types';
+import type { ItemLike, JustValue, SelectItem, SelectState, ValueActions } from './types';
 import { getItemProperty, hasValueChanged } from './utils';
 
-export function useValue<Item extends SelectItem = SelectItem>(state: SelectState<Item>, actions: ValueActions) {
+export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<Item>, actions: ValueActions) {
     function findItemByValue(id: unknown): Item | undefined {
         const { items, itemId } = state;
         return (items as Item[] | null)?.find((item) => getItemProperty(item, itemId) === id);
@@ -30,7 +30,9 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
     function resolveEntry(entry: Item | string): Item {
         const { itemId } = state;
         if (typeof entry === 'string') {
-            return findItemByValue(entry) || ({ [itemId]: entry, label: entry } as Item);
+            // The synthesized fallback is deliberately not a real Item — it only
+            // carries enough shape to render until the matching item exists
+            return findItemByValue(entry) || ({ [itemId]: entry, label: entry } as unknown as Item);
         }
         if (isSynthesizedFallback(entry)) {
             const found = findItemByValue(getItemProperty(entry, itemId));
@@ -66,10 +68,7 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
             ? Array.isArray(justValue) && justValue.length > 0
             : justValue !== '' && justValue != null;
 
-        // An empty array means "nothing hydrated yet", not a real selection —
-        // hydration must still run once async items arrive
-        const hasRealValue = multiple ? Array.isArray(value) && value.length > 0 : !!value;
-        if (!useJustValue || hasRealValue || clearState || !hasJustValue) return;
+        if (!useJustValue || hasRealValue(multiple, value) || clearState || !hasJustValue) return;
 
         // Hydration is all-or-nothing and retries when items change: writing a
         // partial (or empty) match would silently narrow justValue and block
@@ -113,6 +112,24 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         return getItemProperty(value, itemId) as JustValue;
     }
 
+    // Sync-loop scratch (deliberately non-reactive): lastSyncedHadValue tells an
+    // external `bind:value` clear apart from "not hydrated yet", and
+    // lastWrittenJustValue tells a justValue we derived ourselves (a stale echo
+    // after such a clear) apart from fresh input that must hydrate.
+    let lastSyncedHadValue = false;
+    let lastWrittenJustValue: JustValue | undefined;
+
+    function justValuesEqual(a: JustValue | undefined, b: JustValue | undefined): boolean {
+        if (a === b) return true;
+        // Proxied round trips break array identity; compare entries instead
+        return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((entry, i) => entry === b[i]);
+    }
+
+    function hasRealValue(multiple: boolean, value: SelectState<Item>['value']): boolean {
+        // An empty array means "nothing hydrated yet", not a real selection
+        return multiple ? Array.isArray(value) && value.length > 0 : !!value;
+    }
+
     function syncJustValue(): JustValue | undefined {
         // Snapshot before hydration so the derivation sees the pre-hydration state
         const snapshot = {
@@ -123,9 +140,23 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
             justValue: state.justValue,
             clearState: state.clearState,
         };
-        hydrateValueFromJustValue();
+
+        // A parent clearing `bind:value` directly must behave like an internal
+        // clear: without this, hydration would resurrect the cleared selection
+        // from the stale justValue echo written on a previous sync.
+        const externallyCleared =
+            !snapshot.clearState &&
+            lastSyncedHadValue &&
+            !hasRealValue(snapshot.multiple, snapshot.value) &&
+            justValuesEqual(snapshot.justValue, lastWrittenJustValue);
+
+        if (!externallyCleared) hydrateValueFromJustValue();
         state.clearState = false;
-        return deriveJustValue(snapshot);
+        lastSyncedHadValue = hasRealValue(state.multiple, state.value);
+
+        const derived = deriveJustValue(externallyCleared ? { ...snapshot, clearState: true } : snapshot);
+        lastWrittenJustValue = derived;
+        return derived;
     }
 
     function checkValueForDuplicates(): boolean {
@@ -153,7 +184,9 @@ export function useValue<Item extends SelectItem = SelectItem>(state: SelectStat
         const { multiple, value, prevValue, itemId } = state;
 
         if (!value) {
-            if (prevValue) actions.oninput([]);
+            // A cleared single select reports null: an empty array is truthy,
+            // so `if (payload)` in consumers would read "cleared" as "has value"
+            if (prevValue) actions.oninput(multiple ? [] : null);
             state.prevValue = value;
             return;
         }

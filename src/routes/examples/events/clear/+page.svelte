@@ -8,7 +8,8 @@
         { value: 'three', label: 'Three' },
     ];
 
-    function handle(clearItem: SelectValue) {
+    // Clear-all passes the removed value; removing one tag passes that entry
+    function handle(clearItem: SelectValue | string) {
         console.log('You clear the svelte select 🤯 ', $state.snapshot(clearItem));
     }
 </script>

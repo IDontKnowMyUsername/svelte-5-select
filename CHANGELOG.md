@@ -20,10 +20,18 @@
 * The multi-select tag remove control is now a real `<button>` in the tab order (was an unreachable `tabindex="-1"` div); removal is activated on `click` instead of `pointerup`, and removing an item refocuses the input
 * Arrow-key navigation now uses the same selectability rule as click/Enter (`selectable !== false`), so an item with an explicit `selectable: undefined` is reachable by keyboard
 * Removed the vestigial `build:lib` script and `vite.lib.config.ts` (a Svelte-4-era bundle build that clobbered `dist/`); `npm run package` is the library build
+* `SelectValue` now takes a second `Multiple` type parameter: `SelectProps<Item, true>` types `value` and the `oninput`/`onchange` payloads as `Item[]`, and single mode as `Item | null`. The `multiple` prop drives inference, so `<Select multiple>` narrows automatically; `SelectValue<Item>` without the parameter keeps the loose union
+* Clearing a single select dispatches `oninput(null)` instead of `oninput([])` (an empty array is truthy, so `if (payload)` misread "cleared" as "has value"); multiple mode still dispatches `[]`
+* `ErrorEvent` is renamed `SelectErrorEvent` (the old name shadowed the DOM's global `ErrorEvent`); `ErrorEvent` remains as a deprecated alias
+* The input no longer gets a default `aria-label` of the placeholder text, which overrode an external `<label for={id}>` in accessible-name computation; set `ariaLabel` for an explicit label, otherwise the placeholder still names the input as the spec's last-resort fallback
+* `selectionSnippet` is typed `Snippet<[Item, number?]>` — it always received a single item at runtime (each tag in multiple mode), never an array
 
 ### Added
 
-* Generic item typing: `<Select>` and the composables are generic over `Item extends SelectItem`, flowing into props, snippets, callbacks, and instance exports
+* Generic item typing: `<Select>` and the composables are generic over your item type, flowing into props, snippets, callbacks, and instance exports. The bound is the new `ItemLike` (`Record<string, any>`), so interface-declared item types work without an index signature (they previously failed the `SelectItem` constraint with an opaque error)
+* `value` officially accepts raw string ids (`string`/`string[]`) and normalizes them against `items`; the new `SelectValueProp` type names that bindable shape
+* New exports: `normalizeItem`, and the `ItemLike`, `SelectValueProp`, `SelectErrorEvent`, `SelectState`, `KeyboardNavigationState`, and `KeyboardNavigationActions` types
+* `ariaEmpty`, `ariaLoading`, and `ariaCleared` props customize the new live-region announcements (see Fixed)
 * Type-ahead for select-only mode: with `searchable={false}`, printable characters move hover to the next matching option (APG combobox pattern), open the closed list, and support repeated-initial cycling
 * Home/End move hover to the first/last selectable option while no filter text is entered
 * `aria-required`, `aria-invalid`, and `aria-multiselectable` reflect the `required`, `hasError`, and `multiple` props
@@ -33,6 +41,11 @@
 
 ### Fixed
 
+* With `useJustValue`, a parent clearing `bind:value` programmatically had the old selection silently resurrected from the stale `justValue` (and the UI kept showing it); an external clear now behaves like the internal one and clears `justValue` too
+* Clicking the clear button no longer bubbles `pointerup` to the container's list toggle — the list flickered open on every clear, and stayed open permanently with a custom `handleClear`; its `mousedown` is also prevented so clearing never steals focus from the input
+* A blur arriving while the list was scrolling was dropped forever (list stuck open, window keydown kept hijacking arrows/Enter typed into other fields — most likely on touch momentum-scroll); it is now deferred and replayed once scrolling settles, unless focus returned to the input
+* Typing while a `loadOptionsDeps` reload was in flight discarded that reload's response before it could validate the selection, so a now-invalid value survived the deps change; a superseded dependency reload still delivers its validation verdict (unless a newer dependency reload owns it)
+* Screen readers: an open list with zero results (or still loading) announced nothing — it now announces the empty/loading state; clearing the selection announced nothing under `aria-relevant="additions text"` — it now announces "Selection cleared."; an empty-array `bind:value` in multiple mode announced the nonsense string "Option , selected."
 * `bind:container` and `bind:input` now work as documented (the props were never `$bindable`, so following the README threw `bind_not_bindable`)
 * List could not be closed (and refetched on every attempt) with `loadOptions` + `clearFilterTextOnBlur={false}`
 * Selecting an item in an async select fired a spurious `loadOptions('')` and showed the loading spinner on the closed control; a fetch armed by typing could still fire after selection or close — both are cancelled now
@@ -54,6 +67,7 @@
 
 * New real-browser layout suite (`pnpm run test:browser`, vitest browser mode + Playwright) asserting floating placement, `listOffset`, list width, and scroll-into-view geometry; the corresponding happy-dom tests were vacuous (no layout engine) and were removed or rewritten as `scrollIntoView` spies
 * Regression coverage for load cancellation, disabled-at-mount values, string-value re-resolution, late `justValue` hydration, type-ahead, `aria-disabled`, keyboard tag removal, and `bind:container`/`bind:input`
+* Regression coverage for external `bind:value` clears with `useJustValue`, clear-button event containment, deferred blur replay after scrolling, superseded dependency-reload validation, and the live-region empty/loading/cleared announcements
 
 ## 1.0.2 (2026-04-07)
 

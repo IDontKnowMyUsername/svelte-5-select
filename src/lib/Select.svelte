@@ -1,10 +1,10 @@
 <svelte:options runes={true} />
 
-<script lang="ts" generics="Item extends SelectItem = SelectItem">
+<script lang="ts" generics="Item extends ItemLike = SelectItem, Multiple extends boolean = false">
     import { onDestroy, onMount, tick, untrack } from 'svelte';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
+    import type { FloatingConfig, ItemLike, SelectProps, SelectValue, SelectErrorEvent } from './types';
     import { createFloatingActions } from 'svelte-floating-ui';
-    import type { FloatingConfig, SelectProps, SelectValue, ErrorEvent as SelectErrorEvent } from './types';
     import { useAriaHandlers } from '$lib/aria-handlers.svelte';
 
     import _filter from './filter';
@@ -63,7 +63,7 @@
         filterSelectedItems = true,
         groupHeaderSelectable = false,
         multiFullItemClearable = false,
-        multiple = false,
+        multiple = false as Multiple,
         required = false,
         searchable = true,
         useJustValue = false,
@@ -99,11 +99,20 @@
 
         // ARIA props
         ariaLabel = undefined,
+        ariaCleared = () => {
+            return `Selection cleared.`;
+        },
+        ariaEmpty = () => {
+            return `No options`;
+        },
         ariaFocused = () => {
             return `Select is focused, type to refine list, press down to open the menu.`;
         },
         ariaListOpen = (label: string, count: number) => {
             return `You are currently focused on option ${label}. There are ${count} results available.`;
+        },
+        ariaLoading = () => {
+            return `Loading Data`;
         },
         ariaValues = (values: string) => {
             return `Option ${values}, selected.`;
@@ -143,7 +152,7 @@
         container = $bindable(undefined),
         input = $bindable(undefined),
         ...rest
-    }: SelectProps<Item> = $props();
+    }: SelectProps<Item, Multiple> = $props();
 
     let normalizedValue = $derived<SelectItem | SelectItem[] | null>(normalizeItem(value));
 
@@ -174,11 +183,17 @@
         get ariaFocused() {
             return ariaFocused;
         },
+        get ariaEmpty() {
+            return ariaEmpty;
+        },
+        get ariaLoading() {
+            return ariaLoading;
+        },
     });
 
     function internalHandleClear(_e?: MouseEvent): void {
         selectState.clearState = true;
-        onclear(value as SelectValue<Item>);
+        onclear(value as unknown as SelectValue<Item, Multiple>);
         value = undefined;
         closeList();
         handleFocus();
@@ -211,7 +226,10 @@
             listOpen && filteredItems[hoverItemIndex] && !isPresentationalHeader(filteredItems[hoverItemIndex])
                 ? `listbox-${_id}-item-${hoverItemIndex}`
                 : undefined,
-        'aria-label': ariaLabel ?? placeholder,
+        // Only an explicit ariaLabel: a default aria-label would override an external
+        // <label for={id}> in accessible-name computation. Without either, the
+        // placeholder still names the input as the spec's last-resort fallback.
+        'aria-label': ariaLabel,
         'aria-required': required || undefined,
         'aria-invalid': hasError || undefined,
         readonly: !searchable,
@@ -237,8 +255,26 @@
         return filteredItems as Item[];
     }
 
+    // Announce a cleared selection explicitly: the live region uses
+    // aria-relevant="additions text", so merely emptying the selection span
+    // announces nothing.
+    let selectionCleared = $state(false);
+    let prevHadValue = false; // seeded by the first effect run below
+    $effect(() => {
+        hasValue;
+        focused;
+        untrack(() => {
+            if (!focused || hasValue) {
+                selectionCleared = false;
+            } else if (prevHadValue) {
+                selectionCleared = true;
+            }
+            prevHadValue = hasValue;
+        });
+    });
+
     let ariaSelection = $derived(
-        value
+        hasValue
             ? ariaHandlers.handleAriaSelection({
                   value,
                   filteredItems,
@@ -247,7 +283,9 @@
                   multiple,
                   label,
               })
-            : '',
+            : selectionCleared
+              ? ariaCleared()
+              : '',
     );
 
     // svelte-floating-ui keeps a reference to this object; effects below mutate it in place
@@ -370,15 +408,16 @@
                   listOpen,
                   multiple,
                   label,
+                  loading,
               }),
     );
 
     // Initialize composables (creation order is effect order: value, hover, load options)
     const valueManager = useValue(selectState, {
         closeList,
-        oninput: (v) => oninput?.(v as SelectValue<Item>),
-        onchange: (v) => onchange?.(v as SelectValue<Item>),
-        onclear: (v) => onclear(v as SelectValue<Item>),
+        oninput: (v) => oninput?.(v as unknown as SelectValue<Item, Multiple>),
+        onchange: (v) => onchange?.(v as unknown as SelectValue<Item, Multiple>),
+        onclear: (v) => onclear(v as unknown as SelectValue<Item, Multiple>),
         onselect: (s) => onselect?.(s as Item),
     });
 
@@ -564,8 +603,17 @@
         focused = true;
     }
 
+    // A blur while the list is scrolling is deferred, not dropped: DOM focus is
+    // already gone, so no further blur will ever fire — without a replay the list
+    // stays open and the window keydown handler keeps hijacking keys.
+    let pendingBlur: FocusEvent | boolean = false;
+
     async function handleBlur(e?: FocusEvent): Promise<void> {
-        if (selectState.isScrolling) return;
+        if (selectState.isScrolling) {
+            pendingBlur = e ?? true;
+            return;
+        }
+        pendingBlur = false;
         if (listOpen || focused) {
             if (e) onblur?.(e);
             closeList();
@@ -574,6 +622,18 @@
             input?.blur();
         }
     }
+
+    // Replay a deferred blur once scrolling settles — unless focus is back on
+    // the input (the scroll itself blurred it only transiently)
+    $effect(() => {
+        selectState.isScrolling;
+        untrack(() => {
+            if (selectState.isScrolling || pendingBlur === false) return;
+            const deferred = pendingBlur === true ? undefined : pendingBlur;
+            pendingBlur = false;
+            if (document.activeElement !== input) void handleBlur(deferred);
+        });
+    });
 
     function handleClick(ev: MouseEvent) {
         ev.preventDefault();
@@ -842,7 +902,16 @@
         {/if}
 
         {#if showClear}
-            <button type="button" class="icon clear-select" aria-label="Clear selection" onclick={handleClear}>
+            <!-- Same guards as the tag-remove buttons: mousedown is prevented so
+                 clearing never steals focus from the input, and pointerup must not
+                 bubble to the container's list toggle (a clear would reopen the list). -->
+            <button
+                type="button"
+                class="icon clear-select"
+                aria-label="Clear selection"
+                onmousedown={(ev) => ev.preventDefault()}
+                onpointerup={(ev) => ev.stopPropagation()}
+                onclick={handleClear}>
                 {#if clearIconSnippet}
                     {@render clearIconSnippet()}
                 {:else}
@@ -862,7 +931,7 @@
         {/if}
     </div>
     {#if inputHiddenSnippet}
-        {@render inputHiddenSnippet(value as SelectValue<Item>)}
+        {@render inputHiddenSnippet(value)}
     {:else if multiple && Array.isArray(value) && value.length > 0}
         {#each value as Item[] as item}
             <input {name} type="hidden" value={useJustValue ? item[itemId] : JSON.stringify(item)} />
@@ -873,7 +942,7 @@
 
     {#if required && (!value || (Array.isArray(value) && value.length === 0))}
         {#if requiredSnippet}
-            {@render requiredSnippet(value as SelectValue<Item>)}
+            {@render requiredSnippet(value)}
         {:else}
             <select class="required" required tabindex="-1" aria-hidden="true"></select>
         {/if}

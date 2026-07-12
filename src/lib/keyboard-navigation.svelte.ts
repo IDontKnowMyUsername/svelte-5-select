@@ -1,7 +1,7 @@
-import type { KeyboardNavigationActions, KeyboardNavigationState, SelectItem } from './types';
+import type { ItemLike, KeyboardNavigationActions, KeyboardNavigationState, SelectItem } from './types';
 import { areItemsEqual, getItemProperty, isItemSelectableCheck } from '$lib/utils';
 
-export function useKeyboardNavigation<Item extends SelectItem = SelectItem>(
+export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
     state: KeyboardNavigationState<Item>,
     actions: KeyboardNavigationActions,
 ) {

@@ -1,11 +1,11 @@
-import type { SelectItem, SelectState } from './types';
+import type { ItemLike, SelectItem, SelectState } from './types';
 
 /**
  * The prop-backed part of the store: Select.svelte supplies live getter/setter
  * accessors over its `$props()` bindings and derived values, so reads stay
  * reactive and writes flow back into the bound props.
  */
-export type SelectStateProps<Item extends SelectItem = SelectItem> = Omit<
+export type SelectStateProps<Item extends ItemLike = SelectItem> = Omit<
     SelectState<Item>,
     'activeValue' | 'isScrolling' | 'clearState' | 'prevValue' | 'prevFilterText' | 'prevMultiple'
 >;
@@ -17,7 +17,7 @@ export type SelectStateProps<Item extends SelectItem = SelectItem> = Omit<
  * Per-field access means a read tracks only that one signal, so composables no
  * longer create blanket reactive dependencies on all state at once.
  */
-export function createSelectState<Item extends SelectItem = SelectItem>(
+export function createSelectState<Item extends ItemLike = SelectItem>(
     props: SelectStateProps<Item>,
 ): SelectState<Item> {
     let activeValue = $state<number | undefined>(undefined);

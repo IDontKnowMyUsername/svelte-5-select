@@ -4,6 +4,8 @@ interface AriaHandlersConfig {
     ariaValues: (values: string) => string;
     ariaListOpen: (label: string, count: number) => string;
     ariaFocused: () => string;
+    ariaEmpty?: () => string;
+    ariaLoading?: () => string;
 }
 
 interface AriaHandlersContext {
@@ -13,6 +15,7 @@ interface AriaHandlersContext {
     listOpen: boolean;
     multiple: boolean;
     label: string;
+    loading?: boolean;
 }
 
 export function useAriaHandlers(config: AriaHandlersConfig) {
@@ -20,7 +23,8 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
     function handleAriaSelection(context: AriaHandlersContext): string {
         const { value, multiple, label } = context;
 
-        if (!value) return '';
+        // An empty array is no selection: announcing it would claim one exists
+        if (!value || (Array.isArray(value) && value.length === 0)) return '';
 
         let selected: string | undefined = undefined;
 
@@ -36,9 +40,16 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
     }
 
     function handleAriaContent(context: AriaHandlersContext): string {
-        const { filteredItems, hoverItemIndex, listOpen, label } = context;
+        const { filteredItems, hoverItemIndex, listOpen, label, loading } = context;
 
-        if (!filteredItems || filteredItems.length === 0) return '';
+        if (!filteredItems || filteredItems.length === 0) {
+            // The visible list shows a loading/empty state here; silence would leave
+            // screen-reader users unable to tell pending results from no results
+            if (listOpen) {
+                return loading ? (config.ariaLoading?.() ?? 'Loading Data') : (config.ariaEmpty?.() ?? 'No options');
+            }
+            return '';
+        }
 
         const _item = filteredItems[hoverItemIndex];
 

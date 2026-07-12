@@ -400,6 +400,76 @@ describe('useLoadOptions', () => {
         expect(actions.onloaded).not.toHaveBeenCalled();
     });
 
+    it('a dependency reload superseded by typing still validates the value', async () => {
+        let resolveDeps!: (items: SelectItem[]) => void;
+        let resolveTyping!: (items: SelectItem[]) => void;
+        const loadOptions = vi
+            .fn()
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)))
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveTyping = r)));
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'paris', label: 'Paris' },
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false }); // deps changed
+        handleLoadOptions('mu', { debounce: true }); // typing supersedes before the response lands
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]); // stale response missing Paris
+        await flush();
+
+        // The stale items never land, but the deps change's verdict still clears the value
+        expect(writes.items).toBeUndefined();
+        expect(writes.value).toEqual([undefined]);
+
+        resolveTyping([{ value: 'munich', label: 'Munich' }]);
+        await flush();
+
+        expect(writes.items).toEqual([[{ value: 'munich', label: 'Munich' }]]);
+    });
+
+    it('a newer dependency reload owns the validation verdict', async () => {
+        let resolveFirst!: (items: SelectItem[]) => void;
+        let resolveSecond!: (items: SelectItem[]) => void;
+        const loadOptions = vi
+            .fn()
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveFirst = r)))
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveSecond = r)));
+        const { writes, handleLoadOptions } = createHarness({
+            value: { value: 'paris', label: 'Paris' },
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false });
+        handleLoadOptions('', { validateValue: true, debounce: false }); // deps changed again
+
+        resolveFirst([{ value: 'berlin', label: 'Berlin' }]); // superseded verdict must stay silent
+        await flush();
+        expect(writes.value).toBeUndefined();
+
+        resolveSecond([{ value: 'paris', label: 'Paris' }]); // the newest reload validates: value exists
+        await flush();
+        expect(writes.value).toBeUndefined();
+    });
+
+    it('an invalidated dependency reload delivers no verdict', async () => {
+        let resolveLoad!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));
+        const { writes, handleLoadOptions, invalidateLoads } = createHarness({
+            value: { value: 'paris', label: 'Paris' },
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false });
+        invalidateLoads(); // disable/unmount — nothing may write state
+
+        resolveLoad([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        expect(writes.value).toBeUndefined();
+        expect(writes.items).toBeUndefined();
+    });
+
     it('keeps value and items when disabled without a disabled transition (mount)', () => {
         const { writes, handleLoadOptions } = createHarness({
             disabled: true,

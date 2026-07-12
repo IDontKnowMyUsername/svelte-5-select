@@ -1,8 +1,8 @@
 import { untrack } from 'svelte';
-import type { SelectItem, SelectState } from './types';
+import type { ItemLike, SelectItem, SelectState } from './types';
 import { areItemsEqual, getItemProperty, isItemSelectableCheck, normalizeItem } from './utils';
 
-export function useHover<Item extends SelectItem = SelectItem>(state: SelectState<Item>) {
+export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<Item>) {
     function computeNextIndex(filteredItems: SelectItem[], fromIndex: number, increment: number): number {
         // Same predicate as click/Enter selection: arrow keys must be able to
         // reach every item the user can otherwise select

@@ -14,7 +14,7 @@
 
 ## Demos
 
-[💥 Examples of every prop, event, snippet and more 💥](https://svelte-5-select-examples.vercel.app)
+[💥 Examples of every prop, event, snippet and more 💥](https://github.com/IDontKnowMyUsername/svelte-5-select/tree/master/src/routes/examples)
 
 ## Installation
 
@@ -72,7 +72,10 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | listStyle              | `string`  | `''`            | Add inline styles to the list                                  |
 | hoverItemIndex         | `number`  | `0`             | Index of the currently hovered item (bindable)                 |
 | loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires               |
-| ariaLabel              | `string`  | `undefined`     | `aria-label` for the input; falls back to `placeholder`        |
+| ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input; when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
+| ariaCleared            | `() => string` | see below  | Announcement after the selection is cleared                    |
+| ariaEmpty              | `() => string` | see below  | Announcement when the open list has no options                 |
+| ariaLoading            | `() => string` | see below  | Announcement while the open list is loading                    |
 
 ### Bindable props
 
@@ -204,7 +207,7 @@ You can also use custom collections.
 
 ### Async Items
 
-To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` has debounce baked in and fires each time `filterText` is updated.
+To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` fires once on mount, on typing non-empty `filterText` (debounced), and whenever `loadOptionsDeps` or `disabled` change. Emptying the filter text or closing the list cancels a pending typing-driven load instead of re-fetching.
 
 ```html
 <script>
@@ -261,6 +264,7 @@ Core behavior can be overridden by passing your own functions as props. Look thr
   const loadOptions = async (filterText) => fetchMyItems(filterText);
 
   // Debounce used by loadOptions
+  let timeout;
   const debounce = (fn, wait = 1) => {
     clearTimeout(timeout);
     timeout = setTimeout(fn, wait);
@@ -294,7 +298,26 @@ A component reference exposes a couple of methods:
 
 ## TypeScript
 
-The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in. `SelectProps`, `SelectItem`, and `SelectValue` are exported from the package for annotating your own wrappers.
+The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `oninput`/`onchange` payloads are `Item[]`; without it they are `Item | null` (`null` is dispatched when the selection is cleared).
+
+```svelte
+<script lang="ts">
+  interface Country {
+    code: string;
+    name: string;
+  }
+
+  let countries: Country[] = [
+    { code: 'de', name: 'Germany' },
+    { code: 'fr', name: 'France' },
+  ];
+  let value: Country[] | undefined = $state();
+</script>
+
+<Select items={countries} itemId="code" label="name" multiple bind:value oninput={(v) => v.length} />
+```
+
+`SelectProps`, `SelectItem`, `SelectValue`, and `SelectValueProp` (the bindable `value` shape, which also accepts raw string ids) are exported for annotating your own wrappers.
 
 ## A11y (Accessibility)
 
@@ -309,6 +332,9 @@ Use `ariaLabel` to name the input, and override these props to change the screen
   ariaValues={(values) => `Option ${values}, selected.`}
   ariaListOpen={(label, count) => `You are currently focused on option ${label}. There are ${count} results available.`}
   ariaFocused={() => `Select is focused, type to refine list, press down to open the menu.`}
+  ariaEmpty={() => `No options`}
+  ariaLoading={() => `Loading Data`}
+  ariaCleared={() => `Selection cleared.`}
 />
 ```
 

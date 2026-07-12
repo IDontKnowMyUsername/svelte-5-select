@@ -7,6 +7,7 @@
 
 <Select bind:items bind:value multiple>
     {#snippet selectionSnippet(selection, index)}
-        Index: {index} Slot: {!Array.isArray(selection) ? selection.label : ''}
+        <!-- Raw string items leave Item uninferrable; at runtime each tag is the converted item object -->
+        Index: {index} Slot: {(selection as unknown as { label: string }).label}
     {/snippet}
 </Select>

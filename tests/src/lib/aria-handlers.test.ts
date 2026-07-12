@@ -131,7 +131,7 @@ describe('useAriaHandlers', () => {
             expect(result).toBe('Selected: Item A');
         });
 
-        it('handles empty array in multiple mode', () => {
+        it('announces nothing for an empty array in multiple mode', () => {
             const config = {
                 ariaValues: vi.fn((v) => `Selected: ${v}`),
                 ariaListOpen: vi.fn(),
@@ -151,13 +151,14 @@ describe('useAriaHandlers', () => {
 
             const result = handleAriaSelection(context);
 
-            expect(config.ariaValues).toHaveBeenCalledWith('');
-            expect(result).toBe('Selected: ');
+            // An empty array is no selection: announcing it would claim one exists
+            expect(result).toBe('');
+            expect(config.ariaValues).not.toHaveBeenCalled();
         });
     });
 
     describe('handleAriaContent', () => {
-        it('returns empty string when filteredItems is empty', () => {
+        it('returns empty string when filteredItems is empty and the list is closed', () => {
             const config = {
                 ariaValues: vi.fn(),
                 ariaListOpen: vi.fn(),
@@ -180,6 +181,72 @@ describe('useAriaHandlers', () => {
             expect(result).toBe('');
             expect(config.ariaListOpen).not.toHaveBeenCalled();
             expect(config.ariaFocused).not.toHaveBeenCalled();
+        });
+
+        it('announces the empty state when the list is open with no items', () => {
+            const config = {
+                ariaValues: vi.fn(),
+                ariaListOpen: vi.fn(),
+                ariaFocused: vi.fn(),
+                ariaEmpty: vi.fn(() => 'Nothing matches.'),
+            };
+
+            const { handleAriaContent } = useAriaHandlers(config);
+
+            const result = handleAriaContent({
+                value: null,
+                filteredItems: [],
+                hoverItemIndex: 0,
+                listOpen: true,
+                multiple: false,
+                label: 'label',
+            });
+
+            expect(result).toBe('Nothing matches.');
+        });
+
+        it('falls back to a default empty-state announcement', () => {
+            const config = {
+                ariaValues: vi.fn(),
+                ariaListOpen: vi.fn(),
+                ariaFocused: vi.fn(),
+            };
+
+            const { handleAriaContent } = useAriaHandlers(config);
+
+            const result = handleAriaContent({
+                value: null,
+                filteredItems: [],
+                hoverItemIndex: 0,
+                listOpen: true,
+                multiple: false,
+                label: 'label',
+            });
+
+            expect(result).toBe('No options');
+        });
+
+        it('announces loading when the list is open, empty, and loading', () => {
+            const config = {
+                ariaValues: vi.fn(),
+                ariaListOpen: vi.fn(),
+                ariaFocused: vi.fn(),
+                ariaLoading: vi.fn(() => 'Fetching options.'),
+            };
+
+            const { handleAriaContent } = useAriaHandlers(config);
+
+            const result = handleAriaContent({
+                value: null,
+                filteredItems: [],
+                hoverItemIndex: 0,
+                listOpen: true,
+                multiple: false,
+                label: 'label',
+                loading: true,
+            });
+
+            expect(result).toBe('Fetching options.');
         });
 
         it('calls ariaListOpen when list is open with items', () => {

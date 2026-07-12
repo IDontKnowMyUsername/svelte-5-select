@@ -472,6 +472,60 @@ describe('Select Component', () => {
             await tick();
             expect(selectInput.value).toBe('');
         });
+
+        it('replays a blur deferred during list scrolling once scrolling settles', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    listOpen: true,
+                    focused: true,
+                },
+            });
+            await tick();
+
+            const list = document.querySelector('.svelte-select-list') as HTMLElement;
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+
+            list.dispatchEvent(new Event('scroll'));
+            selectInput.blur(); // focus really leaves; the blur handler defers while scrolling
+            await tick();
+
+            // Mid-scroll the blur must not close the list
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            list.dispatchEvent(new Event('scrollend'));
+            await tick();
+
+            // Regression: the deferred blur used to be dropped forever, leaving the
+            // list open and the window keydown handler hijacking keys
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.svelte-select')?.classList.contains('focused')).toBe(false);
+        });
+
+        it('discards a deferred blur when focus returns to the input before scrolling settles', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    listOpen: true,
+                    focused: true,
+                },
+            });
+            await tick();
+
+            const list = document.querySelector('.svelte-select-list') as HTMLElement;
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+
+            list.dispatchEvent(new Event('scroll'));
+            selectInput.dispatchEvent(new FocusEvent('blur')); // transient: DOM focus never left
+            selectInput.focus();
+            await tick();
+
+            list.dispatchEvent(new Event('scrollend'));
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(document.querySelector('.svelte-select')?.classList.contains('focused')).toBe(true);
+        });
     });
 
     describe('Selection behavior', () => {
@@ -1031,6 +1085,61 @@ describe('Select Component', () => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
 
             expect(document.querySelector('.clear-select')).toBeFalsy();
+        });
+
+        it('clicking clear does not bubble to the container list toggle', async () => {
+            // A custom handleClear does not close the list itself, so a pointerup
+            // leaking to the container used to leave the list permanently open
+            const handleClear = vi.fn();
+            render(Select, {
+                props: {
+                    items,
+                    value: items[0],
+                    handleClear,
+                },
+            });
+
+            const clearButton = document.querySelector('.clear-select') as HTMLElement;
+            clearButton.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+            clearButton.click();
+            await tick();
+
+            expect(handleClear).toHaveBeenCalled();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('clear button mousedown is prevented so input focus is never stolen', () => {
+            render(Select, {
+                props: {
+                    items,
+                    value: items[0],
+                },
+            });
+
+            const clearButton = document.querySelector('.clear-select') as HTMLElement;
+            const mousedown = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+            clearButton.dispatchEvent(mousedown);
+
+            expect(mousedown.defaultPrevented).toBe(true);
+        });
+
+        it('dispatches oninput(null) when a single selection is cleared', async () => {
+            const oninput = vi.fn();
+            render(Select, {
+                props: {
+                    items,
+                    value: items[0],
+                    oninput,
+                },
+            });
+            await tick();
+
+            (document.querySelector('.clear-select') as HTMLElement).click();
+            await tick();
+
+            // An empty array is truthy, so `if (payload)` in consumers would
+            // read "cleared" as "has value" — single mode must report null
+            expect(oninput).toHaveBeenCalledWith(null);
         });
     });
 
@@ -3522,6 +3631,75 @@ describe('Select Component', () => {
             headers.forEach((header) => expect(header.getAttribute('aria-disabled')).toBeNull());
         });
 
+        it('does not stamp a default aria-label so an external label can name the input', () => {
+            render(Select, { props: { items, id: 'food' } });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            // Regression: a default aria-label of the placeholder text overrode
+            // a consumer's <label for="food"> in accessible-name computation
+            expect(input.hasAttribute('aria-label')).toBe(false);
+        });
+
+        it('announces the empty state instead of silence when a filter matches nothing', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    listOpen: true,
+                    focused: true,
+                    filterText: 'zzz',
+                },
+            });
+            await tick();
+
+            expect(document.querySelector('#aria-context')?.textContent).toContain('No options');
+        });
+
+        it('announces loading while an async load is pending on an open list', async () => {
+            render(Select, {
+                props: {
+                    loadOptions: () => new Promise<SelectItem[]>(() => {}),
+                    listOpen: true,
+                    focused: true,
+                },
+            });
+            await tick();
+
+            expect(document.querySelector('#aria-context')?.textContent).toContain('Loading Data');
+        });
+
+        it('announces the cleared selection in the live region', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    value: items[0],
+                    focused: true,
+                },
+            });
+            await tick();
+
+            (document.querySelector('.clear-select') as HTMLElement).click();
+            await tick();
+
+            // Regression: emptying the selection span announced nothing under
+            // aria-relevant="additions text"
+            expect(document.querySelector('#aria-selection')?.textContent).toContain('Selection cleared.');
+        });
+
+        it('announces nothing for an empty multiple value', async () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [],
+                    focused: true,
+                },
+            });
+            await tick();
+
+            // Regression: bind:value={[]} used to announce "Option , selected."
+            expect(document.querySelector('#aria-selection')?.textContent?.trim()).toBe('');
+        });
+
         it('announces the active tag when navigating selected options with arrow keys', async () => {
             render(Select, {
                 props: {
@@ -5082,6 +5260,49 @@ describe('Select Component', () => {
             await tick();
 
             expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Chocolate');
+        });
+
+        it('lets a parent clear the value externally when useJustValue is on', async () => {
+            const oninput = vi.fn();
+            const { rerender } = render(Select, {
+                props: {
+                    useJustValue: true,
+                    items,
+                    value: { value: 'pizza', label: 'Pizza' },
+                    oninput,
+                },
+            });
+            await tick();
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('Pizza');
+
+            await rerender({ value: undefined });
+            await tick();
+            await tick();
+
+            // Regression: hydration used to resurrect the cleared selection from
+            // the stale justValue echo written on an earlier sync
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+            expect(oninput).toHaveBeenCalledWith(null);
+            expect(oninput).not.toHaveBeenCalledWith(expect.objectContaining({ value: 'pizza' }));
+        });
+
+        it('lets a parent clear a multiple value externally when useJustValue is on', async () => {
+            const { rerender } = render(Select, {
+                props: {
+                    multiple: true,
+                    useJustValue: true,
+                    items,
+                    value: [{ value: 'pizza', label: 'Pizza' }],
+                },
+            });
+            await tick();
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+
+            await rerender({ value: [] });
+            await tick();
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(0);
         });
     });
 

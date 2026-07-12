@@ -2,14 +2,40 @@ import type { Snippet } from 'svelte';
 import type { HTMLInputAttributes } from 'svelte/elements';
 import type { ComputePositionConfig } from 'svelte-floating-ui/dom';
 
-export type SelectValue<Item extends SelectItem = SelectItem> = Item | Item[] | null;
+/**
+ * The bound for user item types. Deliberately `Record<string, any>` rather than
+ * {@link SelectItem}: interface-declared item types have no implicit index
+ * signature, so they satisfy this bound but not `SelectItem` itself.
+ */
+export type ItemLike = Record<string, any>;
 
-export interface ErrorEvent {
+/**
+ * The payload shape of `oninput`/`onchange`: an item array in multiple mode,
+ * a single item or null otherwise. `Multiple` defaults to `boolean`, which
+ * distributes to the loose `Item[] | Item | null` union.
+ */
+export type SelectValue<Item extends ItemLike = SelectItem, Multiple extends boolean = boolean> = Multiple extends true
+    ? Item[]
+    : Item | null;
+
+/**
+ * The bindable `value` prop shape: raw string ids are also accepted and are
+ * normalized into items against `items`.
+ */
+export type SelectValueProp<
+    Item extends ItemLike = SelectItem,
+    Multiple extends boolean = boolean,
+> = Multiple extends true ? Item[] | string[] | null : Item | string | null;
+
+export interface SelectErrorEvent {
     type: string;
     details: unknown;
 }
 
-export interface FilterConfig<Item extends SelectItem = SelectItem> {
+/** @deprecated Renamed to {@link SelectErrorEvent} — this alias shadows the DOM's global `ErrorEvent`. */
+export type ErrorEvent = SelectErrorEvent;
+
+export interface FilterConfig<Item extends ItemLike = SelectItem> {
     loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
     filterText: string;
     items: Item[] | string[] | null;
@@ -48,7 +74,7 @@ export interface SelectItem {
  * the rest is internal shared state owned by `createSelectState`. Reading a field
  * tracks only that field's signal.
  */
-export interface SelectState<Item extends SelectItem = SelectItem> {
+export interface SelectState<Item extends ItemLike = SelectItem> {
     // Bindable props
     value: Item | Item[] | string | string[] | null | undefined;
     items: Item[] | string[] | null;
@@ -87,7 +113,7 @@ export interface SelectState<Item extends SelectItem = SelectItem> {
 }
 
 /** The subset of {@link SelectState} that keyboard navigation needs; any object with these fields works. */
-export interface KeyboardNavigationState<Item extends SelectItem = SelectItem> {
+export interface KeyboardNavigationState<Item extends ItemLike = SelectItem> {
     listOpen: boolean;
     readonly filteredItems: SelectItem[];
     hoverItemIndex: number;
@@ -119,21 +145,21 @@ export interface ValueActions {
 export interface LoadOptionsActions {
     debounce: (fn: () => void, wait: number) => void;
     onloaded: (options: SelectItem[]) => void;
-    onerror: (error: ErrorEvent) => void;
+    onerror: (error: SelectErrorEvent) => void;
 }
 
 export interface ScrollActionParams {
     scroll: boolean;
 }
 
-export interface SelectProps<Item extends SelectItem = SelectItem> {
+export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extends boolean = false> {
     // Core data props
     filterText?: string;
     itemId?: string;
     items?: Item[] | string[] | null;
     justValue?: JustValue;
     label?: string;
-    value?: Item | Item[] | string | string[] | null;
+    value?: SelectValueProp<Item, Multiple>;
 
     // UI props
     disabled?: boolean;
@@ -155,7 +181,7 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     filterSelectedItems?: boolean;
     groupHeaderSelectable?: boolean;
     multiFullItemClearable?: boolean;
-    multiple?: boolean;
+    multiple?: Multiple;
     required?: boolean;
     searchable?: boolean;
     useJustValue?: boolean;
@@ -185,9 +211,12 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
 
     // ARIA props
+    ariaCleared?: () => string;
+    ariaEmpty?: () => string;
     ariaFocused?: () => string;
     ariaLabel?: string;
     ariaListOpen?: (label: string, count: number) => string;
+    ariaLoading?: () => string;
     ariaValues?: (values: string) => string;
 
     // Custom behavior
@@ -195,13 +224,14 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
 
     // Event handlers
     onblur?: (e: FocusEvent) => void;
-    onchange?: (value: SelectValue<Item>) => void;
-    onclear?: (value: SelectValue<Item>) => void;
-    onerror?: (error: ErrorEvent) => void;
+    onchange?: (value: SelectValue<Item, Multiple>) => void;
+    /** Clear-all receives the full removed value; removing one tag receives that single entry. */
+    onclear?: (value: SelectValue<Item, Multiple> | Item | string) => void;
+    onerror?: (error: SelectErrorEvent) => void;
     onfilter?: (items: Item[]) => void;
     onfocus?: (e: FocusEvent) => void;
     onhoveritem?: (index: number) => void;
-    oninput?: (value: SelectValue<Item>) => void;
+    oninput?: (value: SelectValue<Item, Multiple>) => void;
     onloaded?: (options: Item[]) => void;
     onselect?: (selection: Item) => void;
 
@@ -209,7 +239,7 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     chevronIconSnippet?: Snippet<[boolean]>;
     clearIconSnippet?: Snippet;
     emptySnippet?: Snippet;
-    inputHiddenSnippet?: Snippet<[SelectValue<Item>]>;
+    inputHiddenSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
     itemSnippet?: Snippet<[Item, number]>;
     listAppendSnippet?: Snippet;
     listPrependSnippet?: Snippet;
@@ -217,8 +247,9 @@ export interface SelectProps<Item extends SelectItem = SelectItem> {
     loadingIconSnippet?: Snippet;
     multiClearIconSnippet?: Snippet;
     prependSnippet?: Snippet;
-    requiredSnippet?: Snippet<[SelectValue<Item>]>;
-    selectionSnippet?: Snippet<[Item | Item[], number?]>;
+    requiredSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
+    /** Receives one item at a time: the value in single mode, each tag in multiple mode. */
+    selectionSnippet?: Snippet<[Item, number?]>;
 
     // DOM references (for binding)
     container?: HTMLDivElement;

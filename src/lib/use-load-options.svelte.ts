@@ -1,5 +1,5 @@
 import { untrack } from 'svelte';
-import type { LoadOptionsActions, SelectItem, SelectState } from './types';
+import type { ItemLike, LoadOptionsActions, SelectItem, SelectState } from './types';
 import { convertStringItemsToObjects, getItemProperty } from './utils';
 
 export interface HandleLoadOptionsOptions {
@@ -11,7 +11,7 @@ export interface HandleLoadOptionsOptions {
     clearValueOnDisabled?: boolean;
 }
 
-export function useLoadOptions<Item extends SelectItem = SelectItem>(
+export function useLoadOptions<Item extends ItemLike = SelectItem>(
     state: SelectState<Item>,
     actions: LoadOptionsActions,
 ) {
@@ -20,6 +20,13 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
     // Whether the newest armed/in-flight load came from typing; only those may be
     // cancelled by selection or list close — dependency reloads must still land
     let latestLoadIsFilterDriven = false;
+    // Token of the newest ARMED load and whether it validates the value. A
+    // dependency reload superseded by a plain filter load must still deliver its
+    // validation verdict (its response is authoritative for the deps change),
+    // while a newer validating load owns the verdict itself, and plain
+    // invalidation (disable, unmount, cancel) must deliver nothing.
+    let armedToken = 0;
+    let armedLoadValidates = false;
 
     // Invalidate every pending and in-flight load: a pending one never fetches,
     // an in-flight response is discarded. Does not touch reactive state, so it
@@ -49,14 +56,52 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
             state.loading = true;
 
             const token = ++requestSequence;
+            armedToken = token;
+            armedLoadValidates = validateValue;
             latestLoadIsFilterDriven = shouldDebounce;
+
+            // Only a dependency-driven reload invalidates the selection: when a
+            // parent select changes, a stale child value must clear. A
+            // filter-driven load merely narrows the results and must not wipe
+            // a selection that happens to fall outside them.
+            const validateValueAgainstLoaded = (loaded: readonly (SelectItem | string)[] | null) => {
+                // Re-read state after the async boundary
+                const { value, multiple, itemId, useJustValue } = state;
+                if (!value) return;
+
+                if (loaded && loaded.length > 0) {
+                    const idOf = (entry: SelectItem | string) =>
+                        typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
+                    const valueExists = multiple
+                        ? Array.isArray(value) &&
+                          (value as (SelectItem | string)[]).every((v) => loaded.some((item) => idOf(item) === idOf(v)))
+                        : loaded.some((item) => idOf(item) === idOf(value as SelectItem | string));
+
+                    if (!valueExists) {
+                        state.value = multiple ? [] : undefined;
+                        if (useJustValue) {
+                            state.justValue = multiple ? [] : '';
+                        }
+                    }
+                } else {
+                    state.value = multiple ? [] : undefined;
+                }
+            };
 
             const executeLoad = async () => {
                 // Cancelled or superseded while waiting in the debounce queue: never fetch
                 if (token !== requestSequence) return;
                 try {
                     const result = await loadOptions(currentFilterText);
-                    if (token !== requestSequence) return; // superseded by a newer request
+                    if (token !== requestSequence) {
+                        // Superseded by a newer request: the response must not land, but a
+                        // dependency reload's validation verdict still applies to the deps
+                        // change — unless a newer armed load validates on its own.
+                        if (validateValue && armedToken === requestSequence && !armedLoadValidates) {
+                            validateValueAgainstLoaded(result ?? null);
+                        }
+                        return;
+                    }
 
                     if (result && result.length > 0 && typeof result[0] === 'string') {
                         state.items = convertStringItemsToObjects(result as string[]) as Item[];
@@ -64,34 +109,7 @@ export function useLoadOptions<Item extends SelectItem = SelectItem>(
                         state.items = result ? (result.slice() as Item[]) : null;
                     }
 
-                    // Re-read state after the async boundary
-                    const { value, items, multiple, itemId, useJustValue } = state;
-
-                    // Only a dependency-driven reload invalidates the selection: when a
-                    // parent select changes, a stale child value must clear. A
-                    // filter-driven load merely narrows the results and must not wipe
-                    // a selection that happens to fall outside them.
-                    if (validateValue && value) {
-                        if (items && items.length > 0) {
-                            const idOf = (entry: SelectItem | string) =>
-                                typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
-                            const valueExists = multiple
-                                ? Array.isArray(value) &&
-                                  (value as (SelectItem | string)[]).every((v) =>
-                                      items.some((item) => idOf(item) === idOf(v)),
-                                  )
-                                : items.some((item) => idOf(item) === idOf(value as SelectItem | string));
-
-                            if (!valueExists) {
-                                state.value = multiple ? [] : undefined;
-                                if (useJustValue) {
-                                    state.justValue = multiple ? [] : '';
-                                }
-                            }
-                        } else {
-                            state.value = multiple ? [] : undefined;
-                        }
-                    }
+                    if (validateValue) validateValueAgainstLoaded(state.items);
 
                     state.loading = false;
                     actions.onloaded((state.items as SelectItem[]) || []);

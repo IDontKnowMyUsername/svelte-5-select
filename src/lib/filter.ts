@@ -1,7 +1,7 @@
-import type { FilterConfig, SelectItem } from './types';
+import type { FilterConfig, ItemLike, SelectItem } from './types';
 import { areItemsEqual, isStringArray } from '$lib/utils';
 
-export default function filter<Item extends SelectItem = SelectItem>({
+export default function filter<Item extends ItemLike = SelectItem>({
     loadOptions,
     filterText = '',
     items,
