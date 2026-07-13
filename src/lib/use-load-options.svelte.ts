@@ -28,6 +28,11 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     let armedToken = 0;
     let armedLoadValidates = false;
 
+    // The filter text the currently-displayed items reflect (set when a load
+    // settles). Lets a reopen tell "results are stale for the current text" from
+    // "results already match", so only the former re-fetches.
+    let loadedFilterText: string | undefined = undefined;
+
     // Invalidate every pending and in-flight load: a pending one never fetches,
     // an in-flight response is discarded. Does not touch reactive state, so it
     // is safe to call during component teardown.
@@ -108,6 +113,9 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     } else {
                         state.items = result ? (result.slice() as Item[]) : null;
                     }
+                    // Displayed items now reflect this filter text — a reopen with
+                    // the same text won't refetch
+                    loadedFilterText = currentFilterText;
 
                     if (validateValue) validateValueAgainstLoaded(state.items);
 
@@ -118,6 +126,9 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     console.error('loadOptions error:', err);
                     actions.onerror({ type: 'loadOptions', details: err });
                     state.items = null;
+                    // The load resolved (with an error) for this text; a reopen must
+                    // not blindly refetch-loop on a persistent failure
+                    loadedFilterText = currentFilterText;
                     state.loading = false;
                 }
             };
@@ -145,29 +156,40 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     }
 
     // Snapshot of the previous effect run so it can tell WHICH input changed
-    let prevRun: { filterText: string; deps: unknown[]; disabled: boolean } | undefined;
+    let prevRun: { filterText: string; deps: unknown[]; disabled: boolean; listOpen: boolean } | undefined;
 
     // Run loadOptions when its inputs change: typing non-empty filter text
     // re-queries (debounced), a loadOptionsDeps change re-queries and re-validates
     // the value, and toggling disabled clears or reloads the loaded state; mount,
-    // deps, and disabled loads fire immediately. listOpen is deliberately NOT an
-    // input — opening or closing the list must never fetch, and clearing the
-    // filter text on close must not fire a loadOptions('').
+    // deps, and disabled loads fire immediately. listOpen only matters for the
+    // reopen-stale case below — opening or closing the list otherwise never fetches,
+    // and clearing the filter text on close must not fire a loadOptions('').
     $effect(() => {
         const filterText = state.filterText;
         const deps = [...state.loadOptionsDeps];
         const disabled = state.disabled;
+        const listOpen = state.listOpen;
 
         if (!state.loadOptions) return;
 
         const prev = prevRun;
-        prevRun = { filterText, deps, disabled };
+        prevRun = { filterText, deps, disabled, listOpen };
 
         const isFirstRun = prev === undefined;
         const depsChanged =
             !isFirstRun && (deps.length !== prev.deps.length || deps.some((dep, i) => dep !== prev.deps[i]));
         const filterTextChanged = !isFirstRun && filterText !== prev.filterText;
         const disabledChanged = !isFirstRun && disabled !== prev.disabled;
+        // A genuine closed->open transition (not a typing-open, where filterText
+        // also changed) that reveals results stale for the retained filter text.
+        const reopenedStale =
+            !isFirstRun &&
+            listOpen &&
+            !prev.listOpen &&
+            !filterTextChanged &&
+            !disabled &&
+            filterText.length > 0 &&
+            filterText !== loadedFilterText;
 
         if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0)) {
             untrack(() =>
@@ -177,6 +199,13 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     clearValueOnDisabled: disabledChanged,
                 }),
             );
+        } else if (reopenedStale) {
+            // Reopened with retained filter text whose load was cancelled on close
+            // (clearFilterTextOnBlur=false): the shown items are stale for this
+            // text, so refresh immediately. A typing-open is handled by the branch
+            // above (filterText changed → debounced); a pure reopen whose results
+            // already match, an empty filter, and the initial mount never reach here.
+            untrack(() => handleLoadOptions(filterText, { debounce: false }));
         } else if (filterTextChanged) {
             // Filter text was emptied: a load armed for the old text is moot now
             untrack(() => cancelPendingFilterLoad());

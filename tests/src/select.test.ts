@@ -5533,7 +5533,7 @@ describe('Select Component', () => {
             expect(document.querySelectorAll('.multi-item').length).toBe(1);
         });
 
-        it.fails('re-fires loadOptions for retained filter text when the list reopens (known gap)', async () => {
+        it('re-fires loadOptions for retained filter text when the list reopens', async () => {
             const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
             render(Select, {
                 props: { loadOptions: loadSpy, clearFilterTextOnBlur: false, focused: true, debounceWait: 50 },
@@ -5549,14 +5549,40 @@ describe('Select Component', () => {
             // Close before the debounce fires — the pending 'ab' load is cancelled
             await handleKeyboard('Escape');
             await wait(120);
+            expect(loadSpy.mock.calls.map((c) => c[0])).not.toContain('ab');
 
-            // Reopen; the filter text is still 'ab'
+            // Reopen with the filter text still 'ab' — the stale results must refresh
+            await handleKeyboard('ArrowDown');
+            await vi.waitFor(() => {
+                expect(loadSpy.mock.calls.map((c) => c[0])).toContain('ab');
+            });
+        });
+
+        it('does not refetch on reopen when the shown results already match the filter text', async () => {
+            const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
+            render(Select, {
+                props: { loadOptions: loadSpy, clearFilterTextOnBlur: false, focused: true, debounceWait: 50 },
+            });
+            await wait(0);
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Let the 'ab' load complete this time
+            await vi.waitFor(() => {
+                expect(loadSpy.mock.calls.map((c) => c[0])).toContain('ab');
+            });
+            const callsAfterLoad = loadSpy.mock.calls.length;
+
+            await handleKeyboard('Escape');
+            await wait(80);
             await handleKeyboard('ArrowDown');
             await wait(120);
 
-            // Desired: results should match the visible text, so 'ab' gets fetched.
-            // Currently the cancelled load is never re-armed, leaving stale results.
-            expect(loadSpy.mock.calls.map((c) => c[0])).toContain('ab');
+            // Results already reflect 'ab', so reopening must not refetch
+            expect(loadSpy.mock.calls.length).toBe(callsAfterLoad);
         });
     });
 });
