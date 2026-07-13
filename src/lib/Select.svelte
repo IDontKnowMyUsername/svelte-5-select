@@ -532,6 +532,27 @@
         if (input && listOpen && !focused) handleFocus();
     });
 
+    // Dev-only: warn once the input is mounted if it has no robust accessible
+    // name. The placeholder is only a last-resort fallback that some screen
+    // readers ignore, so an unnamed combobox is a real gap worth surfacing.
+    $effect(() => {
+        if (!import.meta.env.DEV) return;
+        input;
+        ariaLabel;
+        untrack(() => {
+            if (!input) return;
+            const named = !!ariaLabel || !!input.getAttribute('aria-labelledby') || (input.labels?.length ?? 0) > 0;
+            if (!named) {
+                console.warn(
+                    '[svelte-select] The Select input has no accessible name. Pass `ariaLabel`, ' +
+                        'or set the `id` prop and add a matching `<label for={id}>`, so screen readers ' +
+                        'can announce the field. The placeholder is only a last-resort fallback and is ' +
+                        'ignored by some assistive tech.',
+                );
+            }
+        });
+    });
+
     // Auto update floating config
     $effect(() => {
         if (container && floatingConfig?.autoUpdate === undefined) {

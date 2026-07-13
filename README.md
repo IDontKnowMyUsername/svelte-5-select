@@ -326,7 +326,9 @@ The component is generic over your item type: values, items, snippets, and callb
 
 The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab, Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
 
-Use `ariaLabel` to name the input, and override these props to change the screen-reader announcement text:
+Give the input an accessible name with either `ariaLabel` or an external `<label for={id}>` (set the `id` prop). In development the component logs a `console.warn` if it finds neither `ariaLabel`, an `aria-labelledby`, nor an associated `<label>` — the placeholder is only a last-resort fallback that some screen readers ignore. The warning is stripped from production builds.
+
+Override these props to change the screen-reader announcement text:
 
 ```svelte
 <Select

@@ -17,6 +17,7 @@ import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
+import LabelForSelectTest from './LabelForSelectTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
 import FormTest from './FormTest.svelte';
 import type { SelectItem, SelectValue } from '$lib/types';
@@ -2255,6 +2256,41 @@ describe('Select Component', () => {
             await tick();
             const chip = document.querySelector('.multi-item') as HTMLElement;
             expect(chip.getAttribute('aria-label')).toBe('Supprimer Chips');
+        });
+
+        const warnedNoName = (spy: ReturnType<typeof vi.spyOn>) =>
+            spy.mock.calls.some((c: unknown[]) => String(c[0]).includes('no accessible name'));
+
+        it('warns in dev when the input has no accessible name', async () => {
+            const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, { props: { items } });
+            await tick();
+            expect(warnedNoName(spy)).toBe(true);
+            spy.mockRestore();
+        });
+
+        it('does not warn when ariaLabel names the input', async () => {
+            const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, { props: { items, ariaLabel: 'Pick a snack' } });
+            await tick();
+            expect(warnedNoName(spy)).toBe(false);
+            spy.mockRestore();
+        });
+
+        it('does not warn when aria-labelledby names the input', async () => {
+            const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, { props: { items, inputAttributes: { 'aria-labelledby': 'ext-label' } } });
+            await tick();
+            expect(warnedNoName(spy)).toBe(false);
+            spy.mockRestore();
+        });
+
+        it('does not warn when an external <label for> names the input', async () => {
+            const spy = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(LabelForSelectTest, { props: { items } });
+            await tick();
+            expect(warnedNoName(spy)).toBe(false);
+            spy.mockRestore();
         });
     });
 
