@@ -72,7 +72,8 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | listStyle              | `string`  | `''`            | Add inline styles to the list                                  |
 | hoverItemIndex         | `number`  | `0`             | Index of the currently hovered item (bindable)                 |
 | loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires               |
-| ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input; when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
+| ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input (and the listbox); when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
+| ariaErrorMessage       | `string`  | `undefined`     | id of your error element; wired to the input's `aria-errormessage` while `hasError` is `true` |
 | ariaCleared            | `() => string` | see below  | Announcement after the selection is cleared                    |
 | ariaEmpty              | `() => string` | see below  | Announcement when the open list has no options                 |
 | ariaLoading            | `() => string` | see below  | Announcement while the open list is loading                    |
@@ -321,7 +322,7 @@ The component is generic over your item type: values, items, snippets, and callb
 
 ## A11y (Accessibility)
 
-The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, and `aria-multiselectable` where applicable. Keyboard support covers ArrowUp/ArrowDown, Home/End, Enter, Tab, Escape, and Backspace/ArrowLeft/ArrowRight for multi-select items.
+The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. Keyboard support covers ArrowUp/ArrowDown, Home/End, Enter, Tab, Escape, and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour, and the spinner and item transitions respect `prefers-reduced-motion`.
 
 Use `ariaLabel` to name the input, and override these props to change the screen-reader announcement text:
 

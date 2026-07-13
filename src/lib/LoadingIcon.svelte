@@ -30,4 +30,11 @@
             transform: rotate(360deg);
         }
     }
+
+    /* Respect users who ask for reduced motion: stop the continuous spin. */
+    @media (prefers-reduced-motion: reduce) {
+        .loading {
+            animation: none;
+        }
+    }
 </style>

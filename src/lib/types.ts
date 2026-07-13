@@ -213,6 +213,8 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     // ARIA props
     ariaCleared?: () => string;
     ariaEmpty?: () => string;
+    /** id of an external element describing the error; wired to `aria-errormessage` only while `hasError` is true. */
+    ariaErrorMessage?: string;
     ariaFocused?: () => string;
     ariaLabel?: string;
     ariaListOpen?: (label: string, count: number) => string;

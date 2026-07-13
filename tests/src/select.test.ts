@@ -2056,6 +2056,81 @@ describe('Select Component', () => {
         });
     });
 
+    describe('Accessibility (aria + keyboard)', () => {
+        it('marks the listbox aria-busy while loading', async () => {
+            render(Select, { props: { items, listOpen: true, loading: true } });
+            await tick();
+            const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
+            expect(listbox.getAttribute('aria-busy')).toBe('true');
+        });
+
+        it('drops aria-busy when not loading', async () => {
+            render(Select, { props: { items, listOpen: true, loading: false } });
+            await tick();
+            const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
+            expect(listbox.getAttribute('aria-busy')).toBe(null);
+        });
+
+        it('names the listbox with ariaLabel', async () => {
+            render(Select, { props: { items, listOpen: true, ariaLabel: 'Pick a snack' } });
+            await tick();
+            const listbox = document.querySelector('[role="listbox"]') as HTMLElement;
+            expect(listbox.getAttribute('aria-label')).toBe('Pick a snack');
+        });
+
+        it('wires aria-errormessage only while hasError is true', async () => {
+            const { rerender } = render(Select, {
+                props: { items, hasError: true, ariaErrorMessage: 'err-1' },
+            });
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-invalid')).toBe('true');
+            expect(input.getAttribute('aria-errormessage')).toBe('err-1');
+
+            await rerender({ items, hasError: false, ariaErrorMessage: 'err-1' });
+            expect(input.getAttribute('aria-errormessage')).toBe(null);
+        });
+
+        it('makes a multiFullItemClearable tag a focusable button', async () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    value: [{ value: 'chips', label: 'Chips' }],
+                },
+            });
+            await tick();
+            const chip = document.querySelector('.multi-item') as HTMLElement;
+            expect(chip.getAttribute('role')).toBe('button');
+            expect(chip.getAttribute('tabindex')).toBe('0');
+            expect(chip.getAttribute('aria-label')).toBe('Remove Chips');
+        });
+
+        it('removes a multiFullItemClearable tag with the Enter key', async () => {
+            let capturedValue: any;
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    oninput: (value: any) => {
+                        capturedValue = value;
+                    },
+                },
+            });
+            await tick();
+            const chip = document.querySelector('.multi-item') as HTMLElement;
+            chip.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', bubbles: true }));
+            await tick();
+            expect(capturedValue && capturedValue.length).toBe(1);
+            expect(capturedValue[0].label).toBe('Pizza');
+        });
+    });
+
     describe('Label and itemId', () => {
         it('shows correct label when label prop is set', () => {
             render(Select, {

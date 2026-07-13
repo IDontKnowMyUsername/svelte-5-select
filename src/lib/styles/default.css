@@ -72,7 +72,7 @@ input {
 }
 
 input::placeholder {
-    color: var(--placeholder-color, #78848f);
+    color: var(--placeholder-color, #67727d);
     opacity: var(--placeholder-opacity, 1);
 }
 
@@ -83,6 +83,10 @@ input:focus {
 .svelte-select.focused {
     border: var(--border-focused, 1px solid #006fe8);
     border-radius: var(--border-radius-focused, var(--border-radius, 6px));
+    /* A focus ring in addition to the border colour change: the input's own
+       outline is suppressed, so relying on the 1px border alone was a
+       colour-only cue (WCAG 2.4.7/2.4.11) that vanished if --border was overridden. */
+    box-shadow: var(--focused-box-shadow, 0 0 0 2px rgba(0, 111, 232, 0.4));
 }
 
 .disabled {
@@ -271,7 +275,7 @@ input:focus {
 .empty {
     text-align: var(--list-empty-text-align, center);
     padding: var(--list-empty-padding, 20px 0);
-    color: var(--list-empty-color, #78848f);
+    color: var(--list-empty-color, #67727d);
 }
 
 .item {
@@ -297,7 +301,7 @@ input:focus {
 }
 
 .item.active {
-    background: var(--item-is-active-bg, #007aff);
+    background: var(--item-is-active-bg, #006fe8);
     color: var(--item-is-active-color, #fff);
 }
 
@@ -326,4 +330,10 @@ input:focus {
     left: 0;
     bottom: 0;
     right: 0;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .item {
+        transition: none;
+    }
 }

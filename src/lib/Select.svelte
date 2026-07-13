@@ -99,6 +99,7 @@
 
         // ARIA props
         ariaLabel = undefined,
+        ariaErrorMessage = undefined,
         ariaCleared = () => {
             return `Selection cleared.`;
         },
@@ -232,6 +233,8 @@
         'aria-label': ariaLabel,
         'aria-required': required || undefined,
         'aria-invalid': hasError || undefined,
+        // aria-errormessage is only meaningful alongside aria-invalid="true"
+        'aria-errormessage': hasError && ariaErrorMessage ? ariaErrorMessage : undefined,
         readonly: !searchable,
         id: id ? id : undefined,
         ...inputAttributes,
@@ -747,6 +750,8 @@
             }}
             role="listbox"
             tabindex="-1"
+            aria-label={ariaLabel}
+            aria-busy={loading || undefined}
             aria-multiselectable={multiple || undefined}
             id="listbox-{_id}">
             {#if listPrependSnippet}
@@ -825,6 +830,13 @@
         {#if hasValue}
             {#if multiple}
                 {#each Array.isArray(value) ? (value as Item[]) : [] as item, i}
+                    <!-- In multiFullItemClearable mode the whole chip is the remove control, so it
+                         must be a focusable button with a keyboard (Enter/Space) path — otherwise
+                         removal is mouse-only. Otherwise it stays a non-semantic wrapper around the
+                         dedicated remove button below. -->
+                    <!-- svelte-ignore a11y_no_noninteractive_tabindex -->
+                    <!-- tabindex and role="button" are set together under the same guard, so the
+                         element is interactive exactly when it is focusable (the linter can't see this). -->
                     <div
                         class="multi-item"
                         class:active={selectState.activeValue === i}
@@ -833,7 +845,18 @@
                             ev.preventDefault();
                             return multiFullItemClearable ? valueManager.handleMultiItemClear(i) : {};
                         }}
-                        role="none">
+                        onkeydown={multiFullItemClearable && !disabled
+                            ? (ev) => {
+                                  if (ev.key !== 'Enter' && ev.key !== ' ') return;
+                                  ev.preventDefault();
+                                  ev.stopPropagation();
+                                  valueManager.handleMultiItemClear(i);
+                                  handleFocus();
+                              }
+                            : undefined}
+                        role={multiFullItemClearable && !disabled ? 'button' : 'none'}
+                        tabindex={multiFullItemClearable && !disabled ? 0 : undefined}
+                        aria-label={multiFullItemClearable && !disabled ? `Remove ${item[label]}` : undefined}>
                         <span class="multi-item-text">
                             {#if selectionSnippet}
                                 {@render selectionSnippet(item, i)}

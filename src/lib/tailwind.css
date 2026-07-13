@@ -11,7 +11,7 @@
 }
 
 .svelte-select.focused {
-    @apply border-blue-600;
+    @apply border-blue-600 ring-2 ring-blue-600/40;
 }
 
 .svelte-select.disabled {
@@ -28,7 +28,7 @@
 }
 
 .svelte-select .indicators {
-    @apply absolute flex items-center right-0 translate-y-0 text-gray-200 pointer-events-none top-0 bottom-0;
+    @apply absolute flex items-center right-0 translate-y-0 text-gray-500 pointer-events-none top-0 bottom-0;
 }
 
 .svelte-select .indicators > * {
@@ -46,11 +46,11 @@
 }
 
 .svelte-select .clear-select {
-    @apply px-2 h-5 text-gray-300 flex-none w-9;
+    @apply px-2 h-5 text-gray-500 flex-none w-9;
 }
 
 .svelte-select .chevron {
-    @apply flex pt-0 pr-2 pl-2 border-l-2 w-9 h-5 text-gray-300;
+    @apply flex pt-0 pr-2 pl-2 border-l-2 w-9 h-5 text-gray-500;
 }
 
 .svelte-select.multi {
@@ -127,6 +127,12 @@
 
 .multi-item-clear {
     @apply flex items-center justify-center w-5;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .svelte-select .indicators > * {
+        @apply transition-none;
+    }
 }
 
 .list-item {
