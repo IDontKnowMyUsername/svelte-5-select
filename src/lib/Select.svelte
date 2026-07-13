@@ -871,9 +871,12 @@
                 {#if emptySnippet}
                     {@render emptySnippet()}
                 {:else if !loading}
-                    <div class="empty">No options</div>
+                    <!-- Decorative: this state is announced via the role="status" live
+                         region below (using ariaEmpty/ariaLoading), so hide the visual
+                         copy from AT to avoid stray non-option text inside the listbox -->
+                    <div class="empty" aria-hidden="true">No options</div>
                 {:else}
-                    <div class="empty">Loading Data</div>
+                    <div class="empty" aria-hidden="true">Loading Data</div>
                 {/if}
             {/if}
             {#if listAppendSnippet}
@@ -882,13 +885,17 @@
         </div>
     {/if}
 
-    <span aria-live="polite" aria-atomic="false" aria-relevant="additions text" class="a11y-text">
-        {#if focused}
-            <span id="aria-selection">{ariaSelection}</span>
-            <span id="aria-context">
-                {ariaContext}
-            </span>
-        {/if}
+    <!-- Two dedicated polite live regions (role="status" implies aria-live="polite"
+         + aria-atomic="true"). Atomic re-reads the whole region on any content change,
+         which announces edits and clears reliably across screen readers — unlike the
+         old aria-atomic="false"/aria-relevant="additions text" combination. The spans
+         persist (only their text is gated on focus) so they exist before content
+         changes, as live regions require. -->
+    <span id="aria-selection" role="status" class="a11y-text">
+        {focused ? ariaSelection : ''}
+    </span>
+    <span id="aria-context" role="status" class="a11y-text">
+        {focused ? ariaContext : ''}
     </span>
 
     <div class="prepend">

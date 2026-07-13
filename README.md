@@ -328,7 +328,7 @@ The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-e
 
 Give the input an accessible name with either `ariaLabel` or an external `<label for={id}>` (set the `id` prop). In development the component logs a `console.warn` if it finds neither `ariaLabel`, an `aria-labelledby`, nor an associated `<label>` — the placeholder is only a last-resort fallback that some screen readers ignore. The warning is stripped from production builds.
 
-Override these props to change the screen-reader announcement text:
+Selection and list state (including the empty/loading state) are announced through two polite `role="status"` live regions; the visible "No options"/"Loading Data" text is `aria-hidden` so it is not read twice. Override these props to change the screen-reader announcement text:
 
 ```svelte
 <Select

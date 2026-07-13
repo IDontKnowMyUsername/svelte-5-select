@@ -3943,6 +3943,18 @@ describe('Select Component', () => {
             expect(document.querySelector('#aria-context')?.textContent).toContain('Loading Data');
         });
 
+        it('hides the visual empty text from AT, announcing it via the live region instead', async () => {
+            render(Select, {
+                props: { items, listOpen: true, focused: true, filterText: 'zzz' },
+            });
+            await tick();
+
+            // the visible copy is decorative...
+            expect(document.querySelector('.empty')?.getAttribute('aria-hidden')).toBe('true');
+            // ...the state is announced through the polite live region
+            expect(document.querySelector('#aria-context')?.textContent).toContain('No options');
+        });
+
         it('announces the cleared selection in the live region', async () => {
             render(Select, {
                 props: {
@@ -4155,15 +4167,19 @@ describe('Select Component', () => {
             expect(listbox!.hasAttribute('aria-multiselectable')).toBe(false);
         });
 
-        it('live region announces text updates', () => {
+        it('exposes selection and context as polite role="status" live regions', () => {
             render(Select, {
                 props: {
                     items: items,
                 },
             });
 
-            const liveRegion = document.querySelector('[aria-live="polite"]');
-            expect(liveRegion!.getAttribute('aria-relevant')).toBe('additions text');
+            // role="status" implies aria-live="polite" + aria-atomic="true", which
+            // re-reads the region on any change (announces edits and clears reliably)
+            const selection = document.querySelector('#aria-selection');
+            const context = document.querySelector('#aria-context');
+            expect(selection!.getAttribute('role')).toBe('status');
+            expect(context!.getAttribute('role')).toBe('status');
         });
 
         it('Home and End move hover to first and last item', async () => {
