@@ -16,6 +16,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         const handlers: Record<string, (e: KeyboardEvent) => void> = {
             Escape: handleEscapeKey,
             Enter: handleEnterKey,
+            ' ': handleSpaceKey,
             ArrowDown: handleArrowDownKey,
             ArrowUp: handleArrowUpKey,
             Tab: handleTabKey,
@@ -85,6 +86,43 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         }
     }
 
+    // Space has combobox semantics (open, then select the current option) only in
+    // select-only mode. In a searchable/editable combobox it is an ordinary
+    // character for the filter text, so we leave it entirely alone there.
+    function handleSpaceKey(e: KeyboardEvent): void {
+        if (state.searchable) return;
+        if (e.ctrlKey || e.metaKey || e.altKey) return;
+
+        // While a type-ahead query is still live, Space belongs to it so labels
+        // that contain spaces ("New York") stay reachable by typing.
+        const typeAheadLive = typeAheadQuery !== '' && e.timeStamp - typeAheadLastKeyTime <= TYPE_AHEAD_RESET_MS;
+        if (typeAheadLive) {
+            handleTypeAheadKey(e);
+            return;
+        }
+
+        e.preventDefault();
+        e.stopPropagation();
+
+        if (!state.listOpen) {
+            state.listOpen = true;
+            state.activeValue = undefined;
+            return;
+        }
+
+        // List open: behave like Enter — select the current option, or close if it
+        // is already the (single) selected value.
+        const { filteredItems, hoverItemIndex, value, multiple, itemId } = state;
+        if (filteredItems.length === 0) return;
+
+        const hoverItem = filteredItems[hoverItemIndex];
+        if (!multiple && areItemsEqual(value as SelectItem | null, hoverItem, itemId)) {
+            actions.closeList();
+        } else {
+            actions.handleSelect(hoverItem);
+        }
+    }
+
     function handleEscapeKey(e: KeyboardEvent): void {
         if (!state.listOpen) return;
 
@@ -116,6 +154,15 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         e.preventDefault();
         e.stopPropagation();
 
+        // APG: Alt+Down opens the list without moving the visual cursor.
+        if (e.altKey) {
+            if (!state.listOpen) {
+                state.listOpen = true;
+                state.activeValue = undefined;
+            }
+            return;
+        }
+
         if (state.listOpen) {
             actions.setHoverIndex(1);
         } else {
@@ -127,6 +174,12 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
     function handleArrowUpKey(e: KeyboardEvent): void {
         e.preventDefault();
         e.stopPropagation();
+
+        // APG: Alt+Up closes the list without changing the selection.
+        if (e.altKey) {
+            if (state.listOpen) actions.closeList();
+            return;
+        }
 
         if (state.listOpen) {
             actions.setHoverIndex(-1);
@@ -273,6 +326,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         handleKeyDown,
         handleEscapeKey,
         handleEnterKey,
+        handleSpaceKey,
         handleArrowDownKey,
         handleArrowUpKey,
         handleTabKey,

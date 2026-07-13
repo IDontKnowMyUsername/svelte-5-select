@@ -355,6 +355,65 @@ describe('Select Component', () => {
             const hovered = document.querySelector('.list-item .hover');
             expect(hovered!.textContent.trim()).toBe('Item 0');
         });
+
+        it('opens the list with Space in select-only mode', async () => {
+            render(Select, { props: { searchable: false, focused: true, items } });
+            await handleKeyboard(' ');
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
+        it('selects the hovered option with Space in select-only mode', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    searchable: false,
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    onchange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard(' ');
+            expect(selected && selected.label).toBe('Pizza');
+        });
+
+        it('does not hijack Space in searchable mode', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    searchable: true,
+                    focused: true,
+                    items,
+                    onchange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await handleKeyboard(' ');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(selected).toBeUndefined();
+        });
+
+        it('Alt+ArrowDown does not move the cursor when the list is open', async () => {
+            render(Select, { props: { focused: true, listOpen: true, items } });
+            await tick();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }));
+            await tick();
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('Chocolate');
+        });
+
+        it('closes the list with Alt+ArrowUp', async () => {
+            render(Select, { props: { focused: true, listOpen: true, items } });
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true }));
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
     });
 
     describe('Value display', () => {
