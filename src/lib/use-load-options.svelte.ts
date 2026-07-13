@@ -126,9 +126,10 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     console.error('loadOptions error:', err);
                     actions.onerror({ type: 'loadOptions', details: err });
                     state.items = null;
-                    // The load resolved (with an error) for this text; a reopen must
-                    // not blindly refetch-loop on a persistent failure
-                    loadedFilterText = currentFilterText;
+                    // Deliberately leave loadedFilterText unchanged: an errored load
+                    // did not produce results for this text, so a reopen should
+                    // retry it (a transient failure then recovers). No loop risk —
+                    // a reopen is a manual gesture, so it retries at most once each.
                     state.loading = false;
                 }
             };

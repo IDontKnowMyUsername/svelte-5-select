@@ -5584,5 +5584,39 @@ describe('Select Component', () => {
             // Results already reflect 'ab', so reopening must not refetch
             expect(loadSpy.mock.calls.length).toBe(callsAfterLoad);
         });
+
+        it('retries loadOptions on reopen after an errored load (does not remember the failure)', async () => {
+            vi.spyOn(console, 'error').mockImplementation(() => {});
+            const loadSpy = vi
+                .fn()
+                .mockResolvedValueOnce([]) // mount ''
+                .mockRejectedValueOnce(new Error('boom')) // 'ab' errors
+                .mockResolvedValue([{ value: 'a', label: 'A' }]); // retry succeeds
+            const onerror = vi.fn();
+            render(Select, {
+                props: { loadOptions: loadSpy, clearFilterTextOnBlur: false, focused: true, debounceWait: 50, onerror },
+            });
+            await wait(0);
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+
+            // Let the 'ab' load fire and error
+            await vi.waitFor(() => {
+                expect(onerror).toHaveBeenCalled();
+            });
+            const abCallsAfterError = loadSpy.mock.calls.filter((c) => c[0] === 'ab').length;
+
+            // Reopen: the errored load left loadedFilterText unchanged, so 'ab' is
+            // retried rather than treated as already-loaded
+            await handleKeyboard('Escape');
+            await wait(80);
+            await handleKeyboard('ArrowDown');
+            await vi.waitFor(() => {
+                expect(loadSpy.mock.calls.filter((c) => c[0] === 'ab').length).toBeGreaterThan(abCallsAfterError);
+            });
+        });
     });
 });
