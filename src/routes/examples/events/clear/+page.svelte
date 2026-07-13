@@ -1,6 +1,6 @@
 <script lang="ts">
     import Select from '$lib/Select.svelte';
-    import type { SelectValue } from '$lib/types';
+    import type { SelectClearValue } from '$lib/types';
 
     let items = [
         { value: 'one', label: 'One' },
@@ -9,7 +9,7 @@
     ];
 
     // Clear-all passes the removed value; removing one tag passes that entry
-    function handle(clearItem: SelectValue | string) {
+    function handle(clearItem: SelectClearValue) {
         console.log('You clear the svelte select 🤯 ', $state.snapshot(clearItem));
     }
 </script>

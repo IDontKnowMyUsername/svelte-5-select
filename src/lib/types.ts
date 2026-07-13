@@ -27,6 +27,18 @@ export type SelectValueProp<
     Multiple extends boolean = boolean,
 > = Multiple extends true ? Item[] | string[] | null : Item | string | null;
 
+/**
+ * The payload of `onclear`. Clearing the whole selection passes the full removed
+ * value (an `Item[]` in multiple mode); removing a single tag in multiple mode
+ * passes just that removed entry. Discriminated by `Multiple` so single mode never
+ * has to account for an array, and one-tag removal is only in the multiple branch.
+ * Raw string ids are included because `value` accepts them.
+ */
+export type SelectClearValue<
+    Item extends ItemLike = SelectItem,
+    Multiple extends boolean = boolean,
+> = Multiple extends true ? Item[] | string[] | Item | string | null : Item | string | null;
+
 export interface SelectErrorEvent {
     type: string;
     details: unknown;
@@ -232,7 +244,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     onblur?: (e: FocusEvent) => void;
     onchange?: (value: SelectValue<Item, Multiple>) => void;
     /** Clear-all receives the full removed value; removing one tag receives that single entry. */
-    onclear?: (value: SelectValue<Item, Multiple> | Item | string) => void;
+    onclear?: (value: SelectClearValue<Item, Multiple>) => void;
     onerror?: (error: SelectErrorEvent) => void;
     onfilter?: (items: Item[]) => void;
     onfocus?: (e: FocusEvent) => void;

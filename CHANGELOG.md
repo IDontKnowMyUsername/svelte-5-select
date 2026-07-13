@@ -25,12 +25,13 @@
 * `ErrorEvent` is renamed `SelectErrorEvent` (the old name shadowed the DOM's global `ErrorEvent`); `ErrorEvent` remains as a deprecated alias
 * The input no longer gets a default `aria-label` of the placeholder text, which overrode an external `<label for={id}>` in accessible-name computation; set `ariaLabel` for an explicit label, otherwise the placeholder still names the input as the spec's last-resort fallback
 * `selectionSnippet` is typed `Snippet<[Item, number?]>` — it always received a single item at runtime (each tag in multiple mode), never an array
+* The `onclear` payload is now typed with the `Multiple`-discriminated `SelectClearValue<Item, Multiple>` instead of the flat `SelectValue<Item, Multiple> | Item | string` union: single mode is `Item | string | null` (no stray array), and the single removed-tag entry only appears in the multiple branch. Runtime payloads are unchanged
 
 ### Added
 
 * Generic item typing: `<Select>` and the composables are generic over your item type, flowing into props, snippets, callbacks, and instance exports. The bound is the new `ItemLike` (`Record<string, any>`), so interface-declared item types work without an index signature (they previously failed the `SelectItem` constraint with an opaque error)
 * `value` officially accepts raw string ids (`string`/`string[]`) and normalizes them against `items`; the new `SelectValueProp` type names that bindable shape
-* New exports: `normalizeItem`, and the `ItemLike`, `SelectValueProp`, `SelectErrorEvent`, `SelectState`, `KeyboardNavigationState`, and `KeyboardNavigationActions` types
+* New exports: `normalizeItem`, and the `ItemLike`, `SelectValueProp`, `SelectClearValue`, `SelectErrorEvent`, `SelectState`, `KeyboardNavigationState`, and `KeyboardNavigationActions` types
 * `ariaEmpty`, `ariaLoading`, and `ariaCleared` props customize the new live-region announcements (see Fixed)
 * Type-ahead for select-only mode: with `searchable={false}`, printable characters move hover to the next matching option (APG combobox pattern), open the closed list, and support repeated-initial cycling
 * Home/End move hover to the first/last selectable option while no filter text is entered

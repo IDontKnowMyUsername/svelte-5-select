@@ -19,6 +19,7 @@ export type {
     SelectProps,
     SelectValue,
     SelectValueProp,
+    SelectClearValue,
     JustValue,
     FloatingConfig,
     FilterConfig,

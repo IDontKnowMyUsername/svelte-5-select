@@ -6,7 +6,7 @@
  * surfaces as a type error, and each `// @ts-expect-error` must sit on a line
  * that genuinely errors or svelte-check fails with "unused @ts-expect-error".
  */
-import type { ItemLike, SelectValue, SelectValueProp, SelectProps } from '$lib/types';
+import type { ItemLike, SelectValue, SelectValueProp, SelectClearValue, SelectProps } from '$lib/types';
 
 // A sample item declared as an `interface` — crucially with NO index signature.
 // Interfaces have no implicit index signature, so this proves the `ItemLike`
@@ -44,6 +44,23 @@ type _5 = Expect<Equal<SelectValue<Country>, Country[] | Country | null>>;
 // 6. `Country` (interface, no index signature) satisfies the `ItemLike` bound.
 type _Bound = Country extends ItemLike ? true : false;
 type _6 = Expect<_Bound>;
+
+// 7. `SelectClearValue` single mode: a single item / string id / null — no array.
+type _7 = Expect<Equal<SelectClearValue<Country, false>, Country | string | null>>;
+
+// 8. `SelectClearValue` multiple mode: the removed array (clear-all) plus the
+//    single removed entry (one-tag removal), including raw string ids.
+type _8 = Expect<Equal<SelectClearValue<Country, true>, Country[] | string[] | Country | string | null>>;
+
+// 9. The `onclear` prop is wired to `SelectClearValue`, discriminated by `Multiple`:
+//    single mode never surfaces an array.
+type _9 = Expect<Equal<Parameters<NonNullable<SelectProps<Country, false>['onclear']>>[0], Country | string | null>>;
+type _10 = Expect<
+    Equal<
+        Parameters<NonNullable<SelectProps<Country, true>['onclear']>>[0],
+        Country[] | string[] | Country | string | null
+    >
+>;
 
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.

@@ -3,7 +3,14 @@
 <script lang="ts" generics="Item extends ItemLike = SelectItem, Multiple extends boolean = false">
     import { onDestroy, onMount, tick, untrack } from 'svelte';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
-    import type { FloatingConfig, ItemLike, SelectProps, SelectValue, SelectErrorEvent } from './types';
+    import type {
+        FloatingConfig,
+        ItemLike,
+        SelectProps,
+        SelectValue,
+        SelectClearValue,
+        SelectErrorEvent,
+    } from './types';
     import { createFloatingActions } from 'svelte-floating-ui';
     import { useAriaHandlers } from '$lib/aria-handlers.svelte';
 
@@ -196,7 +203,7 @@
 
     function internalHandleClear(_e?: MouseEvent): void {
         selectState.clearState = true;
-        onclear(value as unknown as SelectValue<Item, Multiple>);
+        onclear(value as unknown as SelectClearValue<Item, Multiple>);
         value = undefined;
         closeList();
         handleFocus();
@@ -455,7 +462,7 @@
         closeList,
         oninput: (v) => oninput?.(v as unknown as SelectValue<Item, Multiple>),
         onchange: (v) => onchange?.(v as unknown as SelectValue<Item, Multiple>),
-        onclear: (v) => onclear(v as unknown as SelectValue<Item, Multiple>),
+        onclear: (v) => onclear(v as unknown as SelectClearValue<Item, Multiple>),
         onselect: (s) => onselect?.(s as Item),
     });
 
