@@ -8,11 +8,12 @@ export { default as LoadingIcon } from './LoadingIcon.svelte';
 
 // Utility functions
 export { default as filter } from './filter';
-export { useKeyboardNavigation } from './keyboard-navigation.svelte';
-
 export { isStringArray, areItemsEqual, normalizeItem } from './utils';
 
-// Type exports for TypeScript users
+// Type exports for TypeScript users.
+// Note: SelectState, KeyboardNavigationState/Actions and the useKeyboardNavigation
+// composable are intentionally NOT exported — they are internal wiring, not a
+// supported extension point.
 export type {
     ItemLike,
     SelectItem,
@@ -23,9 +24,6 @@ export type {
     JustValue,
     FloatingConfig,
     FilterConfig,
-    SelectState,
     SelectErrorEvent,
-    KeyboardNavigationState,
-    KeyboardNavigationActions,
     ErrorEvent,
 } from './types';

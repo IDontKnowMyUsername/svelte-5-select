@@ -33,7 +33,7 @@ Composables in `src/lib/`:
 - `use-hover.svelte.ts` — hover index management + its effects
 - `use-value.svelte.ts` — value normalization, selection, oninput dispatch + effects
 - `use-load-options.svelte.ts` — async option loading (with a stale-response token) + effect
-- `keyboard-navigation.svelte.ts` — publicly exported, takes the narrow `KeyboardNavigationState`
+- `keyboard-navigation.svelte.ts` — internal composable (not re-exported from the package), takes the narrow `KeyboardNavigationState`
 - `aria-handlers.svelte.ts`
 
 ## Key Svelte 5 Patterns

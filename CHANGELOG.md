@@ -9,8 +9,7 @@
 
 ### ⚠ Breaking changes
 
-* Composable API reworked around a shared reactive state store: `useKeyboardNavigation` now takes `(state: KeyboardNavigationState, actions)`; `KeyboardNavigationContext` and `isCancelled` were removed
-* `KeyboardNavigationState` (and the shared `SelectState`) gained required `label` and `searchable` fields to support type-ahead
+* `useKeyboardNavigation` is no longer exported from the package, and neither are the `SelectState`, `KeyboardNavigationState`, and `KeyboardNavigationActions` types — the composables were reworked around an internal shared reactive state store and are not a supported extension point. (The released 1.0.x line exported `useKeyboardNavigation` alongside a `KeyboardNavigationContext`/`isCancelled` surface; all of it is gone.)
 * `loadOptions` is no longer re-run when the list opens or closes — it fires on typing (non-empty filter text), `loadOptionsDeps` changes, mount, and disabled toggles; closing the list never triggers a fetch. Mount and dependency loads now fire immediately instead of inheriting the typing debounce
 * A filter-driven `loadOptions` result no longer clears a selection that is missing from the narrowed results; only dependency-driven reloads (`loadOptionsDeps`) validate and clear stale values
 * A pending debounced `loadOptions` fetch is cancelled when it becomes moot — an item is selected, the filter text is emptied, the list closes, the select is disabled, or the component unmounts. In-flight responses arriving after a disable are discarded
@@ -32,7 +31,7 @@
 
 * Generic item typing: `<Select>` and the composables are generic over your item type, flowing into props, snippets, callbacks, and instance exports. The bound is the new `ItemLike` (`Record<string, any>`), so interface-declared item types work without an index signature (they previously failed the `SelectItem` constraint with an opaque error)
 * `value` officially accepts raw string ids (`string`/`string[]`) and normalizes them against `items`; the new `SelectValueProp` type names that bindable shape
-* New exports: `normalizeItem`, and the `ItemLike`, `SelectValueProp`, `SelectClearValue`, `SelectErrorEvent`, `SelectState`, `KeyboardNavigationState`, and `KeyboardNavigationActions` types
+* New exports: `normalizeItem`, and the `ItemLike`, `SelectValueProp`, `SelectClearValue`, and `SelectErrorEvent` types
 * `ariaEmpty`, `ariaLoading`, and `ariaCleared` props customize the new live-region announcements (see Fixed)
 * Type-ahead for select-only mode: with `searchable={false}`, printable characters move hover to the next matching option (APG combobox pattern), open the closed list, and support repeated-initial cycling
 * Home/End move hover to the first/last selectable option while no filter text is entered
