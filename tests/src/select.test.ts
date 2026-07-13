@@ -4230,20 +4230,58 @@ describe('Select Component', () => {
             expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
         });
 
-        it('group headers carry no group role (option/presentation may not contain a group)', () => {
+        it('wraps grouped options in named role="group" regions', () => {
             render(Select, {
                 props: {
                     items: itemsWithGroup,
                     listOpen: true,
+                    id: 'grp',
                     groupBy: (item: SelectItem) => item.group as string,
                 },
             });
 
-            expect(document.querySelectorAll('[role="group"]').length).toBe(0);
+            const groups = document.querySelectorAll('[role="group"]');
+            expect(groups.length).toBe(2);
+
+            // Each group is named by its header element via aria-labelledby
+            const firstLabelId = groups[0].getAttribute('aria-labelledby');
+            expect(firstLabelId).toBeTruthy();
+            expect(document.getElementById(firstLabelId!)?.textContent?.trim()).toBe('Sweet');
+            expect(document.getElementById(groups[1].getAttribute('aria-labelledby')!)?.textContent?.trim()).toBe(
+                'Savory',
+            );
+
+            // Options live inside their group as role="option"
+            const firstGroupOptions = groups[0].querySelectorAll('[role="option"]');
+            expect(firstGroupOptions.length).toBe(3);
+            expect(firstGroupOptions[0].textContent?.trim()).toBe('Chocolate');
+
             const headers = document.querySelectorAll('.list-group-title');
             expect(headers.length).toBe(2);
-            expect(headers[0].textContent?.trim()).toBe('Sweet');
-            expect(headers[1].textContent?.trim()).toBe('Savory');
+        });
+
+        it('renders no role="group" when there is no groupBy', () => {
+            render(Select, { props: { items, listOpen: true } });
+            expect(document.querySelectorAll('[role="group"]').length).toBe(0);
+            expect(document.querySelectorAll('[role="option"]').length).toBe(items.length);
+        });
+
+        it('keeps a named group when the header itself is selectable', () => {
+            render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    listOpen: true,
+                    id: 'grpsel',
+                    groupHeaderSelectable: true,
+                    groupBy: (item: SelectItem) => item.group as string,
+                },
+            });
+            const groups = document.querySelectorAll('[role="group"]');
+            expect(groups.length).toBe(2);
+            // The selectable header is now an option and still names its group
+            const labelEl = document.getElementById(groups[0].getAttribute('aria-labelledby')!);
+            expect(labelEl?.getAttribute('role')).toBe('option');
+            expect(labelEl?.textContent?.trim()).toBe('Sweet');
         });
 
         it('group header list-items have role="presentation"', () => {

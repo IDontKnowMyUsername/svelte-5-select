@@ -219,6 +219,32 @@
             filterGroupedItems,
         }),
     );
+
+    // Fold the flat filteredItems (header, item, item, header, …) into real
+    // listbox groups so each group can carry role="group" named by its header.
+    // Flat indices are preserved on every entry so ids, aria-activedescendant
+    // and hover keep working. Without groupBy every row is a plain option and
+    // the list renders flat exactly as before.
+    type GroupRow =
+        | { type: 'option'; item: SelectItem; index: number }
+        | { type: 'group'; headerIndex: number; header: SelectItem; options: { item: SelectItem; index: number }[] };
+
+    let groupedRows = $derived.by<GroupRow[]>(() => {
+        const rows: GroupRow[] = [];
+        let current: Extract<GroupRow, { type: 'group' }> | null = null;
+        filteredItems.forEach((item, index) => {
+            if (item.groupHeader) {
+                current = { type: 'group', headerIndex: index, header: item, options: [] };
+                rows.push(current);
+            } else if (item.groupItem && current) {
+                current.options.push({ item, index });
+            } else {
+                current = null;
+                rows.push({ type: 'option', item, index });
+            }
+        });
+        return rows;
+    });
     let _inputAttributes = $derived<HTMLInputAttributes>({
         ...DEFAULT_INPUT_ATTRS,
         role: 'combobox',
@@ -783,7 +809,7 @@
             {#if listSnippet}
                 {@render listSnippet(filteredItems as Item[])}
             {:else if filteredItems?.length > 0}
-                {#each filteredItems as item, i}
+                {#snippet optionEntry(item: SelectItem, i: number)}
                     <div
                         onmouseover={() => hoverManager.handleHover(i)}
                         onfocus={() => hoverManager.handleHover(i)}
@@ -801,8 +827,6 @@
                         id="listbox-{_id}-item-{i}"
                         aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}
                         aria-disabled={isPresentationalHeader(item) || isItemSelectableCheck(item) ? undefined : true}>
-                        <!-- No role="group" here: in this flat listbox the header row is a sibling
-                             of its options, and option/presentation roles may not contain a group -->
                         <div
                             class="item"
                             class:list-group-title={item.groupHeader}
@@ -818,6 +842,20 @@
                             {/if}
                         </div>
                     </div>
+                {/snippet}
+                {#each groupedRows as row}
+                    {#if row.type === 'group'}
+                        <!-- A real listbox group named by its header (presentational or
+                             selectable) via aria-labelledby, wrapping that group's options -->
+                        <div role="group" aria-labelledby="listbox-{_id}-item-{row.headerIndex}">
+                            {@render optionEntry(row.header, row.headerIndex)}
+                            {#each row.options as opt}
+                                {@render optionEntry(opt.item, opt.index)}
+                            {/each}
+                        </div>
+                    {:else}
+                        {@render optionEntry(row.item, row.index)}
+                    {/if}
                 {/each}
             {:else if !hideEmptyState}
                 {#if emptySnippet}
