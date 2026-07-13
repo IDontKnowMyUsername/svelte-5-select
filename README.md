@@ -79,6 +79,11 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | ariaCleared            | `() => string` | see below  | Announcement after the selection is cleared                    |
 | ariaEmpty              | `() => string` | see below  | Announcement when the open list has no options                 |
 | ariaLoading            | `() => string` | see below  | Announcement while the open list is loading                    |
+| ariaFocused            | `() => string` | see below  | Announcement when the input receives focus                     |
+| ariaListOpen           | `(label: string, count: number) => string` | see below | Announcement when the list opens on a focused option           |
+| ariaValues             | `(values: string) => string` | see below | Announcement naming the current selection                      |
+
+The `aria*` text-builder defaults are shown in the [A11y](#a11y-accessibility) section. See [Function props](#function-props) for the overridable behavior functions (`loadOptions`, `filter`, `groupBy`, and friends).
 
 ### Bindable props
 
@@ -281,6 +286,17 @@ Core behavior can be overridden by passing your own functions as props. Look thr
 ```
 
 The `filter` prop replaces the entire filtering pipeline — override it at your own risk.
+
+| Prop                  | Type                                              | Description                                                                                  |
+| --------------------- | ------------------------------------------------- | ------------------------------------------------------------------------------------------- |
+| loadOptions           | `(filterText: string) => Promise<Item[] \| string[]>` | Load items asynchronously; see [Async Items](#async-items). Overrides the `loading` prop. |
+| itemFilter            | `(label: string, filterText: string, option) => boolean` | Whether one item matches `filterText`. Defaults to a case-insensitive substring match.  |
+| groupBy               | `(item) => string`                                | Group items under headers by the returned key. Unset by default.                            |
+| groupFilter           | `(groups: string[]) => string[]`                  | Sort or filter the group order. Defaults to identity (`(groups) => groups`).                |
+| createGroupHeaderItem | `(groupValue: string, item) => SelectItem`        | Build the header item for a group. Defaults to `{ value: groupValue, label: groupValue }`.  |
+| debounce              | `(fn: () => void, wait: number) => void`          | Debounce strategy for `loadOptions`. Defaults to a `setTimeout` of `debounceWait` ms.       |
+| handleClear           | `(e?: MouseEvent) => void`                        | Runs when the clear indicator is clicked. Defaults to clearing `value` and refocusing.      |
+| filter                | `(config: FilterConfig) => SelectItem[]`          | Replaces the entire filtering pipeline. Defaults to the built-in `filter`. Override at your own risk. |
 
 ### Instance methods
 
