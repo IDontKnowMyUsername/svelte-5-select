@@ -5491,40 +5491,47 @@ describe('Select Component', () => {
             expect(oninput).toHaveBeenCalledWith(null);
         });
 
-        it.fails(
-            'does not emit a duplicate onchange when re-selecting with filterSelectedItems=false (known bug)',
-            async () => {
-                const onchange = vi.fn();
-                render(Select, {
-                    props: {
-                        items,
-                        multiple: true,
-                        filterSelectedItems: false,
-                        listOpen: true,
-                        focused: true,
-                        onchange,
-                    },
-                });
-                await tick();
+        it('treats re-selecting an already-selected item as a no-op with filterSelectedItems=false', async () => {
+            const onchange = vi.fn();
+            const onselect = vi.fn();
+            const oninput = vi.fn();
+            render(Select, {
+                props: {
+                    items,
+                    multiple: true,
+                    filterSelectedItems: false,
+                    listOpen: true,
+                    focused: true,
+                    onchange,
+                    onselect,
+                    oninput,
+                },
+            });
+            await tick();
 
-                (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
-                await tick();
+            (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
+            await tick();
 
-                // Reopen and re-select the same still-listed item
-                await handleKeyboard('ArrowDown');
-                await tick();
-                (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
-                await tick();
+            // Reopen and re-select the same still-listed item — should be a no-op
+            await handleKeyboard('ArrowDown');
+            await tick();
+            (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
+            await tick();
 
-                // Currently the re-select fires onchange([a, a]) before the dedup
-                // effect repairs value. Desired: onchange never carries a duplicate.
-                const emittedDuplicate = onchange.mock.calls.some((call) => {
-                    const v = call[0];
-                    return Array.isArray(v) && new Set(v.map((i: SelectItem) => i.value)).size !== v.length;
-                });
-                expect(emittedDuplicate).toBe(false);
-            },
-        );
+            // The re-select fires nothing new (matching single mode), so each
+            // callback fired exactly once for the original selection...
+            expect(onchange).toHaveBeenCalledTimes(1);
+            expect(onselect).toHaveBeenCalledTimes(1);
+            expect(oninput).toHaveBeenCalledTimes(1);
+
+            // ...onchange never carried a duplicate, and the tag list stays at one
+            const emittedDuplicate = onchange.mock.calls.some((call) => {
+                const v = call[0];
+                return Array.isArray(v) && new Set(v.map((i: SelectItem) => i.value)).size !== v.length;
+            });
+            expect(emittedDuplicate).toBe(false);
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+        });
 
         it.fails('re-fires loadOptions for retained filter text when the list reopens (known gap)', async () => {
             const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);

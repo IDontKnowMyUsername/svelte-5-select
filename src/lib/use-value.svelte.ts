@@ -231,12 +231,30 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
     function itemSelected(selection: SelectItem) {
         if (!selection) return;
-        const { multiple, value, closeListOnChange } = state;
+        const { multiple, value, closeListOnChange, itemId } = state;
 
         state.filterText = '';
         const item = { ...selection } as Item;
 
         if (item.groupHeader && !item.selectable) return;
+
+        // Re-selecting an already-selected item in multiple mode is a no-op: the
+        // value is a distinct set. Without this the item was concatenated and
+        // onchange fired synchronously with a duplicate array ([a, a]) before a
+        // later effect deduped state.value — leaving onchange disagreeing with the
+        // (correctly suppressed) oninput. Single mode already no-ops the same way
+        // in handleItemClick / handleEnterKey.
+        if (multiple && Array.isArray(value)) {
+            const selectedId = getItemProperty(item, itemId);
+            const alreadySelected = (value as (Item | string)[]).some(
+                (entry) => (typeof entry === 'string' ? entry : getItemProperty(entry, itemId)) === selectedId,
+            );
+            if (alreadySelected) {
+                if (closeListOnChange) actions.closeList();
+                state.activeValue = undefined;
+                return;
+            }
+        }
 
         state.value = multiple ? (value ? (value as Item[]).concat([item]) : [item]) : item;
 

@@ -298,6 +298,23 @@ describe('useValue', () => {
 
             expect(state.value).toBeUndefined();
         });
+
+        it('is a no-op when re-selecting an already-selected item (no duplicate, no callbacks)', () => {
+            const { state, actions, manager } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+            (actions.onchange as ReturnType<typeof vi.fn>).mockClear();
+
+            manager.itemSelected({ value: 'a', label: 'Apple' });
+            flushSync();
+
+            expect(state.value).toEqual([{ value: 'a', label: 'Apple' }]);
+            expect(actions.onchange).not.toHaveBeenCalled();
+            expect(actions.onselect).not.toHaveBeenCalled();
+        });
     });
 
     describe('handleMultiItemClear', () => {
