@@ -2214,6 +2214,48 @@ describe('Select Component', () => {
             expect(capturedValue && capturedValue.length).toBe(1);
             expect(capturedValue[0].label).toBe('Pizza');
         });
+
+        it('uses a custom clear-all button label', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    value: { value: 'pizza', label: 'Pizza' },
+                    ariaClearSelectLabel: 'Effacer la sélection',
+                },
+            });
+            await tick();
+            const clearBtn = document.querySelector('.clear-select') as HTMLElement;
+            expect(clearBtn.getAttribute('aria-label')).toBe('Effacer la sélection');
+        });
+
+        it('uses a custom tag remove-button label', async () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [{ value: 'chips', label: 'Chips' }],
+                    ariaRemoveItemLabel: (label: string) => `Supprimer ${label}`,
+                },
+            });
+            await tick();
+            const removeBtn = document.querySelector('.multi-item-clear') as HTMLElement;
+            expect(removeBtn.getAttribute('aria-label')).toBe('Supprimer Chips');
+        });
+
+        it('applies the custom remove-item label to a full-item-clearable tag', async () => {
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    value: [{ value: 'chips', label: 'Chips' }],
+                    ariaRemoveItemLabel: (label: string) => `Supprimer ${label}`,
+                },
+            });
+            await tick();
+            const chip = document.querySelector('.multi-item') as HTMLElement;
+            expect(chip.getAttribute('aria-label')).toBe('Supprimer Chips');
+        });
     });
 
     describe('Label and itemId', () => {

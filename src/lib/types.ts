@@ -212,6 +212,8 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
 
     // ARIA props
     ariaCleared?: () => string;
+    /** `aria-label` for the clear-all button. */
+    ariaClearSelectLabel?: string;
     ariaEmpty?: () => string;
     /** id of an external element describing the error; wired to `aria-errormessage` only while `hasError` is true. */
     ariaErrorMessage?: string;
@@ -219,6 +221,8 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     ariaLabel?: string;
     ariaListOpen?: (label: string, count: number) => string;
     ariaLoading?: () => string;
+    /** `aria-label` for each multi-select tag's remove button; receives the item's label. */
+    ariaRemoveItemLabel?: (label: string) => string;
     ariaValues?: (values: string) => string;
 
     // Custom behavior

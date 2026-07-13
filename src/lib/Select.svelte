@@ -100,6 +100,8 @@
         // ARIA props
         ariaLabel = undefined,
         ariaErrorMessage = undefined,
+        ariaClearSelectLabel = 'Clear selection',
+        ariaRemoveItemLabel = (label: string) => `Remove ${label}`,
         ariaCleared = () => {
             return `Selection cleared.`;
         },
@@ -856,7 +858,9 @@
                             : undefined}
                         role={multiFullItemClearable && !disabled ? 'button' : 'none'}
                         tabindex={multiFullItemClearable && !disabled ? 0 : undefined}
-                        aria-label={multiFullItemClearable && !disabled ? `Remove ${item[label]}` : undefined}>
+                        aria-label={multiFullItemClearable && !disabled
+                            ? ariaRemoveItemLabel(String(item[label]))
+                            : undefined}>
                         <span class="multi-item-text">
                             {#if selectionSnippet}
                                 {@render selectionSnippet(item, i)}
@@ -872,7 +876,7 @@
                             <button
                                 type="button"
                                 class="multi-item-clear"
-                                aria-label={`Remove ${item[label]}`}
+                                aria-label={ariaRemoveItemLabel(String(item[label]))}
                                 onmousedown={(ev) => ev.preventDefault()}
                                 onpointerup={(ev) => ev.stopPropagation()}
                                 onclick={(ev) => {
@@ -931,7 +935,7 @@
             <button
                 type="button"
                 class="icon clear-select"
-                aria-label="Clear selection"
+                aria-label={ariaClearSelectLabel}
                 onmousedown={(ev) => ev.preventDefault()}
                 onpointerup={(ev) => ev.stopPropagation()}
                 onclick={handleClear}>

@@ -74,6 +74,8 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires               |
 | ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input (and the listbox); when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
 | ariaErrorMessage       | `string`  | `undefined`     | id of your error element; wired to the input's `aria-errormessage` while `hasError` is `true` |
+| ariaClearSelectLabel   | `string`  | `'Clear selection'` | `aria-label` for the clear-all button                     |
+| ariaRemoveItemLabel    | `(label: string) => string` | ``(label) => `Remove ${label}` `` | `aria-label` for each multi-select tag's remove button |
 | ariaCleared            | `() => string` | see below  | Announcement after the selection is cleared                    |
 | ariaEmpty              | `() => string` | see below  | Announcement when the open list has no options                 |
 | ariaLoading            | `() => string` | see below  | Announcement while the open list is loading                    |
@@ -336,6 +338,8 @@ Use `ariaLabel` to name the input, and override these props to change the screen
   ariaEmpty={() => `No options`}
   ariaLoading={() => `Loading Data`}
   ariaCleared={() => `Selection cleared.`}
+  ariaClearSelectLabel="Clear selection"
+  ariaRemoveItemLabel={(label) => `Remove ${label}`}
 />
 ```
 
