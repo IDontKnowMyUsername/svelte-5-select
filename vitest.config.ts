@@ -29,6 +29,15 @@ export default defineConfig({
         exclude: ['**/examples/**', 'tests/browser/**'],
         coverage: {
             provider: 'v8',
+            // Floors sit a few points below the current numbers (stmts ~97, branch
+            // ~94, funcs ~97, lines ~99) so an unrelated change has headroom but a
+            // real coverage regression fails CI. Ratchet these up as coverage rises.
+            thresholds: {
+                statements: 95,
+                branches: 90,
+                functions: 95,
+                lines: 96,
+            },
             exclude: [
                 'docs/**',
                 '**/*.config.*',

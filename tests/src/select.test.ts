@@ -2153,23 +2153,27 @@ describe('Select Component', () => {
 
     describe('LoadOptions', () => {
         it('populates items via promise resolve', async () => {
+            const user = userEvent.setup();
             render(Select, {
                 props: {
-                    label: 'name',
+                    // getPosts returns { value, label } items, so the defaults apply
                     loadOptions: getPosts,
-                    itemId: 'id',
                 },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
-            input.value = 'Juniper';
-            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await user.type(input, 'Juniper');
+
+            // Poll for the debounced load to resolve and render its option instead
+            // of sleeping exactly one debounce interval
+            await vi.waitFor(() => {
+                expect(document.querySelector('.list-item')?.textContent).toContain('Juniper Wheat Beer');
+            });
+
+            await querySelectorClick('.list-item');
             await tick();
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-
-            await tick();
+            expect(document.querySelector('.selected-item')?.textContent).toContain('Juniper Wheat Beer');
         });
 
         it('populates items with multiple selection', async () => {
@@ -2185,12 +2189,17 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'Juniper');
-            await wait(300);
-            await tick();
 
-            await handleKeyboard('ArrowDown');
-            await tick();
-            await handleKeyboard('Enter');
+            // Wait for the filtered option to appear, then click it directly —
+            // polling on any .list-item could match the mount-load results first
+            const findJuniper = () =>
+                [...document.querySelectorAll('.list-item')].find((el) =>
+                    el.textContent?.includes('Juniper Wheat Beer'),
+                ) as HTMLElement | undefined;
+            await vi.waitFor(() => {
+                expect(findJuniper()).toBeTruthy();
+            });
+            findJuniper()!.click();
             await tick();
 
             const selectedItem = document.querySelector('.multi-item') as HTMLElement;
@@ -2230,10 +2239,9 @@ describe('Select Component', () => {
             input.value = 'test';
             input.dispatchEvent(new Event('input', { bubbles: true }));
 
-            await wait(300);
-            await tick();
-
-            expect(loadedEventData?.detail.items[0].value).toBe('a');
+            await vi.waitFor(() => {
+                expect(loadedEventData?.detail.items[0].value).toBe('a');
+            });
         });
 
         it('dispatches error event when promise rejects', async () => {
@@ -2253,10 +2261,9 @@ describe('Select Component', () => {
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'test');
 
-            await wait(300);
-            await tick();
-
-            expect(errorEventData.type).toBe('loadOptions');
+            await vi.waitFor(() => {
+                expect(errorEventData?.type).toBe('loadOptions');
+            });
             expect(errorEventData.details).toBe('error 123');
         });
 
@@ -2281,11 +2288,9 @@ describe('Select Component', () => {
                 },
             });
 
-            await wait(300);
-            await tick();
-
-            const listItems = document.querySelectorAll('.list-item');
-            expect(listItems.length).toBe(3);
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.list-item').length).toBe(3);
+            });
         });
 
         it('retains filterText on promise resolve with multiple', async () => {
@@ -2310,7 +2315,10 @@ describe('Select Component', () => {
                 },
             });
 
-            await wait(300);
+            // Wait for the load to resolve, then confirm it did not clobber filterText
+            await vi.waitFor(() => {
+                expect(document.querySelector('.list-item')).toBeTruthy();
+            });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             expect(input.value).toBe('test');
@@ -2365,10 +2373,9 @@ describe('Select Component', () => {
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'Juniper');
 
-            await wait(300);
-            await tick();
-
-            expect(document.querySelector('.loading')).toBeTruthy();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.loading')).toBeTruthy();
+            });
 
             resolvePromise([]);
             await tick();
@@ -4401,8 +4408,7 @@ describe('Select Component', () => {
         expect(boundValue).toBeDefined();
     });
 
-    it('handles list scroll event', async () => {
-        // Create many items to ensure scrolling is possible
+    it('suppresses hover while the list is scrolling, then resumes once it settles', async () => {
         const items = Array.from({ length: 50 }, (_, i) => ({
             value: `item${i}`,
             label: `Item ${i}`,
@@ -4418,22 +4424,24 @@ describe('Select Component', () => {
         await tick();
 
         const list = container.querySelector('.svelte-select-list') as HTMLElement;
-        expect(list).toBeTruthy();
+        const target = container.querySelectorAll('.list-item')[3] as HTMLElement;
 
-        // Dispatch scroll event
-        const scrollEvent = new Event('scroll', { bubbles: true });
-        list.dispatchEvent(scrollEvent);
-
+        // Scrolling latches isScrolling; hovering an item must not move the hover
+        // marker until scrolling settles (prevents the list jumping under the cursor)
+        list.dispatchEvent(new Event('scroll', { bubbles: true }));
         await tick();
+        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        await tick();
+        expect(target.querySelector('.item')?.classList.contains('hover')).toBe(false);
 
-        // Wait for setTimeout to complete (100ms + buffer)
-        await new Promise((resolve) => setTimeout(resolve, 150));
-
-        // If we got here without errors, the scroll handler executed
-        expect(list).toBeTruthy();
+        // The scroll-end fallback flips isScrolling back off, so hover resumes
+        await vi.waitFor(() => {
+            target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            expect(target.querySelector('.item')?.classList.contains('hover')).toBe(true);
+        });
     });
 
-    it('handles keydown on list item', async () => {
+    it('list-item keydown is prevented and does not bubble to the window handler', async () => {
         const items = [
             { value: 'chocolate', label: 'Chocolate' },
             { value: 'pizza', label: 'Pizza' },
@@ -4448,29 +4456,24 @@ describe('Select Component', () => {
 
         await tick();
 
+        const windowHandler = vi.fn();
+        window.addEventListener('keydown', windowHandler);
+
         const listItem = container.querySelector('.list-item') as HTMLElement;
-        expect(listItem).toBeTruthy();
-
-        // Dispatch a keydown event on the list item
-        const keydownEvent = new KeyboardEvent('keydown', {
-            key: 'Enter',
-            bubbles: true,
-        });
-
-        listItem.dispatchEvent(keydownEvent);
-
+        const event = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+        listItem.dispatchEvent(event);
         await tick();
 
-        // The handler should have prevented default and stopped propagation
-        expect(listItem).toBeTruthy();
+        // The list-item handler claims the event: preventDefault + stopPropagation
+        // so the component's svelte:window listener never sees it a second time
+        expect(event.defaultPrevented).toBe(true);
+        expect(windowHandler).not.toHaveBeenCalled();
+
+        window.removeEventListener('keydown', windowHandler);
     });
 
-    it('handles keydown on multi-item', async () => {
-        const items = [
-            { value: 'chocolate', label: 'Chocolate' },
-            { value: 'pizza', label: 'Pizza' },
-        ];
-
+    it('removing a multi-item via its clear button drops the tag and fires onclear', async () => {
+        const onclear = vi.fn();
         const { container } = render(Select, {
             props: {
                 items: items,
@@ -4479,26 +4482,21 @@ describe('Select Component', () => {
                     { value: 'chocolate', label: 'Chocolate' },
                     { value: 'pizza', label: 'Pizza' },
                 ],
+                onclear,
             },
         });
 
         await tick();
+        expect(container.querySelectorAll('.multi-item').length).toBe(2);
 
-        const multiItem = container.querySelector('.multi-item') as HTMLElement;
-        expect(multiItem).toBeTruthy();
-
-        // Dispatch a keydown event on the multi-item
-        const keydownEvent = new KeyboardEvent('keydown', {
-            key: 'Delete',
-            bubbles: true,
-        });
-
-        multiItem.dispatchEvent(keydownEvent);
-
+        const removeButton = container.querySelector('.multi-item-clear') as HTMLButtonElement;
+        removeButton.click();
         await tick();
 
-        // The handler should have prevented default and stopped propagation
-        expect(multiItem).toBeTruthy();
+        expect(container.querySelectorAll('.multi-item').length).toBe(1);
+        expect(container.querySelector('.multi-item')?.textContent).toContain('Pizza');
+        expect(onclear).toHaveBeenCalledTimes(1);
+        expect(onclear.mock.calls[0][0]).toMatchObject({ value: 'chocolate' });
     });
 
     describe('Required prop', () => {
@@ -4800,10 +4798,13 @@ describe('Select Component', () => {
             const user = userEvent.setup();
 
             let resolveLoad: (items: SelectItem[]) => void;
-            const slowLoad = () =>
-                new Promise<SelectItem[]>((resolve) => {
+            let loadCalls = 0;
+            const slowLoad = () => {
+                loadCalls++;
+                return new Promise<SelectItem[]>((resolve) => {
                     resolveLoad = resolve;
                 });
+            };
 
             render(Select, {
                 props: {
@@ -4813,16 +4814,18 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'test');
-            await wait(300);
-            await tick();
 
+            // Wait for the typing-driven load (after the mount load) so resolveLoad
+            // holds its resolver, not the mount request's
+            await vi.waitFor(() => {
+                expect(loadCalls).toBeGreaterThanOrEqual(2);
+            });
             expect(document.querySelector('.loading')).toBeTruthy();
 
             resolveLoad!([{ value: 'a', label: 'A' }]);
-            await tick();
-            await tick();
-
-            expect(document.querySelector('.loading')).toBeFalsy();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.loading')).toBeFalsy();
+            });
         });
 
         it('debounces loadOptions calls on rapid typing', async () => {
@@ -4838,12 +4841,11 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'abc');
-            await wait(300);
-            await tick();
-
             // The immediate mount fetch plus exactly one trailing-edge call for
             // the rapid keystrokes
-            expect(loadSpy.mock.calls.map((call) => call[0])).toEqual(['', 'abc']);
+            await vi.waitFor(() => {
+                expect(loadSpy.mock.calls.map((call) => call[0])).toEqual(['', 'abc']);
+            });
         });
 
         it('clears value when disabled with loadOptions', async () => {
@@ -4879,10 +4881,9 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'Pil');
-            await wait(300);
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            });
         });
 
         it('populates list items from loadOptions result', async () => {
@@ -4900,13 +4901,13 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'On');
-            await wait(300);
-            await tick();
+            // loadOptions results are already filtered remotely, so all are shown
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.list-item').length).toBe(2);
+            });
 
             expect(loadFn).toHaveBeenCalled();
-            // loadOptions results are already filtered remotely, so all are shown
             const listItems = document.querySelectorAll('.list-item');
-            expect(listItems.length).toBe(2);
             expect(listItems[0].textContent?.trim()).toBe('One');
             expect(listItems[1].textContent?.trim()).toBe('Two');
         });
@@ -4923,13 +4924,12 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'a');
-            await wait(300);
-            await tick();
+            // loadOptions results are already filtered remotely, so all are shown
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.list-item').length).toBe(3);
+            });
 
             expect(loadFn).toHaveBeenCalled();
-            // loadOptions results are already filtered remotely, so all are shown
-            const listItems = document.querySelectorAll('.list-item');
-            expect(listItems.length).toBe(3);
         });
 
         it('clears items when loadOptions returns empty', async () => {
@@ -4944,7 +4944,9 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'xyz');
-            await wait(300);
+            await vi.waitFor(() => {
+                expect(loadFn).toHaveBeenCalledWith('xyz');
+            });
             await tick();
 
             const listItems = document.querySelectorAll('.list-item');
@@ -4960,22 +4962,24 @@ describe('Select Component', () => {
                     loadOptions: loadSpy,
                     clearFilterTextOnBlur: false,
                     focused: true,
+                    debounceWait: 50,
                 },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'ab');
-            await wait(300);
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            });
             const callsAfterTyping = loadSpy.mock.calls.length;
 
             await handleKeyboard('Escape');
-            await wait(300);
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            });
+            // Wait past the (short, deterministic) debounce window to prove no
+            // trailing fetch was armed by the close
+            await wait(150);
             expect(loadSpy.mock.calls.length).toBe(callsAfterTyping);
         });
 
@@ -4990,13 +4994,15 @@ describe('Select Component', () => {
                 props: {
                     loadOptions: loadSpy,
                     focused: true,
+                    debounceWait: 50,
                 },
             });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'a');
-            await wait(300);
-            await tick();
+            await vi.waitFor(() => {
+                expect(document.querySelector('.list-item')).toBeTruthy();
+            });
 
             const callsAfterTyping = loadSpy.mock.calls.length;
             await querySelectorClick('.list-item');
@@ -5005,9 +5011,8 @@ describe('Select Component', () => {
             expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('A');
             expect(document.querySelector('.loading')).toBeFalsy();
 
-            await wait(300);
-            await tick();
-
+            // Past the debounce window: selecting must not have armed a new fetch
+            await wait(150);
             expect(loadSpy.mock.calls.length).toBe(callsAfterTyping);
             expect(document.querySelector('.loading')).toBeFalsy();
         });
@@ -5033,7 +5038,9 @@ describe('Select Component', () => {
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'ban');
-            await wait(300);
+            await vi.waitFor(() => {
+                expect(loadFn).toHaveBeenCalledWith('ban');
+            });
             await tick();
 
             const multiItems = document.querySelectorAll('.multi-item');
@@ -5060,7 +5067,10 @@ describe('Select Component', () => {
             // keyed every raw string on undefined
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
 
-            await wait(300);
+            // Wait for the mount load to be in flight before resolving it
+            await vi.waitFor(() => {
+                expect(resolveLoad).toBeDefined();
+            });
             resolveLoad(['red', 'blue', 'green']);
             await tick();
 
@@ -5422,6 +5432,122 @@ describe('Select Component', () => {
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
             expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
+    });
+
+    describe('Regression coverage (audit gaps)', () => {
+        // Mount seeding must not look like user input. prevValue is seeded with the
+        // initial value so mount does not dispatch — but a raw string value
+        // normalizes to an item, and dispatch sees string != item and fires anyway.
+        it('does not dispatch oninput on mount for an item-seeded value', async () => {
+            const oninput = vi.fn();
+            render(Select, {
+                props: { items, value: { value: 'chocolate', label: 'Chocolate' }, oninput },
+            });
+            await tick();
+            await tick();
+
+            expect(oninput).not.toHaveBeenCalled();
+        });
+
+        it.fails('does not dispatch oninput on mount for a string-seeded single value (known bug)', async () => {
+            const oninput = vi.fn();
+            render(Select, { props: { items, value: 'chocolate', oninput } });
+            await tick();
+            await tick();
+
+            // Currently fires oninput([chocolateItem]) — mount-time string→item
+            // normalization is treated as a change. Remove .fails when fixed.
+            expect(oninput).not.toHaveBeenCalled();
+        });
+
+        it.fails('does not dispatch oninput on mount for a string-seeded multiple value (known bug)', async () => {
+            const oninput = vi.fn();
+            render(Select, { props: { items, multiple: true, value: ['chocolate'], oninput } });
+            await tick();
+            await tick();
+
+            expect(oninput).not.toHaveBeenCalled();
+        });
+
+        it('collapses the value to null when multiple flips from true to false', async () => {
+            const oninput = vi.fn();
+            const { rerender } = render(Select, {
+                props: { items, multiple: true, value: [{ value: 'chocolate', label: 'Chocolate' }], oninput },
+            });
+            await tick();
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+            oninput.mockClear();
+
+            await rerender({ items, multiple: false, value: [{ value: 'chocolate', label: 'Chocolate' }] });
+            await tick();
+            await tick();
+
+            // The single<->multi effect nulls a leftover array value on multi->single
+            expect(document.querySelectorAll('.multi-item').length).toBe(0);
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+            expect(oninput).toHaveBeenCalledWith(null);
+        });
+
+        it.fails(
+            'does not emit a duplicate onchange when re-selecting with filterSelectedItems=false (known bug)',
+            async () => {
+                const onchange = vi.fn();
+                render(Select, {
+                    props: {
+                        items,
+                        multiple: true,
+                        filterSelectedItems: false,
+                        listOpen: true,
+                        focused: true,
+                        onchange,
+                    },
+                });
+                await tick();
+
+                (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
+                await tick();
+
+                // Reopen and re-select the same still-listed item
+                await handleKeyboard('ArrowDown');
+                await tick();
+                (document.querySelectorAll('.list-item')[0] as HTMLElement).click();
+                await tick();
+
+                // Currently the re-select fires onchange([a, a]) before the dedup
+                // effect repairs value. Desired: onchange never carries a duplicate.
+                const emittedDuplicate = onchange.mock.calls.some((call) => {
+                    const v = call[0];
+                    return Array.isArray(v) && new Set(v.map((i: SelectItem) => i.value)).size !== v.length;
+                });
+                expect(emittedDuplicate).toBe(false);
+            },
+        );
+
+        it.fails('re-fires loadOptions for retained filter text when the list reopens (known gap)', async () => {
+            const loadSpy = vi.fn().mockResolvedValue([{ value: 'a', label: 'A' }]);
+            render(Select, {
+                props: { loadOptions: loadSpy, clearFilterTextOnBlur: false, focused: true, debounceWait: 50 },
+            });
+            await wait(0);
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            // Close before the debounce fires — the pending 'ab' load is cancelled
+            await handleKeyboard('Escape');
+            await wait(120);
+
+            // Reopen; the filter text is still 'ab'
+            await handleKeyboard('ArrowDown');
+            await wait(120);
+
+            // Desired: results should match the visible text, so 'ab' gets fetched.
+            // Currently the cancelled load is never re-armed, leaving stale results.
+            expect(loadSpy.mock.calls.map((c) => c[0])).toContain('ab');
         });
     });
 });

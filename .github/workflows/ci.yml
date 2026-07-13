@@ -20,7 +20,9 @@ jobs:
                   cache: pnpm
             - run: pnpm install --frozen-lockfile
             - run: pnpm run check
-            - run: pnpm run test:run
+            # Runs the full suite with v8 coverage and enforces the thresholds in
+            # vitest.config.ts, so a coverage regression fails CI
+            - run: pnpm run coverage
 
     browser-test:
         runs-on: ubuntu-latest
