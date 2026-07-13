@@ -935,6 +935,35 @@ describe('Select Component', () => {
 
             expect(document.querySelector('.clear-select')).toBeFalsy();
         });
+
+        it('expresses disabled via aria-disabled + readonly, keeping the combobox in the a11y tree', () => {
+            render(Select, { props: { items, disabled: true, ariaLabel: 'Food' } });
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-disabled')).toBe('true');
+            expect(input.hasAttribute('readonly')).toBe(true);
+            expect(input.getAttribute('tabindex')).toBe('-1');
+            // native disabled would drop it from the accessibility tree
+            expect(input.hasAttribute('disabled')).toBe(false);
+            // still a named combobox that screen readers can announce
+            expect(input.getAttribute('role')).toBe('combobox');
+            expect(input.getAttribute('aria-label')).toBe('Food');
+        });
+
+        it('is not aria-disabled and stays tabbable when enabled', () => {
+            render(Select, { props: { items } });
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-disabled')).toBeNull();
+            expect(input.getAttribute('tabindex')).toBe('0');
+        });
+
+        it('stays non-interactive when disabled', async () => {
+            render(Select, { props: { items, disabled: true } });
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.dispatchEvent(new FocusEvent('focus'));
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
+        });
     });
 
     describe('List behavior', () => {

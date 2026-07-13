@@ -266,6 +266,13 @@
         readonly: !searchable,
         id: id ? id : undefined,
         ...inputAttributes,
+        // Disabled is expressed with aria-disabled + readonly rather than the native
+        // `disabled` attribute so the current value stays in the accessibility tree
+        // and screen readers can still announce it. Spread last (after
+        // inputAttributes) so a disabled control is never left interactive or
+        // tab-reachable; interaction is already blocked by the `disabled` guards in
+        // handleClick/handleFocus and the disabled effect.
+        ...(disabled ? { 'aria-disabled': true, readonly: true, tabindex: -1 } : {}),
     });
     let prefloat = $state(true);
     let hasValue = $derived(multiple ? Array.isArray(value) && value.length > 0 : !!value);
@@ -647,6 +654,9 @@
     }
 
     function handleFocus(e?: FocusEvent): void {
+        // The input is no longer natively `disabled`, so it can still be
+        // click-focused — keep a disabled Select non-interactive here.
+        if (disabled) return;
         if (focused && input === document?.activeElement) return;
         if (e) {
             onfocus?.(e);
@@ -972,8 +982,7 @@
             bind:this={input}
             value={filterText}
             placeholder={placeholderText}
-            style={inputStyles}
-            {disabled} />
+            style={inputStyles} />
     </div>
 
     <div class="indicators">
