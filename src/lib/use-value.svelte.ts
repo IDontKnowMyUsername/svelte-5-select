@@ -303,11 +303,17 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
     // Hydrate value from an initial justValue, then keep justValue in sync.
     // items is a tracked trigger so hydration retries when async items arrive.
+    // clearState is a tracked trigger too, so an explicit clear always reaches
+    // syncJustValue (which consumes and resets the flag) even when it is not
+    // accompanied by a value change — otherwise the flag could stick `true` and
+    // block the next hydration. syncJustValue resets it to `false`, which settles
+    // in one extra run (the false→false write no longer notifies).
     $effect(() => {
         state.multiple;
         state.itemId;
         state.value;
         state.items;
+        state.clearState;
         untrack(() => {
             state.justValue = syncJustValue();
         });

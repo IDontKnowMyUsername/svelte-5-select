@@ -266,6 +266,36 @@ describe('useValue', () => {
             expect(state.value).toBeUndefined();
             expect(actions.oninput).toHaveBeenCalledWith(null);
         });
+
+        it('flushes clearState even when no value change accompanies it', () => {
+            const { state } = createHarness();
+
+            // A clear flag set without a co-occurring value/items/multiple/itemId
+            // change must still be consumed and reset — otherwise it sticks true
+            // and blocks the next hydration.
+            state.clearState = true;
+            flushSync();
+
+            expect(state.clearState).toBe(false);
+        });
+
+        it('does not let a stuck clearState block a later hydration', () => {
+            const { state } = createHarness({ useJustValue: true, items: [{ value: 'a', label: 'Apple' }] });
+
+            // Simulate a clear flag left set on its own (no value change to carry it
+            // into the sync effect). With the flag tracked it is flushed here...
+            state.clearState = true;
+            flushSync();
+            expect(state.clearState).toBe(false);
+
+            // ...so a subsequent justValue + items arrival hydrates normally rather
+            // than being silently skipped by a still-true clearState.
+            state.justValue = 'a';
+            state.items = [{ value: 'a', label: 'Apple' }];
+            flushSync();
+
+            expect(state.value).toEqual({ value: 'a', label: 'Apple' });
+        });
     });
 
     describe('itemSelected', () => {

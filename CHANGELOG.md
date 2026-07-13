@@ -43,6 +43,7 @@
 ### Fixed
 
 * With `useJustValue`, a parent clearing `bind:value` programmatically had the old selection silently resurrected from the stale `justValue` (and the UI kept showing it); an external clear now behaves like the internal one and clears `justValue` too
+* The internal clear flag (`clearState`) is now flushed and reset whenever it is set — not only when a co-occurring value change happens to carry it into the sync effect — so it can no longer stick `true` and silently block the next `justValue` hydration
 * Clicking the clear button no longer bubbles `pointerup` to the container's list toggle — the list flickered open on every clear, and stayed open permanently with a custom `handleClear`; its `mousedown` is also prevented so clearing never steals focus from the input
 * A blur arriving while the list was scrolling was dropped forever (list stuck open, window keydown kept hijacking arrows/Enter typed into other fields — most likely on touch momentum-scroll); it is now deferred and replayed once scrolling settles, unless focus returned to the input
 * Typing while a `loadOptionsDeps` reload was in flight discarded that reload's response before it could validate the selection, so a now-invalid value survived the deps change; a superseded dependency reload still delivers its validation verdict (unless a newer dependency reload owns it)
