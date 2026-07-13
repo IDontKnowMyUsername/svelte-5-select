@@ -32,6 +32,7 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--disabled-placeholder-opacity`
 - `--error-background`
 - `--error-border`
+- `--focused-box-shadow`
 - `--font-size`
 - `--group-item-padding-left`
 - `--group-title-border-color`
