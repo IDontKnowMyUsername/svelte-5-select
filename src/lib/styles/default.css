@@ -143,7 +143,7 @@ input:focus {
     flex-shrink: 0;
 }
 
-.clear-select:focus {
+.clear-select:focus-visible {
     outline: var(--clear-select-focus-outline, 1px solid #006fe8);
 }
 
@@ -335,5 +335,26 @@ input:focus {
 @media (prefers-reduced-motion: reduce) {
     .item {
         transition: none;
+    }
+}
+
+@media (forced-colors: active) {
+    /* box-shadow is dropped in forced-colors mode, so the focus ring above is
+       invisible there — restore a real outline using a system colour. */
+    .svelte-select.focused {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    /* Custom background colours are also flattened, so distinguish the selected
+       option (filled) from the option under the keyboard cursor (outlined). */
+    .item.active {
+        background: Highlight;
+        color: HighlightText;
+    }
+
+    .item.hover:not(.active) {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
     }
 }

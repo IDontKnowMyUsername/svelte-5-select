@@ -24,6 +24,8 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
             ArrowRight: handleArrowRightKey,
             Home: handleHomeKey,
             End: handleEndKey,
+            PageUp: handlePageUpKey,
+            PageDown: handlePageDownKey,
         };
 
         const handler = handlers[e.key];
@@ -215,6 +217,44 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         }
     }
 
+    // PageUp/PageDown jump the hover by a page of selectable options, clamped to
+    // the first/last selectable (no wrap, unlike the Arrow keys). They stay active
+    // while filtering: PageUp/PageDown do not move the caret in a single-line
+    // input, so there is nothing to conflict with the way Home/End would.
+    const PAGE_SIZE = 10;
+
+    function pageHover(direction: 1 | -1): boolean {
+        const { listOpen, filteredItems } = state;
+        if (!listOpen) return false;
+
+        const selectable: number[] = [];
+        for (let i = 0; i < filteredItems.length; i++) {
+            if (isItemSelectableCheck(filteredItems[i])) selectable.push(i);
+        }
+        if (selectable.length === 0) return false;
+
+        // Where the current hover sits among selectable rows; if it is parked on a
+        // non-selectable header, anchor just outside so a full page still moves.
+        let pos = selectable.indexOf(state.hoverItemIndex);
+        if (pos === -1) pos = direction > 0 ? -1 : selectable.length;
+
+        const targetPos = Math.min(selectable.length - 1, Math.max(0, pos + direction * PAGE_SIZE));
+        state.hoverItemIndex = selectable[targetPos];
+        return true;
+    }
+
+    function handlePageDownKey(e: KeyboardEvent): void {
+        if (!pageHover(1)) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
+    function handlePageUpKey(e: KeyboardEvent): void {
+        if (!pageHover(-1)) return;
+        e.preventDefault();
+        e.stopPropagation();
+    }
+
     function handleArrowRightKey(e: KeyboardEvent): void {
         const { value, multiple, filterText, activeValue } = state;
 
@@ -241,5 +281,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         handleArrowRightKey,
         handleHomeKey,
         handleEndKey,
+        handlePageUpKey,
+        handlePageDownKey,
     };
 }

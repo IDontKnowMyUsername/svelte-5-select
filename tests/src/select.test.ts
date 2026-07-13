@@ -329,6 +329,32 @@ describe('Select Component', () => {
 
             expect(itemSelectedFired).toBe(false);
         });
+
+        const manyItems = Array.from({ length: 20 }, (_, i) => ({ value: i, label: `Item ${i}` }));
+
+        it('jumps a page down with PageDown', async () => {
+            render(Select, { props: { listOpen: true, items: manyItems } });
+            await handleKeyboard('PageDown');
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('Item 10');
+        });
+
+        it('clamps PageDown to the last item without wrapping', async () => {
+            render(Select, { props: { listOpen: true, items: manyItems } });
+            await handleKeyboard('PageDown');
+            await handleKeyboard('PageDown');
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('Item 19');
+        });
+
+        it('jumps back up with PageUp and clamps to the first item', async () => {
+            render(Select, { props: { listOpen: true, items: manyItems } });
+            await handleKeyboard('PageDown');
+            await handleKeyboard('PageUp');
+            await handleKeyboard('PageUp');
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('Item 0');
+        });
     });
 
     describe('Value display', () => {

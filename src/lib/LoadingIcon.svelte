@@ -1,4 +1,4 @@
-<svg class="loading" viewBox="25 25 50 50">
+<svg class="loading" viewBox="25 25 50 50" aria-hidden="true" focusable="false">
     <circle
         class="circle_path"
         cx="50"

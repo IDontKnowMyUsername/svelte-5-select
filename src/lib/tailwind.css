@@ -135,6 +135,25 @@
     }
 }
 
+@media (forced-colors: active) {
+    /* The ring above uses box-shadow, which forced-colors mode drops; restore a
+       real outline, and distinguish selected (filled) from cursor (outlined). */
+    .svelte-select.focused {
+        outline: 2px solid Highlight;
+        outline-offset: 1px;
+    }
+
+    .item.active {
+        background: Highlight;
+        color: HighlightText;
+    }
+
+    .item.hover:not(.active) {
+        outline: 2px solid Highlight;
+        outline-offset: -2px;
+    }
+}
+
 .list-item {
     @apply list-none;
 }
