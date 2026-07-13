@@ -223,7 +223,7 @@
             filterSelectedItems,
             itemFilter,
             convertStringItemsToObjects,
-            filterGroupedItems,
+            applyGrouping,
         }),
     );
 
@@ -616,7 +616,7 @@
         }
     });
 
-    function filterGroupedItems(_items: SelectItem[]): SelectItem[] {
+    function applyGrouping(_items: SelectItem[]): SelectItem[] {
         if (!groupBy) return _items;
 
         const groupValues: string[] = [];

@@ -59,7 +59,12 @@ export interface FilterConfig<Item extends ItemLike = SelectItem> {
     filterSelectedItems: boolean;
     itemFilter: (label: string, filterText: string, option: Item) => boolean;
     convertStringItemsToObjects: (items: string[]) => SelectItem[];
-    filterGroupedItems: (items: SelectItem[]) => SelectItem[];
+    /**
+     * Transforms the flat filtered list into a grouped one (inserting headers and
+     * applying the `groupBy`/`groupFilter` props). Distinct from the `groupFilter`
+     * prop, which only reorders/filters the group keys this transform consumes.
+     */
+    applyGrouping: (items: SelectItem[]) => SelectItem[];
 }
 
 export interface FloatingConfig extends Partial<ComputePositionConfig> {

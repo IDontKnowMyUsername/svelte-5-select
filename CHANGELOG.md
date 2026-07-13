@@ -26,6 +26,7 @@
 * The input no longer gets a default `aria-label` of the placeholder text, which overrode an external `<label for={id}>` in accessible-name computation; set `ariaLabel` for an explicit label, otherwise the placeholder still names the input as the spec's last-resort fallback
 * `selectionSnippet` is typed `Snippet<[Item, number?]>` — it always received a single item at runtime (each tag in multiple mode), never an array
 * The `onclear` payload is now typed with the `Multiple`-discriminated `SelectClearValue<Item, Multiple>` instead of the flat `SelectValue<Item, Multiple> | Item | string` union: single mode is `Item | string | null` (no stray array), and the single removed-tag entry only appears in the multiple branch. Runtime payloads are unchanged
+* `FilterConfig.filterGroupedItems` is renamed `applyGrouping` — it was a near-homograph of the unrelated `groupFilter` prop (the transform builds the grouped list; the prop only reorders group keys). Only affects custom `filter` implementations that read the field
 
 ### Added
 

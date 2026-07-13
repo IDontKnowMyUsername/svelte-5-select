@@ -12,7 +12,7 @@ export default function filter<Item extends ItemLike = SelectItem>({
     filterSelectedItems,
     itemFilter,
     convertStringItemsToObjects,
-    filterGroupedItems,
+    applyGrouping,
     label,
 }: FilterConfig<Item>): SelectItem[] {
     // If no items, return empty array
@@ -44,7 +44,7 @@ export default function filter<Item extends ItemLike = SelectItem>({
 
     // Apply grouping if groupBy function is provided
     if (groupBy) {
-        filterResults = filterGroupedItems(filterResults);
+        filterResults = applyGrouping(filterResults);
     }
 
     return filterResults;

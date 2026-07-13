@@ -10,7 +10,7 @@ describe('filter', () => {
     const mockConvertStringItemsToObjects = (items: string[]): SelectItem[] =>
         items.map((item, index) => ({ value: item, label: item, index }));
 
-    const mockFilterGroupedItems = (items: SelectItem[]): SelectItem[] => items;
+    const mockApplyGrouping = (items: SelectItem[]): SelectItem[] => items;
 
     it('returns items when both items and loadOptions are provided', () => {
         const items: SelectItem[] = [
@@ -29,7 +29,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -48,7 +48,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -69,7 +69,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -95,7 +95,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -123,7 +123,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -153,7 +153,7 @@ describe('filter', () => {
             filterSelectedItems: false,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -167,7 +167,7 @@ describe('filter', () => {
             { value: 'b', label: 'Banana' },
         ];
 
-        const mockFilterGroupedItemsWithGrouping = vi.fn((items: SelectItem[]) => {
+        const mockApplyGroupingWithHeaders = vi.fn((items: SelectItem[]) => {
             return [{ value: 'group', label: 'Fruits', groupHeader: true }, ...items];
         });
 
@@ -182,11 +182,11 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItemsWithGrouping,
+            applyGrouping: mockApplyGroupingWithHeaders,
             label: 'label',
         });
 
-        expect(mockFilterGroupedItemsWithGrouping).toHaveBeenCalled();
+        expect(mockApplyGroupingWithHeaders).toHaveBeenCalled();
         expect(result).toHaveLength(3);
         expect(result[0].groupHeader).toBe(true);
     });
@@ -208,7 +208,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -232,7 +232,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
@@ -263,7 +263,7 @@ describe('filter', () => {
             filterSelectedItems: true,
             itemFilter: mockItemFilter,
             convertStringItemsToObjects: mockConvertStringItemsToObjects,
-            filterGroupedItems: mockFilterGroupedItems,
+            applyGrouping: mockApplyGrouping,
             label: 'label',
         });
 
