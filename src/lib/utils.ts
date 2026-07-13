@@ -34,14 +34,23 @@ export function normalizeItem(
     return typeof value === 'string' ? { value, label: value } : (value as SelectItem | SelectItem[]);
 }
 
-// A string is only equal to itself; items compare by itemId. A string never
-// equals an item, so mount-time string-to-item normalization counts as a change.
+// The comparable id of a value entry: a raw string is its own id, an item uses
+// its itemId field.
+function entryId(v: SelectItem | string | null | undefined, itemId: string): unknown {
+    return typeof v === 'string' ? v : getItemProperty(v, itemId);
+}
+
+// Compare by id, not by reference type: a raw string and the item it resolves to
+// share an id, so mount-time string-to-item normalization is the same selection —
+// not a change — and must not dispatch oninput. Two items compare by itemId.
 function haveEntriesChanged(
     a: SelectItem | string | null | undefined,
     b: SelectItem | string | null | undefined,
     itemId: string,
 ): boolean {
-    if (typeof a === 'string' || typeof b === 'string') return a !== b;
+    if (typeof a === 'string' || typeof b === 'string') {
+        return entryId(a, itemId) !== entryId(b, itemId);
+    }
     if (!a || !b) return a !== b;
     return !areItemsEqual(a, b, itemId);
 }

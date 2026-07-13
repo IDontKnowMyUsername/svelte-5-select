@@ -71,8 +71,12 @@ describe('hasValueChanged', () => {
         expect(hasValueChanged('cake', 'pizza', 'value')).toBe(true);
     });
 
-    it('treats string-to-item normalization as a change', () => {
-        expect(hasValueChanged({ value: 'cake', label: 'cake' }, 'cake', 'value')).toBe(true);
+    it('treats a string and the item it resolves to (same id) as unchanged', () => {
+        // Mount-time normalization turns a raw string value into its item; the
+        // selection did not change, so this must not count as a change.
+        expect(hasValueChanged({ value: 'cake', label: 'cake' }, 'cake', 'value')).toBe(false);
+        // A string and an item with a different id are still a change
+        expect(hasValueChanged({ value: 'cake', label: 'cake' }, 'pizza', 'value')).toBe(true);
     });
 
     it('compares arrays pairwise by itemId', () => {

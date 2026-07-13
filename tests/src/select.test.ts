@@ -1911,7 +1911,9 @@ describe('Select Component', () => {
             await user.click(clearButton);
             await tick();
 
-            expect(events.length).toBe(3);
+            // One oninput per removal (2). Mounting with a string-seeded value no
+            // longer dispatches a spurious third event.
+            expect(events.length).toBe(2);
         });
 
         it('checks if value[itemId] changed before firing input event', async () => {
@@ -5450,18 +5452,18 @@ describe('Select Component', () => {
             expect(oninput).not.toHaveBeenCalled();
         });
 
-        it.fails('does not dispatch oninput on mount for a string-seeded single value (known bug)', async () => {
+        it('does not dispatch oninput on mount for a string-seeded single value', async () => {
             const oninput = vi.fn();
             render(Select, { props: { items, value: 'chocolate', oninput } });
             await tick();
             await tick();
 
-            // Currently fires oninput([chocolateItem]) — mount-time string→item
-            // normalization is treated as a change. Remove .fails when fixed.
+            // The raw string normalizes to its item, but the selection is unchanged,
+            // so mount must stay silent (haveEntriesChanged compares by id)
             expect(oninput).not.toHaveBeenCalled();
         });
 
-        it.fails('does not dispatch oninput on mount for a string-seeded multiple value (known bug)', async () => {
+        it('does not dispatch oninput on mount for a string-seeded multiple value', async () => {
             const oninput = vi.fn();
             render(Select, { props: { items, multiple: true, value: ['chocolate'], oninput } });
             await tick();
