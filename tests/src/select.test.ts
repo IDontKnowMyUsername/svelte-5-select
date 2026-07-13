@@ -256,6 +256,34 @@ describe('Select Component', () => {
             expect(target.id).toMatch(/-item-1$/);
             spy.mockRestore();
         });
+
+        it('scrolls the hovered item into view when paging with PageDown/PageUp', async () => {
+            const spy = spyOnScrollIntoView();
+            const manyItems = Array.from({ length: 20 }, (_, i) => ({ value: i, label: `Item ${i}` }));
+
+            render(Select, {
+                props: {
+                    listOpen: true,
+                    items: manyItems,
+                },
+            });
+            await tick();
+            spy.mockClear();
+
+            await handleKeyboard('PageDown');
+            await tick();
+
+            expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+            expect((spy.mock.instances.at(-1) as unknown as HTMLElement).id).toMatch(/-item-10$/);
+
+            spy.mockClear();
+            await handleKeyboard('PageUp');
+            await tick();
+
+            expect(spy).toHaveBeenCalledWith({ block: 'nearest' });
+            expect((spy.mock.instances.at(-1) as unknown as HTMLElement).id).toMatch(/-item-0$/);
+            spy.mockRestore();
+        });
     });
 
     describe('Keyboard navigation', () => {

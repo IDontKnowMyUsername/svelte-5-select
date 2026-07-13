@@ -480,7 +480,15 @@
     function handleKeyDown(e: KeyboardEvent): void {
         keyboardNav.handleKeyDown(e);
         const isTypeAhead = !searchable && e.key.length === 1;
-        if (e.key === 'ArrowDown' || e.key === 'ArrowUp' || e.key === 'Home' || e.key === 'End' || isTypeAhead) {
+        if (
+            e.key === 'ArrowDown' ||
+            e.key === 'ArrowUp' ||
+            e.key === 'Home' ||
+            e.key === 'End' ||
+            e.key === 'PageDown' ||
+            e.key === 'PageUp' ||
+            isTypeAhead
+        ) {
             void tick().then(scrollHoveredItemIntoView);
         }
     }
