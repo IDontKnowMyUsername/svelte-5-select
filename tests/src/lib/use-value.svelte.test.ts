@@ -188,7 +188,9 @@ describe('useValue', () => {
             expect(state.value).toEqual([{ value: 'a', label: 'Apple' }]);
         });
 
-        it('nulls a leftover array value when multiple flips true to false', () => {
+        // `undefined`, not `null`: an emptied value has one representation across
+        // every clear path, so consumers never have to test for both
+        it('empties a leftover array value when multiple flips true to false', () => {
             const { state } = createHarness({
                 multiple: true,
                 prevMultiple: true,
@@ -199,7 +201,7 @@ describe('useValue', () => {
             state.multiple = false;
             flushSync();
 
-            expect(state.value).toBeNull();
+            expect(state.value).toBeUndefined();
         });
 
         it('wraps a single value in an array when multiple flips false to true', () => {

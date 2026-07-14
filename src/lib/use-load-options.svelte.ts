@@ -74,6 +74,14 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                 const { value, multiple, itemId, useJustValue } = state;
                 if (!value) return;
 
+                // One empty representation, matching every other clear path (the
+                // clear button, the last tag removed, a multi->single transition):
+                // `undefined` in both modes, never `null` or `[]`.
+                const clearInvalidatedValue = () => {
+                    state.value = undefined;
+                    if (useJustValue) state.justValue = undefined;
+                };
+
                 if (loaded && loaded.length > 0) {
                     const idOf = (entry: SelectItem | string) =>
                         typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
@@ -83,13 +91,10 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                         : loaded.some((item) => idOf(item) === idOf(value as SelectItem | string));
 
                     if (!valueExists) {
-                        state.value = multiple ? [] : undefined;
-                        if (useJustValue) {
-                            state.justValue = multiple ? [] : '';
-                        }
+                        clearInvalidatedValue();
                     }
                 } else {
-                    state.value = multiple ? [] : undefined;
+                    clearInvalidatedValue();
                 }
             };
 
@@ -146,9 +151,10 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
 
             if (clearValueOnDisabled) {
                 if (state.value || (state.useJustValue && state.justValue)) {
-                    state.value = state.multiple ? [] : undefined;
+                    // `undefined` in both modes — see clearInvalidatedValue above
+                    state.value = undefined;
                     if (state.useJustValue) {
-                        state.justValue = state.multiple ? [] : '';
+                        state.justValue = undefined;
                     }
                 }
                 state.items = null;

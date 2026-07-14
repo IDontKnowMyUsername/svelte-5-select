@@ -8,7 +8,7 @@ export { default as LoadingIcon } from './LoadingIcon.svelte';
 
 // Utility functions
 export { default as filter } from './filter';
-export { isStringArray, areItemsEqual, normalizeItem } from './utils';
+export { areItemsEqual, isGroupHeader, normalizeItem } from './utils';
 
 // Type exports for TypeScript users.
 // Note: SelectState, KeyboardNavigationState/Actions and the useKeyboardNavigation
@@ -17,6 +17,8 @@ export { isStringArray, areItemsEqual, normalizeItem } from './utils';
 export type {
     ItemLike,
     SelectItem,
+    SelectGroupHeader,
+    SelectRow,
     SelectProps,
     SelectValue,
     SelectValueProp,

@@ -2,11 +2,13 @@
 
 <script lang="ts" generics="Item extends ItemLike = SelectItem, Multiple extends boolean = false">
     import { onDestroy, onMount, tick, untrack } from 'svelte';
+    import { DEV } from 'esm-env';
     import { offset, flip, shift } from 'svelte-floating-ui/dom';
     import type {
         FloatingConfig,
         ItemLike,
         SelectProps,
+        SelectRow,
         SelectValue,
         SelectClearValue,
         SelectErrorEvent,
@@ -252,16 +254,21 @@
         });
         return rows;
     });
+    // The option the combobox currently points at. With a custom listSnippet the
+    // consumer owns option rendering, so this only resolves if they honour the
+    // documented id contract — a dev-only effect below warns when it dangles.
+    let _activeDescendantId = $derived(
+        listOpen && filteredItems[hoverItemIndex] && !isPresentationalHeader(filteredItems[hoverItemIndex])
+            ? `listbox-${_id}-item-${hoverItemIndex}`
+            : undefined,
+    );
     let _inputAttributes = $derived<HTMLInputAttributes>({
         ...DEFAULT_INPUT_ATTRS,
         role: 'combobox',
         'aria-controls': listOpen ? `listbox-${_id}` : undefined,
         'aria-expanded': listOpen,
         'aria-haspopup': 'listbox',
-        'aria-activedescendant':
-            listOpen && filteredItems[hoverItemIndex] && !isPresentationalHeader(filteredItems[hoverItemIndex])
-                ? `listbox-${_id}-item-${hoverItemIndex}`
-                : undefined,
+        'aria-activedescendant': _activeDescendantId,
         // Only an explicit ariaLabel: a default aria-label would override an external
         // <label for={id}> in accessible-name computation. Without either, the
         // placeholder still names the input as the spec's last-resort fallback.
@@ -295,9 +302,10 @@
     let showClear = $derived(hasValue && clearable && !disabled && !loading);
     let hideSelectedItem = $derived(hasValue && filterText.length > 0);
 
-    // Instance export — call via a bind:this reference
-    export function getFilteredItems(): Item[] {
-        return filteredItems as Item[];
+    // Instance export — call via a bind:this reference. Rows include any group
+    // headers synthesized by groupBy, hence SelectRow rather than Item.
+    export function getFilteredItems(): SelectRow<Item>[] {
+        return filteredItems as SelectRow<Item>[];
     }
 
     // Announce a cleared selection explicitly: the live region uses
@@ -443,19 +451,32 @@
             ? ((value as Item[])[selectState.activeValue]?.[label] as string | undefined)
             : undefined,
     );
-    let ariaContext = $derived(
-        activeTagLabel !== undefined
-            ? `${activeTagLabel} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`
-            : ariaHandlers.handleAriaContent({
-                  value,
-                  filteredItems,
-                  hoverItemIndex,
-                  listOpen,
-                  multiple,
-                  label,
-                  loading,
-              }),
-    );
+    let ariaContext = $derived.by(() => {
+        if (activeTagLabel !== undefined) {
+            return `${activeTagLabel} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`;
+        }
+        // Tracked triggers: the list opening/closing, the result count changing
+        // (filtering), and the loading flag. hoverItemIndex is deliberately read
+        // untracked — aria-activedescendant already announces each option as the
+        // keyboard cursor lands on it, so recomputing here per keystroke made every
+        // arrow key announce the option name twice AND re-read the whole result
+        // count. Leaving the region's text unchanged means it simply stays silent
+        // while arrowing, which is what the APG pattern expects.
+        listOpen;
+        filteredItems.length;
+        loading;
+        return untrack(() =>
+            ariaHandlers.handleAriaContent({
+                value,
+                filteredItems,
+                hoverItemIndex,
+                listOpen,
+                multiple,
+                label,
+                loading,
+            }),
+        );
+    });
 
     // Initialize composables (creation order is effect order: value, hover, load options)
     const valueManager = useValue(selectState, {
@@ -549,7 +570,7 @@
 
     // Fire onfilter
     $effect(() => {
-        if (filteredItems && listOpen) onfilter?.(filteredItems as Item[]);
+        if (filteredItems && listOpen) onfilter?.(filteredItems as SelectRow<Item>[]);
     });
 
     // Floating UI config
@@ -580,11 +601,35 @@
         if (input && listOpen && !focused) handleFocus();
     });
 
+    // Dev-only: a custom listSnippet takes over option rendering, so the combobox's
+    // aria-activedescendant only resolves if the consumer reproduces the option ids.
+    // A dangling activedescendant points assistive tech at nothing, which is worse
+    // than a plain listbox — so surface it rather than letting it fail silently.
+    $effect(() => {
+        if (!DEV) return;
+        const activeId = _activeDescendantId;
+        const hasListSnippet = !!listSnippet;
+        untrack(() => {
+            if (!hasListSnippet || !activeId || document.getElementById(activeId)) return;
+            console.warn(
+                `[svelte-select] listSnippet is rendering the list, but no element with id "${activeId}" ` +
+                    "exists, so the combobox's aria-activedescendant points at nothing and screen readers " +
+                    'cannot follow keyboard navigation. Give each option you render ' +
+                    `id="listbox-${_id}-item-{index}" (matching its index in the snippet argument) and ` +
+                    'role="option".',
+            );
+        });
+    });
+
     // Dev-only: warn once the input is mounted if it has no robust accessible
     // name. The placeholder is only a last-resort fallback that some screen
     // readers ignore, so an unnamed combobox is a real gap worth surfacing.
     $effect(() => {
-        if (!import.meta.env.DEV) return;
+        // Gate on esm-env's DEV, never on Vite's build-time env object: that object
+        // is undefined outside a Vite bundle, so reading its DEV flag threw at mount
+        // for rollup/webpack/no-build consumers. esm-env resolves per-bundler and
+        // tree-shakes this whole effect out of production builds.
+        if (!DEV) return;
         input;
         ariaLabel;
         untrack(() => {
@@ -832,7 +877,7 @@
                 {@render listPrependSnippet()}
             {/if}
             {#if listSnippet}
-                {@render listSnippet(filteredItems as Item[])}
+                {@render listSnippet(filteredItems as SelectRow<Item>[])}
             {:else if filteredItems?.length > 0}
                 {#snippet optionEntry(item: SelectItem, i: number)}
                     <div
@@ -861,7 +906,7 @@
                             class:group-item={item.groupItem}
                             class:not-selectable={item?.selectable === false}>
                             {#if itemSnippet}
-                                {@render itemSnippet(item as Item, i)}
+                                {@render itemSnippet(item as SelectRow<Item>, i)}
                             {:else}
                                 {item?.[label]}
                             {/if}
@@ -906,10 +951,10 @@
          old aria-atomic="false"/aria-relevant="additions text" combination. The spans
          persist (only their text is gated on focus) so they exist before content
          changes, as live regions require. -->
-    <span id="aria-selection" role="status" class="a11y-text">
+    <span id="aria-selection-{_id}" role="status" class="a11y-text a11y-selection">
         {focused ? ariaSelection : ''}
     </span>
-    <span id="aria-context" role="status" class="a11y-text">
+    <span id="aria-context-{_id}" role="status" class="a11y-text a11y-context">
         {focused ? ariaContext : ''}
     </span>
 

@@ -3891,7 +3891,35 @@ describe('Select Component', () => {
     });
 
     describe('ARIA', () => {
-        it('describes highlighted item when listOpen', async () => {
+        // The live region names the focused option and the result count when the list
+        // opens, then stays quiet while arrowing: aria-activedescendant already makes
+        // screen readers announce each option as the cursor lands on it (see
+        // 'input has aria-activedescendant pointing to hovered item'), so re-emitting
+        // here read every option name twice and re-read the count on every keystroke.
+        it('announces the open list once, leaving arrow-key narration to aria-activedescendant', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    id: 'test',
+                },
+            });
+
+            const aria = document.querySelector('.a11y-context');
+            expect(aria!.textContent).toContain('Chocolate');
+            expect(aria!.textContent).toContain('There are 5 results available');
+
+            await handleKeyboard('ArrowDown');
+
+            const input = document.querySelector('input[type="text"]');
+            expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
+            expect(aria!.textContent).not.toContain('Pizza');
+        });
+
+        // Filtering changes the count, which is information the cursor move does not
+        // carry, so that announcement must still fire
+        it('re-announces when filtering changes the result count', async () => {
+            const user = userEvent.setup();
             render(Select, {
                 props: {
                     items: items,
@@ -3899,10 +3927,13 @@ describe('Select Component', () => {
                 },
             });
 
-            const aria = document.querySelector('#aria-context');
-            expect(aria!.innerHTML.includes('Chocolate')).toBeTruthy();
-            await handleKeyboard('ArrowDown');
-            expect(aria!.innerHTML.includes('Pizza')).toBeTruthy();
+            const aria = document.querySelector('.a11y-context');
+            expect(aria!.textContent).toContain('There are 5 results available');
+
+            await user.type(document.querySelector('.svelte-select input') as HTMLInputElement, 'Piz');
+            await vi.waitFor(() => {
+                expect(aria!.textContent).toContain('There are 1 results available');
+            });
         });
 
         it('marks non-selectable options with aria-disabled', () => {
@@ -3955,7 +3986,7 @@ describe('Select Component', () => {
             });
             await tick();
 
-            expect(document.querySelector('#aria-context')?.textContent).toContain('No options');
+            expect(document.querySelector('.a11y-context')?.textContent).toContain('No options');
         });
 
         it('announces loading while an async load is pending on an open list', async () => {
@@ -3968,7 +3999,7 @@ describe('Select Component', () => {
             });
             await tick();
 
-            expect(document.querySelector('#aria-context')?.textContent).toContain('Loading Data');
+            expect(document.querySelector('.a11y-context')?.textContent).toContain('Loading Data');
         });
 
         it('hides the visual empty text from AT, announcing it via the live region instead', async () => {
@@ -3980,7 +4011,7 @@ describe('Select Component', () => {
             // the visible copy is decorative...
             expect(document.querySelector('.empty')?.getAttribute('aria-hidden')).toBe('true');
             // ...the state is announced through the polite live region
-            expect(document.querySelector('#aria-context')?.textContent).toContain('No options');
+            expect(document.querySelector('.a11y-context')?.textContent).toContain('No options');
         });
 
         it('announces the cleared selection in the live region', async () => {
@@ -3998,7 +4029,7 @@ describe('Select Component', () => {
 
             // Regression: emptying the selection span announced nothing under
             // aria-relevant="additions text"
-            expect(document.querySelector('#aria-selection')?.textContent).toContain('Selection cleared.');
+            expect(document.querySelector('.a11y-selection')?.textContent).toContain('Selection cleared.');
         });
 
         it('announces nothing for an empty multiple value', async () => {
@@ -4013,7 +4044,7 @@ describe('Select Component', () => {
             await tick();
 
             // Regression: bind:value={[]} used to announce "Option , selected."
-            expect(document.querySelector('#aria-selection')?.textContent?.trim()).toBe('');
+            expect(document.querySelector('.a11y-selection')?.textContent?.trim()).toBe('');
         });
 
         it('announces the active tag when navigating selected options with arrow keys', async () => {
@@ -4032,7 +4063,7 @@ describe('Select Component', () => {
             await handleKeyboard('ArrowLeft');
             await tick();
 
-            const aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('.a11y-context');
             expect(aria!.textContent).toContain('Pizza is active');
             expect(aria!.textContent).toContain('Backspace');
         });
@@ -4046,7 +4077,7 @@ describe('Select Component', () => {
                 },
             });
 
-            const aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('.a11y-selection');
             expect(aria!.innerHTML.includes('Cake')).toBeTruthy();
         });
 
@@ -4063,7 +4094,7 @@ describe('Select Component', () => {
                 },
             });
 
-            const aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('.a11y-selection');
             expect(aria!.innerHTML.includes('Cake')).toBeTruthy();
             expect(aria!.innerHTML.includes('Pizza')).toBeTruthy();
         });
@@ -4078,7 +4109,7 @@ describe('Select Component', () => {
                 },
             });
 
-            const aria = document.querySelector('#aria-selection');
+            const aria = document.querySelector('.a11y-selection');
             expect(aria!.innerHTML).toBe('Yummy Pizza in my tummy!');
         });
 
@@ -4092,7 +4123,7 @@ describe('Select Component', () => {
             });
 
             await tick();
-            const aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('.a11y-context');
             expect(aria!.innerHTML).toBe('label: Chocolate, count: 5');
         });
 
@@ -4106,7 +4137,7 @@ describe('Select Component', () => {
                 },
             });
 
-            const aria = document.querySelector('#aria-context');
+            const aria = document.querySelector('.a11y-context');
             expect(aria!.innerHTML).toBe('nothing to see here.');
         });
 
@@ -4204,10 +4235,21 @@ describe('Select Component', () => {
 
             // role="status" implies aria-live="polite" + aria-atomic="true", which
             // re-reads the region on any change (announces edits and clears reliably)
-            const selection = document.querySelector('#aria-selection');
-            const context = document.querySelector('#aria-context');
+            const selection = document.querySelector('.a11y-selection');
+            const context = document.querySelector('.a11y-context');
             expect(selection!.getAttribute('role')).toBe('status');
             expect(context!.getAttribute('role')).toBe('status');
+        });
+
+        // Duplicate ids are a WCAG 4.1.1 failure and make the regions ambiguous to
+        // assistive tech; every id the component emits must derive from its own _id
+        it('gives every emitted id a unique value when two Selects share a page', () => {
+            render(Select, { props: { items } });
+            render(Select, { props: { items } });
+
+            const ids = [...document.querySelectorAll('[id]')].map((el) => el.id);
+            const duplicated = ids.filter((id, i) => ids.indexOf(id) !== i);
+            expect(duplicated).toEqual([]);
         });
 
         it('Home and End move hover to first and last item', async () => {

@@ -1,7 +1,10 @@
 .svelte-select {
     --internal-padding: 0 0 0 16px;
 
-    border: var(--border, 1px solid #d8dbdf);
+    /* #858a93 is 3.47:1 on the default #fff background. The old #d8dbdf was 1.39:1 —
+       the border is what identifies the control's boundary, so it needs 3:1
+       (WCAG 1.4.11 Non-text Contrast). Override --border to restyle. */
+    border: var(--border, 1px solid #858a93);
     border-radius: var(--border-radius, 6px);
     min-height: var(--height, 42px);
     position: relative;
@@ -20,7 +23,9 @@
 }
 
 .svelte-select:hover {
-    border: var(--border-hover, 1px solid #b2b8bf);
+    /* Darker than --border so hover stays a visible change, and 4.91:1 on #fff
+       (the old #b2b8bf was 2.00:1) */
+    border: var(--border-hover, 1px solid #67727d);
 }
 
 .value-container {
@@ -235,6 +240,17 @@ input:focus {
     outline: var(--multi-item-clear-focus-outline, 1px solid #006fe8);
 }
 
+/* With multiFullItemClearable the whole chip is a real tab stop (role="button",
+   tabindex="0"). .multi-item sets `outline` unconditionally, and an author outline
+   beats the UA's :focus-visible ring by cascade origin, so without this rule a
+   keyboard-focused chip looked identical to an unfocused one (WCAG 2.4.7 Focus
+   Visible). Distinct from .multi-item.active below, which is the arrow-key tag
+   cursor, not DOM focus. */
+.multi-item:focus-visible {
+    outline: var(--multi-item-focus-outline, 2px solid #006fe8);
+    outline-offset: -1px;
+}
+
 .multi-item.active {
     outline: var(--multi-item-active-outline, 1px solid #006fe8);
 }
@@ -356,5 +372,10 @@ input:focus {
     .item.hover:not(.active) {
         outline: 2px solid Highlight;
         outline-offset: -2px;
+    }
+
+    /* The chip's focus ring is an author colour, which is flattened here */
+    .multi-item:focus-visible {
+        outline: 2px solid Highlight;
     }
 }

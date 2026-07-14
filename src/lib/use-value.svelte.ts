@@ -285,7 +285,11 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
                 if (state.multiple) {
                     setupMulti();
                 } else if (wasMultiple && state.value) {
-                    state.value = null;
+                    // `undefined`, not `null`: an emptied value is `undefined`
+                    // everywhere else (clear button, last tag removed, a deps
+                    // reload invalidating the selection), and one empty
+                    // representation is the whole contract
+                    state.value = undefined;
                     return;
                 }
             }

@@ -1,4 +1,12 @@
-import type { SelectItem } from '$lib/types';
+import type { ItemLike, SelectGroupHeader, SelectItem } from '$lib/types';
+
+/**
+ * Narrows a rendered list row to a synthesized group header (see the `groupBy` prop).
+ * Rows that fail this guard are your own item type.
+ */
+export function isGroupHeader(row: ItemLike | null | undefined): row is SelectGroupHeader {
+    return !!row && (row as SelectGroupHeader).groupHeader === true;
+}
 
 export function getItemProperty<T>(item: T, key: keyof T | string): T[keyof T] | undefined {
     return item && typeof item === 'object' ? (item as any)[key] : undefined;

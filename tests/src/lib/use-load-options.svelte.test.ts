@@ -176,9 +176,12 @@ describe('useLoadOptions', () => {
         await flush();
 
         expect(writes.value).toEqual([undefined]);
-        expect(writes.justValue).toEqual(['']);
+        expect(writes.justValue).toEqual([undefined]);
     });
 
+    // Multiple mode empties to `undefined` like every other clear path, not to `[]`:
+    // the clear button already wrote `undefined` in multiple mode, so `[]` was only
+    // ever a second empty representation consumers had to also handle
     it('clears a multiple value when any entry is missing from a dependency-driven load', async () => {
         const { writes, handleLoadOptions } = createHarness({
             multiple: true,
@@ -193,8 +196,8 @@ describe('useLoadOptions', () => {
         handleLoadOptions('', { validateValue: true });
         await flush();
 
-        expect(writes.value).toEqual([[]]);
-        expect(writes.justValue).toEqual([[]]);
+        expect(writes.value).toEqual([undefined]);
+        expect(writes.justValue).toEqual([undefined]);
     });
 
     it('clears the value when a dependency-driven load resolves with an empty list', async () => {
@@ -302,8 +305,8 @@ describe('useLoadOptions', () => {
 
         handleLoadOptions('');
 
-        expect(writes.value).toEqual([[]]);
-        expect(writes.justValue).toEqual([[]]);
+        expect(writes.value).toEqual([undefined]);
+        expect(writes.justValue).toEqual([undefined]);
         expect(writes.items).toEqual([null]);
         expect(writes.loading).toBeUndefined();
     });
@@ -319,7 +322,7 @@ describe('useLoadOptions', () => {
         handleLoadOptions('');
 
         expect(writes.value).toEqual([undefined]);
-        expect(writes.justValue).toEqual(['']);
+        expect(writes.justValue).toEqual([undefined]);
         expect(writes.items).toEqual([null]);
     });
 
@@ -450,6 +453,85 @@ describe('useLoadOptions', () => {
         resolveSecond([{ value: 'paris', label: 'Paris' }]); // the newest reload validates: value exists
         await flush();
         expect(writes.value).toBeUndefined();
+    });
+
+    // `items` is only written when a response lands, so while a dependency reload
+    // is in flight the list still shows the pre-reload options. Anything the user
+    // picks during that window therefore comes from the very set the deps change
+    // invalidates — the verdict must still clear it, or `value` ends up absent
+    // from `items` (and the hidden input would serialize a value the list denies).
+    it('invalidates a selection made from the stale list while a dependency reload is in flight', async () => {
+        let resolveDeps!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)));
+        const { state, handleLoadOptions } = createHarness({
+            value: { value: 'paris', label: 'Paris' },
+            items: [
+                { value: 'paris', label: 'Paris' },
+                { value: 'lyon', label: 'Lyon' },
+            ],
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false }); // deps changed, validates Paris
+
+        // Still the pre-reload (French) list on screen, so Lyon is a stale pick
+        (state as MockState).value = { value: 'lyon', label: 'Lyon' };
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        expect(state.value).toBeUndefined();
+        expect(state.items).toEqual([{ value: 'berlin', label: 'Berlin' }]);
+    });
+
+    it('invalidates every stale entry when a tag is added during a dependency reload', async () => {
+        let resolveDeps!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)));
+        const { state, handleLoadOptions } = createHarness({
+            multiple: true,
+            value: [{ value: 'paris', label: 'Paris' }],
+            items: [
+                { value: 'paris', label: 'Paris' },
+                { value: 'lyon', label: 'Lyon' },
+            ],
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false });
+
+        // Adding one stale tag must not shield the rest of the selection from the
+        // verdict: a length change alone is not evidence the deps verdict is moot
+        (state as MockState).value = [
+            { value: 'paris', label: 'Paris' },
+            { value: 'lyon', label: 'Lyon' },
+        ];
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        expect(state.value).toBeUndefined();
+    });
+
+    it('keeps a mid-flight selection that the dependency reload does return', async () => {
+        let resolveDeps!: (items: SelectItem[]) => void;
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)));
+        const { state, writes, handleLoadOptions } = createHarness({
+            value: { value: 'paris', label: 'Paris' },
+            loadOptions,
+        });
+
+        handleLoadOptions('', { validateValue: true, debounce: false });
+
+        // A programmatic set to an item the new deps DO offer (e.g. the parent
+        // changes country and city together) survives on its own merits — it
+        // passes the membership check, so no special-casing is needed
+        (state as MockState).value = { value: 'berlin', label: 'Berlin' };
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        expect(state.value).toEqual({ value: 'berlin', label: 'Berlin' });
+        expect(writes.value).toEqual([{ value: 'berlin', label: 'Berlin' }]);
     });
 
     it('an invalidated dependency reload delivers no verdict', async () => {

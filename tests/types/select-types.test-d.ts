@@ -6,7 +6,16 @@
  * surfaces as a type error, and each `// @ts-expect-error` must sit on a line
  * that genuinely errors or svelte-check fails with "unused @ts-expect-error".
  */
-import type { ItemLike, SelectValue, SelectValueProp, SelectClearValue, SelectProps } from '$lib/types';
+import type {
+    ItemLike,
+    SelectValue,
+    SelectValueProp,
+    SelectClearValue,
+    SelectGroupHeader,
+    SelectProps,
+    SelectRow,
+} from '$lib/types';
+import { isGroupHeader } from '$lib/utils';
 
 // A sample item declared as an `interface` — crucially with NO index signature.
 // Interfaces have no implicit index signature, so this proves the `ItemLike`
@@ -30,11 +39,13 @@ type _1 = Expect<Equal<SelectValue<Country, false>, Country | null>>;
 // 2. Multiple mode resolves to an item array.
 type _2 = Expect<Equal<SelectValue<Country, true>, Country[]>>;
 
-// 3. The bindable prop shape in single mode also accepts a raw string id.
-type _3 = Expect<Equal<SelectValueProp<Country, false>, Country | string | null>>;
+// 3. The bindable prop shape in single mode also accepts a raw string id. It includes
+//    `undefined` because that is what the component writes for an empty selection,
+//    and `null` because an existing `bind:value={null}` must keep working on input.
+type _3 = Expect<Equal<SelectValueProp<Country, false>, Country | string | null | undefined>>;
 
-// 4. The bindable prop shape in multiple mode accepts item[] or string[] or null.
-type _4 = Expect<Equal<SelectValueProp<Country, true>, Country[] | string[] | null>>;
+// 4. The bindable prop shape in multiple mode accepts item[] or string[] or empty.
+type _4 = Expect<Equal<SelectValueProp<Country, true>, Country[] | string[] | null | undefined>>;
 
 // 5. Default `Multiple` is `boolean`, so the conditional distributes over
 //    `true | false` to the loose union `Item[] | Item | null`. The `Equal`
@@ -62,9 +73,28 @@ type _10 = Expect<
     >
 >;
 
+// 11. The rendered-list surfaces expose `SelectRow`, not bare `Item`: `groupBy`
+//     injects synthesized header rows that are NOT the user's item type.
+type _11 = Expect<Equal<Parameters<NonNullable<SelectProps<Country, false>['onfilter']>>[0], SelectRow<Country>[]>>;
+
+// 12. `isGroupHeader` narrows a row to the header in the true branch, and to the
+//     user's own item type in the false branch — the whole point of the union.
+declare const _row: SelectRow<Country>;
+if (isGroupHeader(_row)) {
+    type _12a = Expect<Equal<typeof _row, SelectGroupHeader>>;
+} else {
+    type _12b = Expect<Equal<typeof _row, Country>>;
+}
+
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.
 // ---------------------------------------------------------------------------
+
+// 10. A row is not readable as the user's item until narrowed: this is exactly the
+//     unsoundness the `SelectRow` union closes (a header has no `.code`).
+declare const _rawRow: SelectRow<Country>;
+// @ts-expect-error a list row may be a synthesized group header, which has no `code`
+const _rowCode: string = _rawRow.code;
 
 // 7. A single item is not assignable to a multiple-mode `value` slot (it wants
 //    `Country[] | string[] | null`).

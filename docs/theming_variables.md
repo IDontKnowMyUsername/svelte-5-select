@@ -90,6 +90,7 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--multi-item-color`
 - `--multi-item-disabled-hover-bg`
 - `--multi-item-disabled-hover-color`
+- `--multi-item-focus-outline`
 - `--multi-item-gap`
 - `--multi-item-height`
 - `--multi-item-margin`

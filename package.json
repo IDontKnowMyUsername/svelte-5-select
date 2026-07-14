@@ -111,6 +111,7 @@
     },
     "dependencies": {
         "@floating-ui/dom": "^1.7.6",
+        "esm-env": "^1.2.2",
         "svelte-floating-ui": "1.6.2"
     },
     "packageManager": "pnpm@10.33.0"
