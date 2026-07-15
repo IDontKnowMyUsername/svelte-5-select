@@ -7,7 +7,12 @@ export default defineConfig({
         svelte({
             compilerOptions: {
                 hmr: !process.env.VITEST,
-                runes: true,
+            },
+            // runes:true only for our own files — deps ship legacy components
+            // (e.g. @testing-library/svelte-core's wrapper scaffold) that must
+            // stay in legacy mode to compile.
+            dynamicCompileOptions({ filename }) {
+                if (!filename.includes('node_modules')) return { runes: true };
             },
         }),
     ],
