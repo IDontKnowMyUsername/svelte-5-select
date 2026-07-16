@@ -168,6 +168,74 @@ describe('useValue', () => {
 
             expect(actions.oninput).not.toHaveBeenCalled();
         });
+
+        // 7th-audit pin: the dispatch/justValue effects tracked only the value
+        // reference, and prevValue aliased the live array, so a consumer's
+        // in-place `value.push(...)` never dispatched and left justValue stale.
+        it('dispatches oninput when a bound multi value grows in place (value.push)', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                items,
+                value: [items[0]],
+                prevValue: [items[0]],
+            });
+            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+
+            (state.value as SelectItem[]).push(items[1]);
+            flushSync();
+
+            expect(actions.oninput).toHaveBeenCalledTimes(1);
+            expect(actions.oninput).toHaveBeenCalledWith([
+                expect.objectContaining({ value: 'a' }),
+                expect.objectContaining({ value: 'b' }),
+            ]);
+        });
+
+        it('keeps justValue in sync when a bound multi value grows in place', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                items,
+                value: [items[0]],
+                prevValue: [items[0]],
+            });
+
+            (state.value as SelectItem[]).push(items[1]);
+            flushSync();
+
+            expect(state.justValue).toEqual(['a', 'b']);
+        });
+
+        it('dedupes an in-place duplicate push without dispatching oninput', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                items,
+                value: [items[0]],
+                prevValue: [items[0]],
+            });
+            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+
+            // Re-adding an already-selected entry is a no-op set operation
+            (state.value as SelectItem[]).push({ value: 'a', label: 'Apple' });
+            flushSync();
+
+            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(state.value).toEqual([expect.objectContaining({ value: 'a' })]);
+        });
     });
 
     describe('multiple-transition effect', () => {

@@ -199,7 +199,11 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             actions.oninput(value);
         }
 
-        state.prevValue = value;
+        // Snapshot a copy of the settled (post-dedup) value: storing the live
+        // array would alias prevValue to `value`, so an in-place push could
+        // never register as a change
+        const settled = state.value;
+        state.prevValue = Array.isArray(settled) ? (settled.slice() as Item[] | string[]) : settled;
     }
 
     function setupMulti() {
@@ -268,7 +272,8 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // flip — replacing one string with another must re-resolve), and again when
     // async items arrive so fallback entries upgrade to the real item
     $effect(() => {
-        state.value;
+        const value = state.value;
+        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
         state.items;
         untrack(() => normalizeValue());
     });
@@ -301,7 +306,8 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
     // Dispatch oninput when value changes (selection, update, or clear)
     $effect(() => {
-        state.value;
+        const value = state.value;
+        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
         untrack(() => dispatchSelectedItem());
     });
 
@@ -315,7 +321,8 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     $effect(() => {
         state.multiple;
         state.itemId;
-        state.value;
+        const value = state.value;
+        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
         state.items;
         state.clearState;
         untrack(() => {

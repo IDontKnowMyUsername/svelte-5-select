@@ -17,6 +17,7 @@ import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import FocusedBindTest from './FocusedBindTest.svelte';
+import InPlaceValuePushTest from './InPlaceValuePushTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
 import LabelForSelectTest from './LabelForSelectTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
@@ -1117,6 +1118,42 @@ describe('Select Component', () => {
             await tick();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
             expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
+        });
+
+        it('force-closes a programmatically opened list while disabled', async () => {
+            const { rerender } = render(Select, { props: { items, disabled: true } });
+
+            await rerender({ items, disabled: true, listOpen: true });
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('does not open the list from a programmatic filterText write while disabled', async () => {
+            const { rerender } = render(Select, { props: { items, disabled: true } });
+
+            await rerender({ items, disabled: true, filterText: 'pizza' });
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('ignores item clicks while disabled even if a list is rendered', async () => {
+            // Mounting with listOpen: true races the disabled effect's force-close:
+            // the list template can render for the first flush, which is exactly the
+            // window the handleItemClick guard has to cover
+            let changed: unknown;
+            render(Select, {
+                props: { items, disabled: true, listOpen: true, onchange: (v: unknown) => (changed = v) },
+            });
+
+            const item = document.querySelector('.list-item .item') as HTMLElement | null;
+            item?.click();
+            await tick();
+
+            expect(changed).toBeUndefined();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
     });
 
@@ -3697,7 +3734,9 @@ describe('Select Component', () => {
             input.dispatchEvent(new Event('input', { bubbles: true }));
 
             await tick();
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            // The filter change parks hover on the first selectable item
+            // ('se' also matches the leading non-selectable 'NotSelectable1'),
+            // so Enter selects it without any arrowing
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
 
@@ -5238,6 +5277,52 @@ describe('Select Component', () => {
             expect(selectedValue).toEqual({ value: 'pizza', label: 'Pizza' });
         });
 
+        it('commits with Tab in a single press: the keystroke keeps its default action', async () => {
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                },
+            });
+
+            await tick();
+            await handleKeyboard('ArrowDown');
+
+            const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+            window.dispatchEvent(event);
+            await tick();
+
+            // Focus must move on the same press that commits, so Tab is never claimed
+            expect(event.defaultPrevented).toBe(false);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('never commits on Shift+Tab', async () => {
+            let selectedValue: any;
+
+            render(Select, {
+                props: {
+                    items: items,
+                    listOpen: true,
+                    onchange: (val: any) => {
+                        selectedValue = val;
+                    },
+                },
+            });
+
+            await tick();
+            await handleKeyboard('ArrowDown');
+
+            const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true, cancelable: true });
+            window.dispatchEvent(event);
+            await tick();
+
+            // Tabbing backwards leaves the field without mutating the value
+            expect(selectedValue).toBeUndefined();
+            expect(event.defaultPrevented).toBe(false);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
         it('skips non-selectable items when navigating', async () => {
             render(Select, {
                 props: {
@@ -5248,21 +5333,20 @@ describe('Select Component', () => {
 
             await tick();
 
-            // ArrowDown from initial position navigates to first selectable item
-            await handleKeyboard('ArrowDown');
-            await tick();
-
+            // The list opens with hover already on the first selectable item,
+            // never parked on the leading non-selectable one
             let hoverItem = document.querySelector('.list-item .hover');
             expect(hoverItem?.textContent?.trim()).toBe('SelectableDefault');
 
-            // ArrowDown again goes to next selectable item
+            // ArrowDown goes to the next selectable item
             await handleKeyboard('ArrowDown');
             await tick();
 
             hoverItem = document.querySelector('.list-item .hover');
             expect(hoverItem?.textContent?.trim()).toBe('SelectableTrue');
 
-            // ArrowDown again should wrap back to SelectableDefault, skipping NotSelectable2
+            // ArrowDown again wraps back to SelectableDefault, skipping both
+            // NotSelectable2 and NotSelectable1
             await handleKeyboard('ArrowDown');
             await tick();
 
@@ -5995,6 +6079,31 @@ describe('Select Component', () => {
             await tick();
 
             expect(oninput).not.toHaveBeenCalled();
+        });
+
+        // 7th-audit pin: a parent mutating its bound value array in place
+        // (value.push) rendered the new tag but never fired oninput and left
+        // justValue stale — the effects tracked only the array reference and
+        // prevValue aliased the same live array.
+        it('registers a parent value.push: tag renders, oninput fires, justValue updates', async () => {
+            const oninput = vi.fn();
+            render(InPlaceValuePushTest, { props: { oninput } });
+            await tick();
+            oninput.mockClear();
+
+            (document.querySelector('[data-testid="push-value"]') as HTMLButtonElement).click();
+            await tick();
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+            expect(oninput).toHaveBeenCalledTimes(1);
+            expect(oninput).toHaveBeenCalledWith([
+                expect.objectContaining({ value: 'chocolate' }),
+                expect.objectContaining({ value: 'pizza' }),
+            ]);
+            expect(document.querySelector('[data-testid="just-value"]')?.textContent).toBe(
+                JSON.stringify(['chocolate', 'pizza']),
+            );
         });
 
         it('collapses the value to null when multiple flips from true to false', async () => {

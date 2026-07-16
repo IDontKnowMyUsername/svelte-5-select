@@ -284,8 +284,9 @@
         // `disabled` attribute so the current value stays in the accessibility tree
         // and screen readers can still announce it. Spread last (after
         // inputAttributes) so a disabled control is never left interactive or
-        // tab-reachable; interaction is already blocked by the `disabled` guards in
-        // handleClick/handleFocus and the disabled effect.
+        // tab-reachable; interaction is blocked by the `disabled` guards in
+        // handleClick/handleFocus/handleItemClick and the disabled effect, which
+        // also force-closes a programmatically opened list.
         ...(disabled ? { 'aria-disabled': true, readonly: true, tabindex: -1 } : {}),
     });
     let prefloat = $state(true);
@@ -683,6 +684,11 @@
     // Disabled state
     $effect(() => {
         disabled;
+        // listOpen is a tracked trigger too: neither setupFilterText nor the list
+        // template gates on disabled, so a programmatic bind:listOpen (or
+        // filterText) write while disabled would otherwise render an operable
+        // list — this effect only reruns on `disabled` flips without it.
+        listOpen;
         untrack(() => {
             if (!disabled) return;
             listOpen = false;
@@ -827,6 +833,10 @@
     }
 
     function handleItemClick(item: SelectItem, i: number): void {
+        // Defence in depth: the disabled effect force-closes the list, but a
+        // pointer must never mutate a disabled control's value even if a list
+        // is momentarily rendered
+        if (disabled) return;
         if (item?.selectable === false) return;
         if (!multiple && !Array.isArray(normalizedValue) && areItemsEqual(normalizedValue, item, itemId))
             return closeList();

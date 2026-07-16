@@ -204,5 +204,54 @@ describe('useHover', () => {
 
             expect(state.hoverItemIndex).toBe(1);
         });
+
+        // 7th-audit pins: checkHoverSelectable used an inverted predicate (a
+        // missing `selectable` key read as non-selectable) and only ran under
+        // groupBy, diverging from isItemSelectableCheck everywhere else.
+        it('moves hover off a non-selectable first item in a plain (non-grouped) list', () => {
+            const filteredItems: SelectItem[] = [
+                { value: 'a', label: 'A', selectable: false },
+                { value: 'b', label: 'B' },
+            ];
+            const { state } = createHarness({
+                filteredItems,
+                listOpen: true,
+                hoverItemIndex: 0,
+            });
+
+            expect(state.hoverItemIndex).toBe(1);
+        });
+
+        it('keeps hover on a selectable keyless item in an ungrouped-first bucket', () => {
+            // groupBy returning '' creates no header for the first bucket, so
+            // filteredItems[0] is a plain item without a `selectable` key — it
+            // must stay hovered, not be skipped as if non-selectable
+            const mixed: SelectItem[] = [
+                { value: 'x', label: 'X' },
+                { value: 'Fruit', label: 'Fruit', groupHeader: true, selectable: false },
+                { value: 'a', label: 'A', groupItem: true },
+            ];
+            const { state } = createHarness({
+                groupBy: (item: SelectItem) => (item.groupItem ? 'Fruit' : ''),
+                filteredItems: mixed,
+                listOpen: true,
+                hoverItemIndex: 0,
+            });
+
+            expect(state.hoverItemIndex).toBe(0);
+        });
+
+        it('resets hover past a non-selectable first item on filterText change in a plain list', () => {
+            const filteredItems: SelectItem[] = [
+                { value: 'a', label: 'A', selectable: false },
+                { value: 'b', label: 'B' },
+            ];
+            const { state } = createHarness({ filteredItems, hoverItemIndex: 1 });
+
+            state.filterText = 'b';
+            flushSync();
+
+            expect(state.hoverItemIndex).toBe(1);
+        });
     });
 });

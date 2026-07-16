@@ -197,10 +197,12 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         if (!listOpen || !focused) return;
 
-        // Tab keeps bubbling in both branches: focus traps and other ancestor
-        // handlers must still see it. Re-entry via the window listener is safe
-        // because the list is closed by then.
+        // Tab is never claimed: committing must close the popup and move focus in
+        // the same press (APG), so no preventDefault, and the event keeps bubbling
+        // for focus traps and ancestor handlers. Re-entry via the window listener
+        // is safe because the list is closed by then.
         if (
+            e.shiftKey || // Tabbing backwards leaves the field; it must never commit
             filteredItems.length === 0 ||
             areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)
         ) {
@@ -208,7 +210,6 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
             return;
         }
 
-        e.preventDefault();
         actions.handleSelect(filteredItems[hoverItemIndex]);
         actions.closeList();
     }

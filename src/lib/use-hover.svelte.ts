@@ -51,11 +51,14 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
         checkHoverSelectable(valueIndex, true);
     }
 
-    function checkHoverSelectable(startingIndex = 0, ignoreGroup?: boolean) {
-        const { groupBy, filteredItems } = state;
+    function checkHoverSelectable(startingIndex = 0, trustIndex?: boolean) {
+        const { filteredItems } = state;
         const idx = startingIndex < 0 ? 0 : startingIndex;
 
-        if (!ignoreGroup && groupBy && filteredItems[idx] && !filteredItems[idx].selectable) {
+        // Same predicate as click/Enter selection (a missing `selectable` key
+        // means selectable), and not gated on groupBy: a plain list can start
+        // with a non-selectable item too
+        if (!trustIndex && filteredItems[idx] && !isItemSelectableCheck(filteredItems[idx])) {
             // Compute the final index without intermediate state writes
             state.hoverItemIndex = computeNextIndex(filteredItems, idx, 1);
         } else {
@@ -64,8 +67,8 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
     }
 
     function getFirstSelectableIndex(): number {
-        const { groupBy, filteredItems } = state;
-        if (!groupBy || filteredItems.length === 0) return 0;
+        const { filteredItems } = state;
+        if (filteredItems.length === 0) return 0;
 
         if (!isItemSelectableCheck(filteredItems[0])) {
             const firstSelectable = filteredItems.findIndex(isItemSelectableCheck);
@@ -134,8 +137,6 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
         untrack(() => {
             if (state.listOpen && state.filteredItems.length > 0) {
                 if (!isItemSelectableCheck(state.filteredItems[state.hoverItemIndex])) {
-                    checkHoverSelectable();
-                } else if (state.groupBy && state.hoverItemIndex === 0) {
                     checkHoverSelectable();
                 }
             }

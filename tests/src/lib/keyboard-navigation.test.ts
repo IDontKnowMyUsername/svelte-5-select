@@ -158,6 +158,29 @@ describe('useKeyboardNavigation', () => {
 
         expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[0]);
         expect(actions.closeList).toHaveBeenCalled();
+        // Commit must not swallow the keystroke: Tab closes the popup and moves
+        // focus in the same press, so the default action stays intact
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('never commits on Shift+Tab, even when hover differs from value', () => {
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: { value: 'b', label: 'B' },
+            hoverItemIndex: 0,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab', shiftKey: true });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        // Tabbing backwards leaves the field without mutating the value
+        expect(actions.handleSelect).not.toHaveBeenCalled();
+        expect(actions.closeList).toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
     it('handles Backspace in multiple mode with activeValue', () => {
