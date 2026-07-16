@@ -19,9 +19,9 @@ jobs:
     publish:
         runs-on: ubuntu-latest
         steps:
-            - uses: actions/checkout@v4
-            - uses: pnpm/action-setup@v4
-            - uses: actions/setup-node@v4
+            - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+            - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: pnpm
@@ -33,6 +33,21 @@ jobs:
                   PKG="$(node -p "require('./package.json').version")"
                   if [ "$TAG" != "$PKG" ]; then
                     echo "tag v$TAG does not match package.json version $PKG" >&2
+                    exit 1
+                  fi
+            # The CHANGELOG is hand-written and its "Unreleased" section must be
+            # retitled to "x.y.z (yyyy-mm-dd)" at release time — this gate turns
+            # that maintainer-note convention into a hard failure before publish.
+            - name: Verify CHANGELOG was retitled for this release
+              if: github.event_name == 'push'
+              run: |
+                  VERSION="${GITHUB_REF_NAME#v}"
+                  if ! grep -Eq "^## ${VERSION//./\\.} \(" CHANGELOG.md; then
+                    echo "CHANGELOG.md has no \"## $VERSION (yyyy-mm-dd)\" heading - retitle the Unreleased section before tagging" >&2
+                    exit 1
+                  fi
+                  if grep -q "^## Unreleased" CHANGELOG.md; then
+                    echo "CHANGELOG.md still contains an \"## Unreleased\" section - fold it into $VERSION before tagging" >&2
                     exit 1
                   fi
             - run: pnpm install --frozen-lockfile

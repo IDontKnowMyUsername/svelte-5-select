@@ -11,7 +11,7 @@
     },
     "hooks": {
         "before:init": ["pnpm run check", "pnpm run test:run"],
-        "after:bump": "pnpm run package",
+        "after:bump": ["node scripts/check-changelog.mjs ${version}", "pnpm run package"],
         "before:git:release": "pnpm run lint:package && pnpm run smoke"
     },
     "plugins": {

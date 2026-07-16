@@ -104,6 +104,11 @@
 * The two long-skipped geometry tests (item-label ellipsis, multi-tag wrap height) are ported to the real-browser suite — no skipped tests remain
 * New axe-core WCAG A/AA scan in the browser suite covering the closed, open, grouped, multi, empty, and disabled states (it caught the two grouped-list violations fixed above); best-practice page-composition rules are excluded as consumer responsibility
 
+### Build
+
+* All GitHub Actions in the CI and publish workflows are pinned to full commit SHAs (with version comments dependabot keeps fresh) — the publish workflow holds `id-token: write`, so a hijacked action tag must not be able to reach it
+* The CHANGELOG release convention is now enforced twice: release-it aborts before tagging when the "Unreleased" section was not retitled to the new version (`scripts/check-changelog.mjs` in the `after:bump` hook), and the publish workflow re-checks the same invariant on the tag before `npm publish`
+
 ## 1.0.2 (2026-04-07)
 
 * Fixed: `pointerup` `preventDefault` is now gated on mouse input only, restoring touch interaction
