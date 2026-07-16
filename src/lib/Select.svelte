@@ -550,9 +550,33 @@
         });
     });
 
-    // Close list on unfocus
+    // Sync the focused prop with real DOM focus, and close the list on unfocus.
+    // `bind:focused` is documented as writable, so a parent write must move real
+    // DOM focus: `focused = true` alone used to leave focus elsewhere while the
+    // window keydown handler (gated only on `focused`) claimed arrow/Enter keys
+    // page-wide, with no blur ever able to reset it. Transition-guarded so the
+    // mount run doesn't closeList(), which wiped an initial filterText via
+    // clearFilterTextOnBlur while the mount loadOptions fetch used the original text.
+    let prevFocused = focused;
     $effect(() => {
-        if (!focused && input) closeList();
+        focused;
+        untrack(() => {
+            if (focused === prevFocused) return;
+            prevFocused = focused;
+            if (focused) {
+                if (disabled) {
+                    // A disabled Select cannot be focused programmatically
+                    focused = false;
+                    prevFocused = false;
+                    return;
+                }
+                if (input && document.activeElement !== input) handleFocus();
+            } else {
+                closeList();
+                selectState.activeValue = undefined;
+                if (input && document.activeElement === input) input.blur();
+            }
+        });
     });
 
     // Setup filter text

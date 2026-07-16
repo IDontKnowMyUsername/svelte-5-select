@@ -27,6 +27,12 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     // invalidation (disable, unmount, cancel) must deliver nothing.
     let armedToken = 0;
     let armedLoadValidates = false;
+    // Filter text of the newest armed/in-flight load while it is live; cleared
+    // once it settles. Lets the effect tell "shown results are stale for this
+    // text" from "a load for this text is already on its way" — mounting with
+    // an initial filterText opens the list after the mount fetch is armed, and
+    // that open must not fire a duplicate fetch.
+    let liveLoadFilterText: string | undefined = undefined;
 
     // The filter text the currently-displayed items reflect (set when a load
     // settles). Lets a reopen tell "results are stale for the current text" from
@@ -64,6 +70,7 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             armedToken = token;
             armedLoadValidates = validateValue;
             latestLoadIsFilterDriven = shouldDebounce;
+            liveLoadFilterText = currentFilterText;
 
             // Only a dependency-driven reload invalidates the selection: when a
             // parent select changes, a stale child value must clear. A
@@ -121,6 +128,7 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     // Displayed items now reflect this filter text — a reopen with
                     // the same text won't refetch
                     loadedFilterText = currentFilterText;
+                    liveLoadFilterText = undefined;
 
                     if (validateValue) validateValueAgainstLoaded(state.items);
 
@@ -128,6 +136,8 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     actions.onloaded((state.items as SelectItem[]) || []);
                 } catch (err) {
                     if (token !== requestSequence) return; // superseded; the newer request manages state
+                    // Settled (with an error), so no longer live — a reopen may retry it
+                    liveLoadFilterText = undefined;
                     console.error('loadOptions error:', err);
                     actions.onerror({ type: 'loadOptions', details: err });
                     state.items = null;
@@ -189,6 +199,10 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         const disabledChanged = !isFirstRun && disabled !== prev.disabled;
         // A genuine closed->open transition (not a typing-open, where filterText
         // also changed) that reveals results stale for the retained filter text.
+        // An armed or in-flight load for the same text (mount with an initial
+        // filterText opens the list right after the mount fetch) is not stale —
+        // its response is already on the way.
+        const loadIsLiveForText = armedToken === requestSequence && liveLoadFilterText === filterText;
         const reopenedStale =
             !isFirstRun &&
             listOpen &&
@@ -196,7 +210,8 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             !filterTextChanged &&
             !disabled &&
             filterText.length > 0 &&
-            filterText !== loadedFilterText;
+            filterText !== loadedFilterText &&
+            !loadIsLiveForText;
 
         if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0)) {
             untrack(() =>

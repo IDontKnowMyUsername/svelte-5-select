@@ -210,7 +210,11 @@ export interface ScrollActionParams {
 
 export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extends boolean = false> {
     // Core data props
-    /** Bindable. The text typed into the input; drives filtering and `loadOptions`. */
+    /**
+     * Bindable. The text typed into the input; drives filtering and `loadOptions`.
+     * An initial value is kept on mount and behaves like typing: it filters
+     * (and fetches, with `loadOptions`) and opens the list when non-empty.
+     */
     filterText?: string;
     /** Which field uniquely identifies an item. Values are compared by this field, not by reference. @default 'value' */
     itemId?: string;
@@ -242,7 +246,10 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * stays in the accessibility tree.
      */
     disabled?: boolean;
-    /** Bindable. Whether the input has focus; set it to `true` to focus programmatically. */
+    /**
+     * Bindable. Whether the input has focus. Writable: setting `true` moves DOM
+     * focus to the input, `false` blurs it and closes the list.
+     */
     focused?: boolean;
     /** Applies the error styling and sets `aria-invalid`. Pair with `ariaErrorMessage`. */
     hasError?: boolean;

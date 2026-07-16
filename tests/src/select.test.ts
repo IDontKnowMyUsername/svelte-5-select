@@ -16,6 +16,7 @@ import ItemHeightTest from './ItemHeightTest.svelte';
 import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
+import FocusedBindTest from './FocusedBindTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
 import LabelForSelectTest from './LabelForSelectTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
@@ -162,12 +163,42 @@ describe('Select Component', () => {
             expect(document.querySelector('.focused')).toBeTruthy();
         });
 
-        it('focuses input when focused changes to true', async () => {
-            const { component } = render(Select, { props: {} }) as { component: SelectInstance };
-            component.focused = true;
+        it('moves DOM focus to the input when a parent sets bind:focused to true', async () => {
+            render(FocusedBindTest, { props: { items } });
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(document.activeElement).not.toBe(selectInput);
+
+            (document.querySelector('[data-testid="set-focused"]') as HTMLElement).click();
             await tick();
-            const hasFocused = document.querySelector('.svelte-select input');
-            expect(hasFocused).toBeTruthy();
+
+            // focused used to change without moving DOM focus, leaving the window
+            // keydown handler claiming arrow/Enter keys page-wide with no blur
+            // event ever able to reset it
+            expect(document.activeElement).toBe(selectInput);
+        });
+
+        it('blurs the input and closes the list when a parent sets bind:focused to false', async () => {
+            render(FocusedBindTest, { props: { items, focused: true, listOpen: true } });
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(document.activeElement).toBe(selectInput);
+
+            (document.querySelector('[data-testid="set-unfocused"]') as HTMLElement).click();
+            await tick();
+
+            expect(document.activeElement).not.toBe(selectInput);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('ignores bind:focused = true while disabled', async () => {
+            render(FocusedBindTest, { props: { items, disabled: true } });
+
+            (document.querySelector('[data-testid="set-focused"]') as HTMLElement).click();
+            await tick();
+            await tick(); // the write-back to focused = false lands on the next flush
+
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(document.activeElement).not.toBe(selectInput);
+            expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
         });
     });
 
@@ -737,6 +768,37 @@ describe('Select Component', () => {
     });
 
     describe('Filter text', () => {
+        it('keeps an initial filterText on mount and opens the list filtered by it', async () => {
+            render(Select, { props: { items, filterText: 'Pi' } });
+            await tick();
+
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            // an initial filterText used to be wiped by the mount-time close/clear path
+            expect(selectInput.value).toBe('Pi');
+
+            const listItems = document.querySelectorAll('.svelte-select-list .item');
+            expect(listItems.length).toBe(1);
+            expect(listItems[0].textContent!.trim()).toBe('Pizza');
+        });
+
+        it('fetches loadOptions once with an initial filterText and keeps the text', async () => {
+            const loadOptions = vi.fn(async (text: string) =>
+                items.filter((i) => i.label.toLowerCase().includes(text.toLowerCase())),
+            );
+            render(Select, { props: { loadOptions, filterText: 'pi' } });
+
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.svelte-select-list .item').length).toBe(1);
+            });
+
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(selectInput.value).toBe('pi');
+            // the mount fetch used the preserved text, and the list opening at mount
+            // must not fire a duplicate "reopened stale" fetch for the same text
+            expect(loadOptions).toHaveBeenCalledTimes(1);
+            expect(loadOptions).toHaveBeenCalledWith('pi');
+        });
+
         it('hides selected item while typing', async () => {
             render(Select, {
                 props: {
