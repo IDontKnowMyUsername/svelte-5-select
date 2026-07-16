@@ -362,8 +362,14 @@ input:focus {
 /* Group titles are informative text, not disabled controls, so WCAG 1.4.3's
    inactive-component exemption does not apply to them: the not-selectable
    dimming above (#999 = 2.84:1) must not reach a header. Keep them at the
-   group-title color (default #000 = 21:1 on white). */
-.item.list-group-title.not-selectable {
+   group-title color (default #000 = 21:1 on white). The hover variant must
+   win over `.item.hover.item.not-selectable` too: the first frame parks the
+   keyboard cursor on index 0 before the keep-hover effect moves it off a
+   header, and without it that frame paints #999 which then *animates* back
+   through `transition: all` — mid-transition greys fail contrast when
+   sampled (the CI-only axe flake). */
+.item.list-group-title.not-selectable,
+.item.hover.item.list-group-title.not-selectable {
     color: var(--group-title-color, #000000);
 }
 
