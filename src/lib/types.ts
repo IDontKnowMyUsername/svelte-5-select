@@ -216,6 +216,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * An initial value is kept on mount and applied passively: it filters (and
      * fetches, with `loadOptions`) but does not open the list or move focus.
      * Later programmatic writes behave like typing and open the list.
+     *
+     * The DOM input's value is only ever this filter text — a selection is
+     * rendered alongside the input (and announced via the live regions), never
+     * written into the textbox. Read the selection from `value`/`justValue` or
+     * the form field (`name`), not from the DOM input.
      */
     filterText?: string;
     /** Which field uniquely identifies an item. Values are compared by this field, not by reference. @default 'value' */

@@ -93,6 +93,8 @@ The `aria*` text-builder defaults are shown in the [A11y](#a11y-accessibility) s
 <Select {items} bind:value bind:listOpen />
 ```
 
+> **The DOM input's value is the filter text, not the selection.** A selection is rendered in an element beside the input (so it can be rich markup via `selectionSnippet`, or multiple tags) and announced to screen readers via the live regions — it is never written into the textbox, so `input.value` is `''` unless the user is filtering. Read the selection from `bind:value`/`bind:justValue`, the `oninput`/`onchange` callbacks, or the submitted form field (`name` prop); in tests, assert on `.selected-item` (or `.multi-item`) rather than the input's value.
+
 
 ## Snippets
 
@@ -360,6 +362,8 @@ The component is generic over your item type: values, items, snippets, and callb
 ## A11y (Accessibility)
 
 The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab, Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the option under the keyboard cursor shows a >=3:1 outline (`--item-hover-outline`) on top of the hover background; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
+
+The textbox itself only ever contains the typed filter text — the current selection is rendered beside it and conveyed to assistive tech through two polite `role="status"` live regions (customizable via the `ariaValues`, `ariaFocused`, `ariaListOpen`, `ariaEmpty`, `ariaLoading`, and `ariaCleared` builders): focusing a valued Select announces the selection, and selecting/clearing announces the change.
 
 Give the input an accessible name with either `ariaLabel` or an external `<label for={id}>` (set the `id` prop). In development the component logs a `console.warn` if it finds neither `ariaLabel`, an `aria-labelledby`, nor an associated `<label>` — the placeholder is only a last-resort fallback that some screen readers ignore. The warning is stripped from production builds.
 
