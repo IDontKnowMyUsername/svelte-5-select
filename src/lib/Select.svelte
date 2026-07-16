@@ -583,22 +583,41 @@
         });
     });
 
-    // Setup filter text
+    // Setup filter text: every write after mount behaves like typing (opens the
+    // list); only the mount run stays passive — an initial filterText filters
+    // (and fetches, with loadOptions) without opening the list or moving focus.
+    // A first-run flag, not a prevFilterText compare: the effect only reruns on
+    // real changes, and the old compare against the last *typed* value silently
+    // ignored a programmatic write that happened to equal it (fetching against
+    // a closed list with loadOptions).
+    let filterTextSeeded = false;
     $effect(() => {
         filterText;
         untrack(() => {
-            if (filterText !== selectState.prevFilterText) setupFilterText();
+            if (!filterTextSeeded) {
+                filterTextSeeded = true;
+                return;
+            }
+            setupFilterText();
         });
     });
 
-    // Fire onhoveritem
+    // Fire onhoveritem. The callback runs untracked: reactive reads inside a
+    // consumer callback must not become dependencies of this effect, and an
+    // inline callback prop changing identity per parent render must not refire.
     $effect(() => {
-        onhoveritem?.(hoverItemIndex);
+        hoverItemIndex;
+        untrack(() => onhoveritem?.(hoverItemIndex));
     });
 
-    // Fire onfilter
+    // Fire onfilter — untracked like onhoveritem; an onfilter that writes
+    // `items` would otherwise loop through filteredItems
     $effect(() => {
-        if (filteredItems && listOpen) onfilter?.(filteredItems as SelectRow<Item>[]);
+        filteredItems;
+        listOpen;
+        untrack(() => {
+            if (filteredItems && listOpen) onfilter?.(filteredItems as SelectRow<Item>[]);
+        });
     });
 
     // Floating UI config

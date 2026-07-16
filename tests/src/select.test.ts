@@ -6081,6 +6081,66 @@ describe('Select Component', () => {
             expect(oninput).not.toHaveBeenCalled();
         });
 
+        // First runtime coverage for onhoveritem/onfilter (7th audit): their
+        // effects now run the consumer callback untracked, per the project
+        // convention (tracked triggers at the top, untrack around the call).
+        it('fires onhoveritem when keyboard navigation moves the hover', async () => {
+            const onhoveritem = vi.fn();
+            render(Select, { props: { items, listOpen: true, onhoveritem } });
+            await tick();
+            onhoveritem.mockClear();
+
+            await handleKeyboard('ArrowDown');
+            await tick();
+
+            expect(onhoveritem).toHaveBeenCalledWith(1);
+        });
+
+        it('fires onfilter with the filtered rows while the list is open', async () => {
+            const onfilter = vi.fn();
+            render(Select, { props: { items, listOpen: true, onfilter } });
+            await tick();
+            onfilter.mockClear();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.focus();
+            input.value = 'pi';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            expect(onfilter).toHaveBeenCalled();
+            const rows = onfilter.mock.calls.at(-1)?.[0] as Array<{ label: string }>;
+            expect(rows.map((r) => r.label)).toEqual(['Pizza']);
+        });
+
+        // 7th-audit pin: the setup-filter-text effect compared against the last
+        // *typed* value (prevFilterText), so a programmatic write that happened
+        // to equal it was silently ignored — the list stayed closed while a
+        // loadOptions fetch still fired against it.
+        it('honors a programmatic filterText write that equals the last typed value', async () => {
+            const { rerender } = render(Select, { props: { items } });
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+
+            // Type 'a' then 'ab' (prevFilterText settles on 'a'), then close via
+            // Escape, which clears the filter text
+            input.focus();
+            input.value = 'a';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            // A parent writing back the previously typed text must behave like typing
+            await rerender({ items, filterText: 'a' });
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
         // 7th-audit pin: the raw-string value fallback hardcoded a 'label' key,
         // so with a custom `label` prop the selection rendered blank (and the
         // live region announced "Option , selected.") until items resolved.
