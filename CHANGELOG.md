@@ -44,6 +44,7 @@
 * The active tag in multi mode (ArrowLeft/ArrowRight + Backspace) is announced via the live region; previously it was only a CSS outline
 * Accessible names on the combobox input (`ariaLabel` prop), clear button, and tag remove buttons
 * Grouped options render inside `role="group"` wrapper regions named by their headers via `aria-labelledby`, restoring group semantics to assistive tech in the structure the listbox pattern allows (replacing the spec-invalid flat `role="group"` on the header row that the Breaking section removes)
+* Dev-only warning when `loadOptionsDeps` changes by identity but not by content: deps elements are compared with `===`, so an inline object/array literal recreated per parent render re-fires the reload — and its selection validation — on every render. Pass primitives or stable references (the warning is tree-shaken from production builds)
 
 ### Fixed
 

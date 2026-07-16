@@ -71,7 +71,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | inputStyles            | `string`  | `''`            | Add inline styles to the input                                 |
 | listStyle              | `string`  | `''`            | Add inline styles to the list                                  |
 | hoverItemIndex         | `number`  | `0`             | Index of the currently hovered item (bindable)                 |
-| loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires               |
+| loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires. Compared by `===` — pass primitives or stable references, not inline literals |
 | ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input (and the listbox); when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
 | ariaErrorMessage       | `string`  | `undefined`     | id of your error element; wired to the input's `aria-errormessage` while `hasError` is `true` |
 | ariaClearSelectLabel   | `string`  | `'Clear selection'` | `aria-label` for the clear-all button                     |

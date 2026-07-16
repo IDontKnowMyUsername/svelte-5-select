@@ -1,4 +1,5 @@
 import { untrack } from 'svelte';
+import { DEV } from 'esm-env';
 import type { ItemLike, LoadOptionsActions, SelectItem, SelectState } from './types';
 import { convertStringItemsToObjects, getItemProperty } from './utils';
 
@@ -198,6 +199,26 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     // Snapshot of the previous effect run so it can tell WHICH input changed
     let prevRun: { filterText: string; deps: unknown[]; disabled: boolean; listOpen: boolean } | undefined;
 
+    // Dev-only, once per instance: deps elements are compared by identity, so an
+    // inline object/array literal recreated per parent render re-fires the reload
+    // (and its value validation) on every render.
+    let warnedAboutDepsIdentity = false;
+    function warnIfDepsChangedByIdentityOnly(deps: unknown[], prevDeps: unknown[]): void {
+        if (warnedAboutDepsIdentity) return;
+        try {
+            if (JSON.stringify(deps) !== JSON.stringify(prevDeps)) return;
+        } catch {
+            return; // non-serializable deps: skip the heuristic
+        }
+        warnedAboutDepsIdentity = true;
+        console.warn(
+            '[svelte-select] loadOptionsDeps changed by identity but not by content. Deps elements ' +
+                'are compared with ===, so an object or array literal created inline re-triggers the ' +
+                'reload — and its selection validation — on every parent render. Pass primitives ' +
+                '(e.g. the id itself) or stable references instead.',
+        );
+    }
+
     // Run loadOptions when its inputs change: typing non-empty filter text
     // re-queries (debounced), a loadOptionsDeps change re-queries and re-validates
     // the value, and toggling disabled clears or reloads the loaded state; mount,
@@ -218,6 +239,7 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         const isFirstRun = prev === undefined;
         const depsChanged =
             !isFirstRun && (deps.length !== prev.deps.length || deps.some((dep, i) => dep !== prev.deps[i]));
+        if (DEV && depsChanged) warnIfDepsChangedByIdentityOnly(deps, prev.deps);
         const filterTextChanged = !isFirstRun && filterText !== prev.filterText;
         const disabledChanged = !isFirstRun && disabled !== prev.disabled;
         // A genuine closed->open transition (not a typing-open, where filterText

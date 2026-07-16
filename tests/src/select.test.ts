@@ -6081,6 +6081,39 @@ describe('Select Component', () => {
             expect(oninput).not.toHaveBeenCalled();
         });
 
+        // 7th-audit addition: deps elements are compared by identity, so inline
+        // literals re-fire the reload (and its selection validation) on every
+        // parent render — a dev-only warning surfaces the churn.
+        it('warns in dev when loadOptionsDeps changes identity but not content', async () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const loadOptions = vi.fn(() => Promise.resolve(items));
+            const { rerender } = render(Select, {
+                props: { loadOptions, loadOptionsDeps: [{ country: 'de' }] },
+            });
+            await tick();
+
+            await rerender({ loadOptions, loadOptionsDeps: [{ country: 'de' }] });
+            await tick();
+
+            expect(warn).toHaveBeenCalledWith(expect.stringContaining('loadOptionsDeps changed by identity'));
+            warn.mockRestore();
+        });
+
+        it('does not warn when loadOptionsDeps changes by content', async () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const loadOptions = vi.fn(() => Promise.resolve(items));
+            const { rerender } = render(Select, {
+                props: { loadOptions, loadOptionsDeps: ['de'] },
+            });
+            await tick();
+
+            await rerender({ loadOptions, loadOptionsDeps: ['fr'] });
+            await tick();
+
+            expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('loadOptionsDeps changed by identity'));
+            warn.mockRestore();
+        });
+
         // First runtime coverage for onhoveritem/onfilter (7th audit): their
         // effects now run the consumer callback untracked, per the project
         // convention (tracked triggers at the top, untrack around the call).

@@ -338,6 +338,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * survives). An empty result is treated as no evidence and never clears — a search
      * endpoint returns nothing for the retained (usually empty) filter text regardless
      * of the selection. Typing-driven loads never invalidate the selection this way.
+     *
+     * Elements are compared by identity (`===`): pass primitives (`[country.id]`) or
+     * stable references, not inline literals (`[{ country }]` recreates the object per
+     * parent render and re-fires the reload every time — a dev-only warning surfaces
+     * this).
      */
     loadOptionsDeps?: unknown[];
 
