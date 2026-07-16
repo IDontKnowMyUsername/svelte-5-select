@@ -203,6 +203,22 @@ describe('Select Component', () => {
     });
 
     describe('List rendering', () => {
+        it('marks the first and last options so their corners follow the list radius', () => {
+            render(Select, { props: { listOpen: true, items } });
+            const options = document.querySelectorAll('.svelte-select-list .item');
+            expect(options[0].classList.contains('first')).toBe(true);
+            expect(options[options.length - 1].classList.contains('last')).toBe(true);
+            expect(options[1].classList.contains('first')).toBe(false);
+            expect(options[1].classList.contains('last')).toBe(false);
+        });
+
+        it('marks a single option as both first and last', () => {
+            render(Select, { props: { listOpen: true, items: [items[0]] } });
+            const option = document.querySelector('.svelte-select-list .item') as HTMLElement;
+            expect(option.classList.contains('first')).toBe(true);
+            expect(option.classList.contains('last')).toBe(true);
+        });
+
         it('shows empty list message when no items', () => {
             render(Select, { props: { listOpen: true } });
             expect(document.querySelector('.empty')).toBeTruthy();

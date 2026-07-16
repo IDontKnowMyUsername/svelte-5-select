@@ -109,6 +109,14 @@
     @apply rounded-t-sm;
 }
 
+.item.last {
+    @apply rounded-b-sm;
+}
+
+.item.first.last {
+    @apply rounded-sm;
+}
+
 .item.hover:not(.active) {
     @apply bg-blue-100;
     /* The background alone is a colour-only cue for the keyboard cursor

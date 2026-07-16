@@ -64,6 +64,7 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--item-is-active-bg`
 - `--item-is-active-color`
 - `--item-is-not-selectable-color`
+- `--item-last-border-radius`
 - `--item-line-height`
 - `--item-padding`
 - `--item-transition`

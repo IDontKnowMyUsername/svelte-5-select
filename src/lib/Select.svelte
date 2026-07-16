@@ -926,6 +926,7 @@
                             class:list-group-title={item.groupHeader}
                             class:active={hoverManager.isItemActive(item)}
                             class:first={i === 0}
+                            class:last={i === filteredItems.length - 1}
                             class:hover={hoverItemIndex === i}
                             class:group-item={item.groupItem}
                             class:not-selectable={item?.selectable === false}>

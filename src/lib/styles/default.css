@@ -325,6 +325,19 @@ input:focus {
     border-radius: var(--item-first-border-radius, 4px 4px 0 0);
 }
 
+/* Mirror of .item.first: without it the last item's hover/selection background
+   (and the keyboard-cursor outline) square off against the list's rounded
+   bottom corners */
+.item.last {
+    border-radius: var(--item-last-border-radius, 0 0 4px 4px);
+}
+
+/* A single-option list is both first and last: round all corners (the two
+   shorthand variables above cannot compose, so this matches their defaults) */
+.item.first.last {
+    border-radius: 4px;
+}
+
 .item.hover:not(.active) {
     background: var(--item-hover-bg, #e7f2ff);
     color: var(--item-hover-color, inherit);
