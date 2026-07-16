@@ -215,7 +215,7 @@ You can also use custom collections.
 
 ### Async Items
 
-To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` fires once on mount, on typing non-empty `filterText` (debounced), and whenever `loadOptionsDeps` or `disabled` change. Emptying the filter text or closing the list cancels a pending typing-driven load instead of re-fetching.
+To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` fires once on mount, on typing non-empty `filterText` (debounced), and whenever `loadOptionsDeps` or `disabled` change. Emptying the filter text or closing the list cancels a pending typing-driven load instead of re-fetching. One open/close-related exception: reopening the list with retained filter text whose load was cancelled on close (e.g. with `clearFilterTextOnBlur={false}`) refetches immediately, so the list never shows results that are stale for the visible text.
 
 ```html
 <script>
@@ -314,6 +314,25 @@ A component reference exposes a couple of methods:
 <button onclick={() => console.log(select.getFilteredItems())}>Log filtered items</button>
 <button onclick={() => select.reset()}>Reset</button>
 ```
+
+## Exports
+
+Everything `svelte-5-select` exports:
+
+| Export | Kind | Description |
+| ------ | ---- | ----------- |
+| `Select` | component | The select/combobox component, default styles included. |
+| `ChevronIcon`, `ClearIcon`, `LoadingIcon` | components | The built-in icons, exported for reuse inside custom snippets. |
+| `filter` | function | The filtering pipeline `Select` uses internally — the basis for a custom `filter` prop (see [Function props](#function-props)). |
+| `areItemsEqual` | function | Compares two items by `itemId`. |
+| `isGroupHeader` | function | Type guard narrowing a `SelectRow` to a group header synthesized by `groupBy`. |
+| `normalizeItem` | function | Resolves a raw string to a `{ value, label }` item; passes items through. |
+
+Types: `ItemLike`, `SelectItem`, `SelectGroupHeader`, `SelectRow`, `SelectProps`, `SelectValue`, `SelectValueProp`, `SelectClearValue`, `JustValue`, `FloatingConfig`, `FilterConfig`, and `SelectErrorEvent` (plus its deprecated alias `ErrorEvent`).
+
+Subpath exports: `svelte-5-select/styles/default.css` (the default stylesheet on its own), `svelte-5-select/tailwind.css`, and `svelte-5-select/no-styles/Select.svelte` (the component with its style block stripped — see the [experimental section](#-experimental-replace-styles-tailwind-bootstrap-bulma-etc)).
+
+Internal wiring (the shared state store, the composables, and their types) is deliberately not exported and cannot be deep-imported.
 
 ## TypeScript
 

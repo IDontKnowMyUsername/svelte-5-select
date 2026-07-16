@@ -348,7 +348,10 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     itemFilter?: (label: string, filterText: string, option: Item) => boolean;
     /**
      * Fetches options asynchronously. Runs on mount, on typing (debounced by
-     * `debounceWait`), and whenever `loadOptionsDeps` changes — not on open/close.
+     * `debounceWait`), and whenever `loadOptionsDeps` or `disabled` changes.
+     * Opening or closing the list never fetches, with one exception: reopening
+     * with retained filter text whose load was cancelled on close (e.g. with
+     * `clearFilterTextOnBlur={false}`) refreshes the stale results immediately.
      * Whatever it returns is what the list shows: results are not re-filtered by
      * `filterText`. Set `items` or this, not both.
      */

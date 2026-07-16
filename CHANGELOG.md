@@ -15,7 +15,7 @@
 * A pending debounced `loadOptions` fetch is cancelled when it becomes moot — an item is selected, the filter text is emptied, the list closes, the select is disabled, or the component unmounts. In-flight responses arriving after a disable are discarded
 * `loadOptions` results are no longer re-filtered by the label substring filter — what the loader returns is what the list shows (apps no longer need an `itemFilter={() => true}` workaround)
 * Enter and Escape pass through when the list is closed, so implicit form submission and dialog-close keep working; keys only stop propagation when the component actually handles them
-* Group headers no longer render `role="group"`/`aria-label` — an element with `role="option"`/`role="presentation"` may not contain a group, and the group wrapped only the header text
+* Group headers no longer render `role="group"`/`aria-label` — an element with `role="option"`/`role="presentation"` may not contain a group, and the group wrapped only the header text. (Group semantics did not stay removed: they returned in a spec-valid shape later in this release — see Added)
 * The multi-select tag remove control is now a real `<button>` in the tab order (was an unreachable `tabindex="-1"` div); removal is activated on `click` instead of `pointerup`, and removing an item refocuses the input
 * Arrow-key navigation now uses the same selectability rule as click/Enter (`selectable !== false`), so an item with an explicit `selectable: undefined` is reachable by keyboard
 * Removed the vestigial `build:lib` script and `vite.lib.config.ts` (a Svelte-4-era bundle build that clobbered `dist/`); `npm run package` is the library build
@@ -43,6 +43,7 @@
 * `aria-disabled` marks non-selectable options, matching the keyboard-navigation skip
 * The active tag in multi mode (ArrowLeft/ArrowRight + Backspace) is announced via the live region; previously it was only a CSS outline
 * Accessible names on the combobox input (`ariaLabel` prop), clear button, and tag remove buttons
+* Grouped options render inside `role="group"` wrapper regions named by their headers via `aria-labelledby`, restoring group semantics to assistive tech in the structure the listbox pattern allows (replacing the spec-invalid flat `role="group"` on the header row that the Breaking section removes)
 
 ### Fixed
 
@@ -77,6 +78,10 @@
 * Debounce and scroll-fallback timers are cleared on unmount, so a pending fetch can no longer run (and invoke `onloaded`/`onerror`) on a destroyed component
 * A user-supplied `handleClear` prop is respected instead of always running the internal clear
 * `getFilteredItems` is restored as a `bind:this` instance export (broken in the released 1.0.x line)
+* Tab now commits the hovered option and moves focus in the same press — it previously swallowed the committing keystroke (`preventDefault`), so leaving the field took two Tab presses. Shift+Tab never commits: tabbing backwards through a form no longer selects the hovered option as a side effect
+* A disabled Select was still mouse-operable when the list was opened programmatically (a `bind:listOpen` or `filterText` write while disabled): the list now force-closes whenever it opens while disabled, and item clicks are ignored as defence in depth
+* A parent mutating a bound multiple `value` array in place (`value.push(...)`) rendered the new tag but never dispatched `oninput` and left `justValue` stale — the value effects tracked only the array reference. In-place growth now normalizes, dispatches, and syncs `justValue` exactly like an assignment
+* The hover cursor no longer parks on a non-selectable first item in plain (non-grouped) lists when the list opens or the filter changes, and no longer skips a selectable first item that `groupBy` placed in a header-less (`''`) bucket — the hover path used an inverted selectability predicate (a missing `selectable` key read as non-selectable) that also only ran under `groupBy`, diverging from the click/Enter/arrow rule
 * Repaired `tailwind.css` selectors and removed the dead camelCase CSS shim
 * Added the README-documented no-styles, `tailwind.css`, and styles subpath exports that failed to resolve under strict exports, and corrected the license metadata (custom permissive text, not ISC)
 * Removed the provably no-op window click handler; outside clicks keep closing the list via the input's native blur
