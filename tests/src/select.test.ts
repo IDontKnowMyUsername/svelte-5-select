@@ -1240,48 +1240,8 @@ describe('Select Component', () => {
         });
     });
 
-    describe('Text overflow', () => {
-        // Need to use Playwright instead
-        it.skip('shows ellipsis for overflowing text in list item', async () => {
-            const longest =
-                'super super super super super super super super super super super super super super super super super super super super super super super super super super super super loooooonnnng name';
-
-            const container = document.createElement('div');
-            container.style.width = '300px';
-            container.style.position = 'relative';
-            document.body.appendChild(container);
-
-            render(Select, {
-                target: container,
-                props: {
-                    listOpen: true,
-                    items: [
-                        {
-                            index: 0,
-                            label: longest,
-                        },
-                        {
-                            index: 1,
-                            label: 'Not so loooooonnnng name',
-                        },
-                    ],
-                },
-            });
-
-            await tick();
-            const first = document.querySelector('.list-item:first-child .item') as HTMLElement;
-            const last = document.querySelector('.list-item:last-child .item') as HTMLElement;
-
-            if (first && last) {
-                expect(first.scrollWidth).toBeGreaterThan(first.clientWidth);
-                expect(last.scrollWidth).toBe(last.clientWidth);
-            } else {
-                expect.fail('List items not found');
-            }
-
-            container.remove();
-        });
-    });
+    // Text-overflow ellipsis needs a real layout engine — covered in
+    // tests/browser/layout.test.ts ("truncates an overflowing item label").
 
     describe('External focus', () => {
         it('closes and blurs when focusing external textarea', async () => {
@@ -2002,31 +1962,8 @@ describe('Select Component', () => {
             );
         });
 
-        it.skip('Select height increases when items wrap', async () => {
-            const { rerender } = render(Select, {
-                props: {
-                    multiple: true,
-                    items,
-                },
-            });
-
-            const container = document.querySelector('.svelte-select') as HTMLElement;
-            container.style.maxWidth = '200px';
-
-            const container1 = document.querySelector('.svelte-select') as HTMLElement;
-            expect(container1.scrollHeight).toBe(40);
-
-            await rerender({
-                value: [
-                    { value: 'chocolate', label: 'Chocolate' },
-                    { value: 'pizza', label: 'Pizza' },
-                ],
-            });
-            await tick();
-
-            const container2 = document.querySelector('.svelte-select') as HTMLElement;
-            expect(container2.scrollHeight).toBeGreaterThan(42);
-        });
+        // Multi-tag wrap height needs a real layout engine — covered in
+        // tests/browser/layout.test.ts ("grows the control height when multi tags wrap").
 
         it('navigating with LeftArrow updates activeValue', async () => {
             render(Select, {
@@ -4121,7 +4058,7 @@ describe('Select Component', () => {
             expect(options[1].getAttribute('aria-disabled')).toBe('true');
         });
 
-        it('leaves presentational group headers without aria-disabled', () => {
+        it('leaves hidden group headers without aria-disabled or aria-selected', () => {
             render(Select, {
                 props: {
                     listOpen: true,
@@ -4130,9 +4067,12 @@ describe('Select Component', () => {
                 },
             });
 
-            const headers = document.querySelectorAll('[role="presentation"]');
+            const headers = document.querySelectorAll('.list-item[aria-hidden="true"]');
             expect(headers.length).toBeGreaterThan(0);
-            headers.forEach((header) => expect(header.getAttribute('aria-disabled')).toBeNull());
+            headers.forEach((header) => {
+                expect(header.getAttribute('aria-disabled')).toBeNull();
+                expect(header.getAttribute('aria-selected')).toBeNull();
+            });
         });
 
         it('does not stamp a default aria-label so an external label can name the input', () => {
@@ -4472,7 +4412,7 @@ describe('Select Component', () => {
             expect(selected).toEqual(['false', 'true', 'false', 'true', 'false']);
         });
 
-        it('selectable group headers have role="option" instead of presentation', () => {
+        it('selectable group headers are real options, not hidden rows', () => {
             render(Select, {
                 props: {
                     items: itemsWithGroup,
@@ -4482,7 +4422,7 @@ describe('Select Component', () => {
                 },
             });
 
-            expect(document.querySelectorAll('[role="presentation"]').length).toBe(0);
+            expect(document.querySelectorAll('.list-item[aria-hidden="true"]').length).toBe(0);
             expect(document.querySelectorAll('[role="option"]').length).toBe(7);
         });
 
@@ -4568,7 +4508,7 @@ describe('Select Component', () => {
             expect(labelEl?.textContent?.trim()).toBe('Sweet');
         });
 
-        it('group header list-items have role="presentation"', () => {
+        it('non-selectable group headers are aria-hidden, keeping the listbox children valid', () => {
             render(Select, {
                 props: {
                     items: itemsWithGroup,
@@ -4577,8 +4517,19 @@ describe('Select Component', () => {
                 },
             });
 
-            const presentations = document.querySelectorAll('[role="presentation"]');
-            expect(presentations.length).toBe(2);
+            // aria-hidden rather than role="presentation": a listbox may only own
+            // option/group children (groups are transparent for that check), while
+            // aria-labelledby still resolves the hidden header as the group's name
+            const headers = document.querySelectorAll('.list-item[aria-hidden="true"]');
+            expect(headers.length).toBe(2);
+            headers.forEach((header) => expect(header.getAttribute('role')).toBeNull());
+            expect(document.querySelectorAll('[role="presentation"]').length).toBe(0);
+
+            const groups = document.querySelectorAll('[role="group"]');
+            expect(groups.length).toBe(2);
+            const labelEl = document.getElementById(groups[0].getAttribute('aria-labelledby')!);
+            expect(labelEl?.getAttribute('aria-hidden')).toBe('true');
+            expect(labelEl?.textContent?.trim()).toBe('Sweet');
         });
 
         it('ariaLabel prop sets aria-label on input', () => {

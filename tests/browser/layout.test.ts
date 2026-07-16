@@ -96,4 +96,58 @@ describe('layout in a real browser', () => {
             expect(hoveredRect.top, `item ${i} above the fold`).toBeGreaterThanOrEqual(listRect.top - 1);
         }
     });
+
+    // Ported from a perma-skipped happy-dom test (no layout engine there)
+    it('truncates an overflowing item label with an ellipsis', async () => {
+        const longest = `${'super '.repeat(30)}loooooonnnng name`;
+        render(Select, {
+            props: {
+                listOpen: true,
+                containerStyles: 'width: 300px;',
+                items: [
+                    { value: 'long', label: longest },
+                    { value: 'short', label: 'Not so long' },
+                ],
+            },
+        });
+        await settle();
+
+        const first = document.querySelector('.list-item:first-child .item') as HTMLElement;
+        const last = document.querySelector('.list-item:last-child .item') as HTMLElement;
+
+        // The long label overflows its box while the short one fits...
+        expect(first.scrollWidth).toBeGreaterThan(first.clientWidth);
+        expect(last.scrollWidth).toBe(last.clientWidth);
+        // ...and the overflow renders as an ellipsis, not clipped or wrapped text
+        const style = getComputedStyle(first);
+        expect(style.textOverflow).toBe('ellipsis');
+        expect(style.whiteSpace).toBe('nowrap');
+        expect(style.overflow).toBe('hidden');
+    });
+
+    // Ported from a perma-skipped happy-dom test (no layout engine there)
+    it('grows the control height when multi tags wrap', async () => {
+        const props = {
+            multiple: true,
+            items: fewItems,
+            containerStyles: 'max-width: 200px;',
+        };
+        const { rerender } = render(Select, { props });
+        await settle();
+
+        const before = (document.querySelector('.svelte-select') as HTMLElement).getBoundingClientRect().height;
+
+        await rerender({
+            ...props,
+            value: [
+                { value: 'a', label: 'Chocolate Fudge Brownie' },
+                { value: 'b', label: 'Strawberry Cheesecake Supreme' },
+            ],
+        });
+        await settle();
+
+        const after = (document.querySelector('.svelte-select') as HTMLElement).getBoundingClientRect().height;
+        expect(document.querySelectorAll('.multi-item').length).toBe(2);
+        expect(after).toBeGreaterThan(before);
+    });
 });

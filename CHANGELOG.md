@@ -90,6 +90,8 @@
 * Re-clicking an already-selected option in multiple mode (visible with `filterSelectedItems={false}`) no longer wipes the typed filter text — the no-op guard now runs before the filter-text clear
 * A debounced `loadOptions` call re-reads the loader when it fires instead of running the one captured when the debounce was armed, so a `loadOptions` prop swapped mid-wait can no longer run the old fetcher and attribute its response to the new one (a loader removed mid-wait fetches nothing and resets the spinner)
 * Writing `bind:justValue` after mount now applies deterministically right away: it hydrates `value` when no selection exists, and is corrected back to the selection-derived values when one does (value wins). Previously a late write sat dormant — the sync effect did not watch `justValue` — and then hydrated the selection on the next unrelated state change, seemingly out of nowhere. `justValue` also keeps a stable identity while its entries are unchanged, instead of emitting a fresh array on every internal sync
+* Non-selectable group headers are `aria-hidden` instead of `role="presentation"`: a listbox may only own option/group children — and groups are transparent for that check — so the presentational header row made the listbox's children invalid (axe `aria-required-children`, WCAG 1.3.1). The group's accessible name still resolves through `aria-labelledby`, which follows hidden targets; selectable headers remain real options
+* Group titles no longer inherit the non-selectable dimming (`#999` = 2.84:1 — they are informative text, so WCAG 1.4.3's inactive-component exemption does not apply); they keep `--group-title-color` (default `#000`, 21:1)
 * Repaired `tailwind.css` selectors and removed the dead camelCase CSS shim
 * Added the README-documented no-styles, `tailwind.css`, and styles subpath exports that failed to resolve under strict exports, and corrected the license metadata (custom permissive text, not ISC)
 * Removed the provably no-op window click handler; outside clicks keep closing the list via the input's native blur
@@ -99,6 +101,8 @@
 * New real-browser layout suite (`pnpm run test:browser`, vitest browser mode + Playwright) asserting floating placement, `listOffset`, list width, and scroll-into-view geometry; the corresponding happy-dom tests were vacuous (no layout engine) and were removed or rewritten as `scrollIntoView` spies
 * Regression coverage for load cancellation, disabled-at-mount values, string-value re-resolution, late `justValue` hydration, type-ahead, `aria-disabled`, keyboard tag removal, and `bind:container`/`bind:input`
 * Regression coverage for external `bind:value` clears with `useJustValue`, clear-button event containment, deferred blur replay after scrolling, superseded dependency-reload validation, and the live-region empty/loading/cleared announcements
+* The two long-skipped geometry tests (item-label ellipsis, multi-tag wrap height) are ported to the real-browser suite — no skipped tests remain
+* New axe-core WCAG A/AA scan in the browser suite covering the closed, open, grouped, multi, empty, and disabled states (it caught the two grouped-list violations fixed above); best-practice page-composition rules are excluded as consumer responsibility
 
 ## 1.0.2 (2026-04-07)
 

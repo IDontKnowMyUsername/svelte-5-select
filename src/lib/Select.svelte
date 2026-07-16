@@ -945,6 +945,12 @@
                 {@render listSnippet(filteredItems as SelectRow<Item>[])}
             {:else if filteredItems?.length > 0}
                 {#snippet optionEntry(item: SelectItem, i: number)}
+                    <!-- Non-selectable group headers are aria-hidden rather than
+                         role="presentation": a listbox may only own option/group children,
+                         and groups are transparent for that check, so a presentational row
+                         inside one is an invalid listbox child (axe aria-required-children).
+                         The group's accessible name still resolves via aria-labelledby,
+                         which follows hidden targets. Selectable headers are real options. -->
                     <div
                         onmouseover={() => hoverManager.handleHover(i)}
                         onfocus={() => hoverManager.handleHover(i)}
@@ -958,8 +964,9 @@
                         }}
                         class="list-item"
                         tabindex="-1"
-                        role={isPresentationalHeader(item) ? 'presentation' : 'option'}
+                        role={isPresentationalHeader(item) ? undefined : 'option'}
                         id="listbox-{_id}-item-{i}"
+                        aria-hidden={isPresentationalHeader(item) ? true : undefined}
                         aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}
                         aria-disabled={isPresentationalHeader(item) || isItemSelectableCheck(item) ? undefined : true}>
                         <div
