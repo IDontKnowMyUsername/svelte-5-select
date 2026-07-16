@@ -3,6 +3,7 @@ import { render, cleanup } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import axe from 'axe-core';
 import Select from '$lib/Select.svelte';
+import type { ItemLike } from '$lib';
 
 const items = [
     { value: 'chocolate', label: 'Chocolate', group: 'Sweet' },
@@ -56,7 +57,7 @@ describe('axe scan (WCAG A/AA)', () => {
                 items,
                 ariaLabel: 'Food',
                 listOpen: true,
-                groupBy: (item: { group: string }) => item.group,
+                groupBy: (item: ItemLike) => String(item.group),
             },
         });
         await settle();
