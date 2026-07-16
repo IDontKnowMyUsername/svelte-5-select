@@ -25,9 +25,11 @@ export function createSelectState<Item extends ItemLike = SelectItem>(
     let clearState = $state(false);
 
     // Comparison scratch fields, only read inside untrack()ed code — deliberately non-reactive.
-    // prevValue is seeded with the initial value so mount does not dispatch oninput.
+    // prevValue is seeded with the initial value so mount does not dispatch oninput;
+    // prevFilterText is seeded so an initial filterText does not open the list (and
+    // steal focus through the list-open effect) on mount.
     let prevValue: SelectState<Item>['prevValue'] = props.value;
-    let prevFilterText: string | undefined = undefined;
+    let prevFilterText: string | undefined = props.filterText;
     let prevMultiple: boolean | undefined = undefined;
 
     return {

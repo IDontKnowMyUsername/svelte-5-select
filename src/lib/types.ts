@@ -181,6 +181,7 @@ export interface KeyboardNavigationState<Item extends ItemLike = SelectItem> {
     readonly label: string;
     readonly searchable: boolean;
     readonly focused: boolean;
+    readonly disabled: boolean;
 }
 
 export interface KeyboardNavigationActions {
@@ -212,8 +213,9 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     // Core data props
     /**
      * Bindable. The text typed into the input; drives filtering and `loadOptions`.
-     * An initial value is kept on mount and behaves like typing: it filters
-     * (and fetches, with `loadOptions`) and opens the list when non-empty.
+     * An initial value is kept on mount and applied passively: it filters (and
+     * fetches, with `loadOptions`) but does not open the list or move focus.
+     * Later programmatic writes behave like typing and open the list.
      */
     filterText?: string;
     /** Which field uniquely identifies an item. Values are compared by this field, not by reference. @default 'value' */
@@ -241,9 +243,12 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
 
     // UI props
     /**
-     * Blocks interaction and clears the selection. Rendered as `aria-disabled` +
-     * `readonly` rather than the native `disabled` attribute, so the current value
-     * stays in the accessibility tree.
+     * Blocks interaction: the list closes, focus is released, and typing and
+     * keyboard navigation are ignored. The selection is kept — except with
+     * `loadOptions`, where disabling clears `value` and `items` (loaded options
+     * may be stale by re-enable). Rendered as `aria-disabled` + `readonly`
+     * rather than the native `disabled` attribute, so the current value stays
+     * in the accessibility tree.
      */
     disabled?: boolean;
     /**

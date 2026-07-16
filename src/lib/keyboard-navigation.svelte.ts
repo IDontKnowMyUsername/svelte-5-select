@@ -11,7 +11,10 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
     // Claimed keys must stop propagation so the component's window listener does
     // not handle the same bubbled event a second time.
     function handleKeyDown(e: KeyboardEvent): void {
-        if (!state.focused) return;
+        // The disabled gate is defence in depth: disabling releases focus, but
+        // `focused` can lag DOM focus (e.g. the deferred-blur window), and a
+        // disabled control must never mutate its value from the keyboard.
+        if (!state.focused || state.disabled) return;
 
         const handlers: Record<string, (e: KeyboardEvent) => void> = {
             Escape: handleEscapeKey,

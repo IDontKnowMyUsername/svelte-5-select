@@ -22,6 +22,7 @@ describe('useKeyboardNavigation', () => {
             label: 'label',
             searchable: true,
             focused: true,
+            disabled: false,
             ...overrides,
         };
 

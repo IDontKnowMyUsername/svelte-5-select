@@ -530,6 +530,9 @@
     const [floatingRef, floatingContent, floatingUpdate] = createFloatingActions(_floatingConfig);
 
     onMount(() => {
+        // A disabled Select never grabs focus on mount; the disabled effect
+        // below also normalizes an initial `focused: true` back to false.
+        if (disabled) return;
         if (listOpen) focused = true;
         if (focused && input) input.focus();
     });
@@ -679,10 +682,19 @@
 
     // Disabled state
     $effect(() => {
-        if (disabled) {
+        disabled;
+        untrack(() => {
+            if (!disabled) return;
             listOpen = false;
             filterText = '';
-        }
+            // Disabling must also release focus: every keyboard handler gates
+            // on `focused`, so a Select disabled while it held focus stayed
+            // fully keyboard-operable (list toggling, Enter selection,
+            // Backspace tag removal) despite being aria-disabled. This also
+            // normalizes an initial `focused: true, disabled: true` mount.
+            if (focused) focused = false;
+            if (input && document.activeElement === input) input.blur();
+        });
     });
 
     function applyGrouping(_items: SelectItem[]): SelectItem[] {
@@ -1131,7 +1143,10 @@
         {#if requiredSnippet}
             {@render requiredSnippet(value)}
         {:else}
-            <select class="required" required tabindex="-1" aria-hidden="true"></select>
+            <!-- Constraint validation focuses the first invalid control — this one.
+                 An aria-hidden element must never hold focus (and this one is
+                 invisible), so forward it to the real combobox input immediately. -->
+            <select class="required" required tabindex="-1" aria-hidden="true" onfocus={() => handleFocus()}></select>
         {/if}
     {/if}
 </div>
