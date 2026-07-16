@@ -47,7 +47,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | class                  | `string`  | `''`            | container classes                                              |
 | containerStyles        | `string`  | `''`            | Add inline styles to container                                 |
 | clearable              | `boolean` | `true`          | Enable clearing of value(s)                                    |
-| disabled               | `boolean` | `false`         | Disable select                                                 |
+| disabled               | `boolean` | `false`         | Disable select: closes the list and releases focus; keeps the selection, except with `loadOptions` (value and loaded items are cleared) |
 | multiple               | `boolean` | `false`         | Enable multi-select                                            |
 | searchable             | `boolean` | `true`          | If `false` search/filtering is disabled; typing moves to the next matching option (type-ahead) |
 | groupHeaderSelectable  | `boolean` | `false`         | Enable selectable group headers                                |
@@ -374,7 +374,7 @@ The public API moved to idiomatic Svelte 5:
 
 Every change below is covered in detail in the [changelog](CHANGELOG.md); this is the upgrade checklist:
 
-- **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disable, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `oninput(null)` instead of `oninput([])`.
+- **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disabling a `loadOptions` select, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `oninput(null)` instead of `oninput([])`.
 - **Removed exports.** `useKeyboardNavigation` (with the `KeyboardNavigationContext`/`isCancelled` surface and the `SelectState`, `KeyboardNavigationState`, `KeyboardNavigationActions` types) and `isStringArray` are gone; the composables are internal.
 - **`ErrorEvent` is renamed `SelectErrorEvent`** (the old name shadowed the DOM global; it remains as a deprecated alias).
 - **Rendered-list surfaces are typed `SelectRow<Item>`.** `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` see the group headers `groupBy` synthesizes; narrow rows with the exported `isGroupHeader` guard.
@@ -383,7 +383,7 @@ Every change below is covered in detail in the [changelog](CHANGELOG.md); this i
 - **`selectionSnippet` is `Snippet<[Item, number?]>`** — always a single item, also in multiple mode.
 - **`FilterConfig.filterGroupedItems` is renamed `applyGrouping`** (only affects custom `filter` implementations).
 - **Markup and a11y changes.** The multi-select remove control is a real `<button>` in the tab order; grouped options are wrapped in `role="group"` regions named by their headers; the input no longer defaults its `aria-label` to the placeholder (name it with `ariaLabel` or an external `<label for>`).
-- **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus, and an initial `filterText` is kept on mount (it used to be silently cleared) — it opens the list and drives the mount `loadOptions` fetch.
+- **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus; disabling releases focus and keyboard control; and an initial `filterText` is kept on mount (it used to be silently cleared) — it filters and drives the mount `loadOptions` fetch, without opening the list or moving focus.
 - **Node >= 22.12 is required.**
 
 ## CSS custom properties (variables)
