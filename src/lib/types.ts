@@ -233,8 +233,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     items?: Item[] | string[] | null;
     /**
      * Bindable, and only meaningful with `useJustValue`: the selection reduced to bare
-     * `itemId` values (`'a'` / `['a', 'b']`) instead of whole items. Also hydrates
-     * `value` on mount — set it and the matching item is resolved out of `items`.
+     * `itemId` values (`'a'` / `['a', 'b']`) instead of whole items. Writing it while
+     * no selection exists hydrates `value` — the matching items are resolved out of
+     * `items`, retrying when async items arrive. While a selection exists, `justValue`
+     * is derived from it and a conflicting write is corrected back: write (or clear)
+     * `value` to change the selection.
      */
     justValue?: JustValue;
     /** Which field holds an item's display text. @default 'label' */

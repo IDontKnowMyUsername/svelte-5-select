@@ -315,8 +315,15 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         untrack(() => dispatchSelectedItem());
     });
 
-    // Hydrate value from an initial justValue, then keep justValue in sync.
+    // Hydrate value from justValue, then keep justValue in sync.
     // items is a tracked trigger so hydration retries when async items arrive.
+    // justValue is tracked too, so a post-mount write applies deterministically
+    // right away — it hydrates when no selection exists, and is corrected back
+    // to the selection-derived values when one does (value wins). Previously a
+    // late write sat dormant and then hydrated on the next unrelated trigger.
+    // The equality-guarded write breaks the write→track cycle (a derived array
+    // is a new reference every run) and keeps justValue's identity stable when
+    // its entries are unchanged.
     // clearState is a tracked trigger too, so an explicit clear always reaches
     // syncJustValue (which consumes and resets the flag) even when it is not
     // accompanied by a value change — otherwise the flag could stick `true` and
@@ -329,8 +336,10 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
         state.items;
         state.clearState;
+        state.justValue;
         untrack(() => {
-            state.justValue = syncJustValue();
+            const derived = syncJustValue();
+            if (!justValuesEqual(derived, state.justValue)) state.justValue = derived;
         });
     });
 

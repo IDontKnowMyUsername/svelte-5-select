@@ -36,7 +36,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | ---------------------- | --------- | --------------- | -------------------------------------------------------------- |
 | items                  | `any[]`   | `null`          | Array of items available to display / filter                   |
 | value                  | `any`     | `undefined`     | Selected value(s); an emptied selection is always `undefined`  |
-| justValue              | `any`     | `undefined`     | Raw `itemId` value(s) of the selection (pairs with `useJustValue`); bindable, and setting it hydrates `value` on mount |
+| justValue              | `any`     | `undefined`     | Raw `itemId` value(s) of the selection (pairs with `useJustValue`); bindable — writing it while no selection exists hydrates `value`; while one exists it stays derived from `value` |
 | itemId                 | `string`  | `value`         | Override default identifier                                    |
 | label                  | `string`  | `label`         | Override default label                                         |
 | id                     | `string`  | `null`          | id attr for input field                                        |

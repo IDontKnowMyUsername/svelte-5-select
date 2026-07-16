@@ -350,6 +350,42 @@ describe('useValue', () => {
             ]);
         });
 
+        // 7th-audit change: a post-mount justValue write used to sit dormant
+        // (the effect did not track justValue) and then hydrate `value` on the
+        // next unrelated trigger. It now applies deterministically right away.
+        it('hydrates immediately when justValue is written after mount and no value exists', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state } = createHarness({ useJustValue: true, items });
+            expect(state.value).toBeUndefined();
+
+            state.justValue = 'b';
+            flushSync();
+
+            expect(state.value).toEqual({ value: 'b', label: 'Banana' });
+        });
+
+        it('corrects a justValue write that conflicts with the current selection (value wins)', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state } = createHarness({
+                useJustValue: true,
+                items,
+                value: { value: 'a', label: 'Apple' },
+                prevValue: { value: 'a', label: 'Apple' },
+            });
+
+            state.justValue = 'b';
+            flushSync();
+
+            expect(state.value).toEqual({ value: 'a', label: 'Apple' });
+            expect(state.justValue).toBe('a');
+        });
+
         it('does not resurrect the selection when a parent clears bind:value externally', () => {
             const items = [{ value: 'a', label: 'Apple' }];
             const { state, actions } = createHarness({ useJustValue: true, justValue: 'a', items });
