@@ -29,6 +29,7 @@
 * The rendered-list surfaces are typed `SelectRow<Item>` (`Item | SelectGroupHeader`) instead of `Item[]`: `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` all see the group headers that `groupBy` synthesizes, and those headers are not your item type — with `interface Country { code: string }` they arrived typed as `Country` with no `code`. Narrow rows with the new exported `isGroupHeader` guard. Without `groupBy` no header is ever produced, but the type cannot know that statically, so the guard is a one-line narrow
 * `isStringArray` is no longer exported — an internal type guard with no consumer use case (`filter` and `normalizeItem` remain exported)
 * `FilterConfig.filterGroupedItems` is renamed `applyGrouping` — it was a near-homograph of the unrelated `groupFilter` prop (the transform builds the grouped list; the prop only reorders group keys). Only affects custom `filter` implementations that read the field
+* Node >= 22.12 is required (`engines.node`); Node 20 is EOL and is no longer tested — CI now runs Node 22 and 24
 
 ### Added
 
@@ -45,6 +46,9 @@
 
 ### Fixed
 
+* Writing `bind:focused` now moves real DOM focus: `focused = true` focuses the input, `false` blurs it and closes the list. Previously the prop changed without focusing anything, while the window keydown handler — gated only on `focused` — claimed ArrowUp/ArrowDown/Enter/Escape page-wide, with no blur event ever able to reset it. Setting `focused = true` on a disabled Select is ignored
+* An initial `filterText` prop is no longer silently wiped on mount when the Select starts unfocused (the mount-time close path applied `clearFilterTextOnBlur` before anything rendered). It now behaves like typing: the list opens filtered by the text, and with `loadOptions` the mount fetch uses it — without a duplicate "reopened stale" fetch when the list opens
+* The option under the keyboard cursor now shows a >=3:1 outline (new `--item-hover-outline` variable, default `2px solid #006fe8`; set it to `none` to opt out) — the `--item-hover-bg` background alone was a ~1.13:1 colour-only cue against the default white list (WCAG 1.4.11 Non-text Contrast)
 * With `useJustValue`, a parent clearing `bind:value` programmatically had the old selection silently resurrected from the stale `justValue` (and the UI kept showing it); an external clear now behaves like the internal one and clears `justValue` too
 * The internal clear flag (`clearState`) is now flushed and reset whenever it is set — not only when a co-occurring value change happens to carry it into the sync effect — so it can no longer stick `true` and silently block the next `justValue` hydration
 * Clicking the clear button no longer bubbles `pointerup` to the container's list toggle — the list flickered open on every clear, and stayed open permanently with a custom `handleClear`; its `mousedown` is also prevented so clearing never steals focus from the input

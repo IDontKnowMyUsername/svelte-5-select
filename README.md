@@ -34,9 +34,9 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 
 | Prop                   | Type      | Default         | Description                                                    |
 | ---------------------- | --------- | --------------- | -------------------------------------------------------------- |
-| items                  | `any[]`   | `[]`            | Array of items available to display / filter                   |
-| value                  | `any`     | `null`          | Selected value(s)                                              |
-| justValue              | `any`     | `null`          | **READ-ONLY** Selected value(s) excluding container object     |
+| items                  | `any[]`   | `null`          | Array of items available to display / filter                   |
+| value                  | `any`     | `undefined`     | Selected value(s); an emptied selection is always `undefined`  |
+| justValue              | `any`     | `undefined`     | Raw `itemId` value(s) of the selection (pairs with `useJustValue`); bindable, and setting it hydrates `value` on mount |
 | itemId                 | `string`  | `value`         | Override default identifier                                    |
 | label                  | `string`  | `label`         | Override default label                                         |
 | id                     | `string`  | `null`          | id attr for input field                                        |
@@ -51,7 +51,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | multiple               | `boolean` | `false`         | Enable multi-select                                            |
 | searchable             | `boolean` | `true`          | If `false` search/filtering is disabled; typing moves to the next matching option (type-ahead) |
 | groupHeaderSelectable  | `boolean` | `false`         | Enable selectable group headers                                |
-| focused                | `boolean` | `false`         | Controls input focus                                           |
+| focused                | `boolean` | `false`         | Input focus; set `true` to focus the input, `false` to blur it and close the list |
 | listAutoWidth          | `boolean` | `true`          | If `false` will ignore width of select                         |
 | showChevron            | `boolean` | `false`         | Show chevron                                                   |
 | inputAttributes        | `object`  | `{}`            | Pass in HTML attributes to Select's input                      |
@@ -340,7 +340,7 @@ The component is generic over your item type: values, items, snippets, and callb
 
 ## A11y (Accessibility)
 
-The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab, Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
+The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab, Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the option under the keyboard cursor shows a >=3:1 outline (`--item-hover-outline`) on top of the hover background; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
 
 Give the input an accessible name with either `ariaLabel` or an external `<label for={id}>` (set the `id` prop). In development the component logs a `console.warn` if it finds neither `ariaLabel`, an `aria-labelledby`, nor an associated `<label>` — the placeholder is only a last-resort fallback that some screen readers ignore. The warning is stripped from production builds.
 
@@ -369,6 +369,22 @@ The public API moved to idiomatic Svelte 5:
 - **Events → callback props.** `on:change={(e) => e.detail}` becomes `onchange={(value) => ...}` — handlers receive the value directly, with no `event.detail`.
 - **`export let` overrides → regular props.** Functions like `itemFilter`, `groupBy`, and the aria text builders are passed as props.
 - **CSS variables are kebab-case.** `--borderRadius` is now `--border-radius`; see [the full list](/docs/theming_variables.md).
+
+## Migrating from 1.x to 2.0
+
+Every change below is covered in detail in the [changelog](CHANGELOG.md); this is the upgrade checklist:
+
+- **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disable, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `oninput(null)` instead of `oninput([])`.
+- **Removed exports.** `useKeyboardNavigation` (with the `KeyboardNavigationContext`/`isCancelled` surface and the `SelectState`, `KeyboardNavigationState`, `KeyboardNavigationActions` types) and `isStringArray` are gone; the composables are internal.
+- **`ErrorEvent` is renamed `SelectErrorEvent`** (the old name shadowed the DOM global; it remains as a deprecated alias).
+- **Rendered-list surfaces are typed `SelectRow<Item>`.** `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` see the group headers `groupBy` synthesizes; narrow rows with the exported `isGroupHeader` guard.
+- **`SelectValue` takes a `Multiple` type parameter** (inferred from the `multiple` prop), and `onclear` receives the `Multiple`-discriminated `SelectClearValue` instead of a flat union.
+- **`loadOptions` triggers changed.** It fires on mount, on typing, on `loadOptionsDeps` changes, and on disabled toggles — never on list open/close. Pending fetches that become moot are cancelled, results are no longer re-filtered by `itemFilter`, and only deps-driven reloads clear a stale value.
+- **`selectionSnippet` is `Snippet<[Item, number?]>`** — always a single item, also in multiple mode.
+- **`FilterConfig.filterGroupedItems` is renamed `applyGrouping`** (only affects custom `filter` implementations).
+- **Markup and a11y changes.** The multi-select remove control is a real `<button>` in the tab order; grouped options are wrapped in `role="group"` regions named by their headers; the input no longer defaults its `aria-label` to the placeholder (name it with `ariaLabel` or an external `<label for>`).
+- **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus, and an initial `filterText` is kept on mount (it used to be silently cleared) — it opens the list and drives the mount `loadOptions` fetch.
+- **Node >= 22.12 is required.**
 
 ## CSS custom properties (variables)
 
