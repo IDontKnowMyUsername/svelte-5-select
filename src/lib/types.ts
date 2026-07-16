@@ -330,8 +330,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     /**
      * Values that `loadOptions` depends on (e.g. a parent select's value). When any of
      * them changes, options are re-fetched immediately (no debounce) and the current
-     * selection is validated against the result — a value the new options no longer
-     * offer is cleared. Typing-driven loads never invalidate the selection this way.
+     * selection is validated against the result: entries a non-empty result no longer
+     * offers are dropped (the whole value clears to `undefined` only when nothing
+     * survives). An empty result is treated as no evidence and never clears — a search
+     * endpoint returns nothing for the retained (usually empty) filter text regardless
+     * of the selection. Typing-driven loads never invalidate the selection this way.
      */
     loadOptionsDeps?: unknown[];
 

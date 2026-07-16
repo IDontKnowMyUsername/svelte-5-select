@@ -179,10 +179,10 @@ describe('useLoadOptions', () => {
         expect(writes.justValue).toEqual([undefined]);
     });
 
-    // Multiple mode empties to `undefined` like every other clear path, not to `[]`:
-    // the clear button already wrote `undefined` in multiple mode, so `[]` was only
-    // ever a second empty representation consumers had to also handle
-    it('clears a multiple value when any entry is missing from a dependency-driven load', async () => {
+    // 7th-audit change: validation drops only what a reload proves stale.
+    // Entries the reload still offers survive; previously one missing entry
+    // wiped the entire multiple selection.
+    it('drops only the stale entries of a multiple value on a dependency-driven load', async () => {
         const { writes, handleLoadOptions } = createHarness({
             multiple: true,
             useJustValue: true,
@@ -196,11 +196,38 @@ describe('useLoadOptions', () => {
         handleLoadOptions('', { validateValue: true });
         await flush();
 
+        // justValue is not written here: it re-derives from the value write
+        expect(writes.value).toEqual([[{ value: 'a', label: 'A' }]]);
+        expect(writes.justValue).toBeUndefined();
+    });
+
+    // Multiple mode empties to `undefined` like every other clear path, not to `[]`:
+    // the clear button already wrote `undefined` in multiple mode, so `[]` was only
+    // ever a second empty representation consumers had to also handle
+    it('clears a multiple value when no entry survives a dependency-driven load', async () => {
+        const { writes, handleLoadOptions } = createHarness({
+            multiple: true,
+            useJustValue: true,
+            value: [
+                { value: 'gone', label: 'Gone' },
+                { value: 'also-gone', label: 'Also gone' },
+            ],
+            loadOptions: () => Promise.resolve([{ value: 'a', label: 'A' }]),
+        });
+
+        handleLoadOptions('', { validateValue: true });
+        await flush();
+
         expect(writes.value).toEqual([undefined]);
         expect(writes.justValue).toEqual([undefined]);
     });
 
-    it('clears the value when a dependency-driven load resolves with an empty list', async () => {
+    // 7th-audit change: an empty reload result is no evidence the value is
+    // invalid — the reload queries with the retained (usually empty) filter
+    // text, and a search endpoint returns [] for an empty query regardless of
+    // the selection. Previously every deps change against such an endpoint
+    // wiped a valid selection.
+    it('keeps the value when a dependency-driven load resolves with an empty list', async () => {
         const { writes, handleLoadOptions } = createHarness({
             value: { value: 'a', label: 'A' },
             loadOptions: () => Promise.resolve([]),
@@ -209,7 +236,7 @@ describe('useLoadOptions', () => {
         handleLoadOptions('', { validateValue: true });
         await flush();
 
-        expect(writes.value).toEqual([undefined]);
+        expect(writes.value).toBeUndefined();
     });
 
     it('keeps a value missing from a filter-driven load (no validateValue)', async () => {

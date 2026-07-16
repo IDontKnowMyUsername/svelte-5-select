@@ -3,7 +3,11 @@ import type { ItemLike, LoadOptionsActions, SelectItem, SelectState } from './ty
 import { convertStringItemsToObjects, getItemProperty } from './utils';
 
 export interface HandleLoadOptionsOptions {
-    /** Clear the selection when it is missing from the loaded items (dependency-driven reloads). */
+    /**
+     * Validate the selection against the loaded items (dependency-driven reloads):
+     * entries missing from a non-empty result are dropped; an empty result is no
+     * evidence and never clears.
+     */
     validateValue?: boolean;
     /** Defer the fetch through the debounce action (typing); defaults to the legacy prevFilterText comparison. */
     debounce?: boolean;
@@ -81,6 +85,17 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                 const { value, multiple, itemId, useJustValue } = state;
                 if (!value) return;
 
+                // An empty (or null) result is no evidence about validity: the
+                // reload queries with the retained filter text (usually '' after
+                // a selection), and a search endpoint returns nothing for an
+                // empty query regardless of the selection. Only a non-empty
+                // result can prove an entry stale, so only it may clear.
+                if (!loaded || loaded.length === 0) return;
+
+                const idOf = (entry: SelectItem | string) =>
+                    typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
+                const existsInLoaded = (v: SelectItem | string) => loaded.some((item) => idOf(item) === idOf(v));
+
                 // One empty representation, matching every other clear path (the
                 // clear button, the last tag removed, a multi->single transition):
                 // `undefined` in both modes, never `null` or `[]`.
@@ -89,18 +104,16 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     if (useJustValue) state.justValue = undefined;
                 };
 
-                if (loaded && loaded.length > 0) {
-                    const idOf = (entry: SelectItem | string) =>
-                        typeof entry === 'string' ? entry : getItemProperty(entry, itemId);
-                    const valueExists = multiple
-                        ? Array.isArray(value) &&
-                          (value as (SelectItem | string)[]).every((v) => loaded.some((item) => idOf(item) === idOf(v)))
-                        : loaded.some((item) => idOf(item) === idOf(value as SelectItem | string));
-
-                    if (!valueExists) {
+                if (multiple && Array.isArray(value)) {
+                    // Drop only provably stale entries; entries the reload still
+                    // offers survive (justValue re-derives from the value write)
+                    const survivors = (value as (Item | string)[]).filter(existsInLoaded);
+                    if (survivors.length === 0) {
                         clearInvalidatedValue();
+                    } else if (survivors.length !== value.length) {
+                        state.value = survivors as Item[] | string[];
                     }
-                } else {
+                } else if (!existsInLoaded(value as SelectItem | string)) {
                     clearInvalidatedValue();
                 }
             };
