@@ -60,6 +60,7 @@ Override the following CSS custom properties (variables) to style svelte-5-selec
 - `--item-height`
 - `--item-hover-bg`
 - `--item-hover-color`
+- `--item-hover-outline`
 - `--item-is-active-bg`
 - `--item-is-active-color`
 - `--item-is-not-selectable-color`

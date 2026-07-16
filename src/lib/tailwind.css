@@ -111,6 +111,10 @@
 
 .item.hover:not(.active) {
     @apply bg-blue-100;
+    /* The background alone is a colour-only cue for the keyboard cursor
+       (WCAG 1.4.11) — blue-600 is >=3:1 on white and on blue-100 */
+    outline: 2px solid #2563eb;
+    outline-offset: -2px;
 }
 
 .multi input {

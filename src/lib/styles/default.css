@@ -328,6 +328,12 @@ input:focus {
 .item.hover:not(.active) {
     background: var(--item-hover-bg, #e7f2ff);
     color: var(--item-hover-color, inherit);
+    /* The background alone is ~1.13:1 against the default #fff list — a
+       colour-only cue for the keyboard cursor (WCAG 1.4.11 Non-text Contrast).
+       #006fe8 is 4.5:1 on #fff and ~4.1:1 on the hover background; set
+       --item-hover-outline to `none` to opt out. */
+    outline: var(--item-hover-outline, 2px solid #006fe8);
+    outline-offset: -2px;
 }
 
 .item.not-selectable,
@@ -336,6 +342,8 @@ input:focus {
 .item.not-selectable:active {
     color: var(--item-is-not-selectable-color, #999);
     background: transparent;
+    /* Not actionable, so it must not show the keyboard-cursor outline either */
+    outline: none;
 }
 
 .required {
