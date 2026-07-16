@@ -11,8 +11,8 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // Exactly the shape synthesized below: an id-as-label item with no other keys
     function isSynthesizedFallback(entry: Item): boolean {
         const id = getItemProperty(entry, state.itemId);
-        if (id == null || id !== (entry as SelectItem).label) return false;
-        return Object.keys(entry).every((key) => key === state.itemId || key === 'label');
+        if (id == null || id !== getItemProperty(entry, state.label)) return false;
+        return Object.keys(entry).every((key) => key === state.itemId || key === state.label);
     }
 
     // Comparisons here must be structural: Svelte's state proxies mean an item
@@ -28,11 +28,13 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // synthesized fallback (label = id) so the control can render before items
     // load; an earlier fallback upgrades to the real item once it exists.
     function resolveEntry(entry: Item | string): Item {
-        const { itemId } = state;
+        const { itemId, label } = state;
         if (typeof entry === 'string') {
             // The synthesized fallback is deliberately not a real Item — it only
-            // carries enough shape to render until the matching item exists
-            return findItemByValue(entry) || ({ [itemId]: entry, label: entry } as unknown as Item);
+            // carries enough shape to render until the matching item exists. It
+            // must be keyed with the configured `label`, not a literal 'label':
+            // the selection display reads `normalizedValue[label]`
+            return findItemByValue(entry) || ({ [itemId]: entry, [label]: entry } as unknown as Item);
         }
         if (isSynthesizedFallback(entry)) {
             const found = findItemByValue(getItemProperty(entry, itemId));

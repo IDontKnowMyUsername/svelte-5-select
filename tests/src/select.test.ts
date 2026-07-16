@@ -6081,6 +6081,16 @@ describe('Select Component', () => {
             expect(oninput).not.toHaveBeenCalled();
         });
 
+        // 7th-audit pin: the raw-string value fallback hardcoded a 'label' key,
+        // so with a custom `label` prop the selection rendered blank (and the
+        // live region announced "Option , selected.") until items resolved.
+        it('renders a raw-string value under a custom label prop before items resolve', async () => {
+            render(Select, { props: { itemId: 'id', label: 'name', items: null, value: 'abc' } });
+            await tick();
+
+            expect(document.querySelector('.selected-item')?.textContent?.trim()).toBe('abc');
+        });
+
         // 7th-audit pin: a parent mutating its bound value array in place
         // (value.push) rendered the new tag but never fired oninput and left
         // justValue stale — the effects tracked only the array reference and

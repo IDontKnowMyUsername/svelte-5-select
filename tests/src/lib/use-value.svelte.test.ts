@@ -100,6 +100,36 @@ describe('useValue', () => {
             expect(state.value).toEqual({ value: 'a', label: 'Apple', calories: 50 });
         });
 
+        // 7th-audit pin: the fallback hardcoded a literal 'label' key, but the
+        // selection display reads normalizedValue[label] — with a custom label
+        // prop the rendered selection was blank until items resolved.
+        it('keys the synthesized fallback with the configured itemId and label', () => {
+            const { state } = createHarness({
+                itemId: 'id',
+                label: 'name',
+                items: null,
+                value: 'abc',
+                prevValue: 'abc',
+            });
+
+            expect(state.value).toEqual({ id: 'abc', name: 'abc' });
+        });
+
+        it('upgrades a custom-keyed fallback to the real item when items arrive', () => {
+            const { state } = createHarness({
+                itemId: 'id',
+                label: 'name',
+                items: null,
+                value: 'abc',
+                prevValue: 'abc',
+            });
+
+            state.items = [{ id: 'abc', name: 'Alphabet', extra: 1 }] as SelectItem[];
+            flushSync();
+
+            expect(state.value).toEqual({ id: 'abc', name: 'Alphabet', extra: 1 });
+        });
+
         it('resolves every entry of a raw string array in multiple mode', () => {
             const items = [
                 { value: 'a', label: 'Apple' },
