@@ -28,8 +28,21 @@ async function expectNoViolations() {
     const results = await axe.run(document.body, {
         runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa', 'wcag22aa'] },
     });
-    const violations = results.violations.map(
-        (v) => `${v.id} (${v.impact}): ${v.help} → ${v.nodes.map((n) => n.target.join(' ')).join(' | ')}`,
+    // Verbose on purpose: CI-only failures must be diagnosable from the log
+    // alone, so include axe's failure summary plus the rendered state of each
+    // flagged element (class list and computed colors).
+    const violations = results.violations.map((v) =>
+        [
+            `${v.id} (${v.impact}): ${v.help}`,
+            ...v.nodes.map((n) => {
+                const el = document.querySelector(n.target.join(' '));
+                const rendered =
+                    el instanceof HTMLElement
+                        ? ` [class="${el.className}" color=${getComputedStyle(el).color} bg=${getComputedStyle(el).backgroundColor}]`
+                        : '';
+                return `  ${n.target.join(' ')}${rendered}: ${n.failureSummary?.replace(/\n\s*/g, ' ')}`;
+            }),
+        ].join('\n'),
     );
     expect(violations).toEqual([]);
 }
