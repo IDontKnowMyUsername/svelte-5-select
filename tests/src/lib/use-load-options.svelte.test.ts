@@ -412,6 +412,49 @@ describe('useLoadOptions', () => {
         expect(actions.onloaded).not.toHaveBeenCalled();
     });
 
+    // 7th-audit pin: the armed closure captured the loader at arm time, so a
+    // prop swapped during the debounce wait ran the OLD fetcher and attributed
+    // its response to the new prop.
+    it('runs the loader that is current at fire time, not the one captured when armed', async () => {
+        const oldLoader = vi.fn(() => Promise.resolve([{ value: 'old', label: 'Old' }]));
+        const newLoader = vi.fn(() => Promise.resolve([{ value: 'new', label: 'New' }]));
+        const { state, writes, actions, handleLoadOptions } = createHarness({ loadOptions: oldLoader });
+
+        let armed!: () => void;
+        actions.debounce.mockImplementationOnce((fn: () => void) => {
+            armed = fn;
+        });
+
+        handleLoadOptions('ne', { debounce: true });
+        // The prop is swapped while the debounce is still pending
+        (state as MockState).loadOptions = newLoader;
+        armed();
+        await flush();
+
+        expect(oldLoader).not.toHaveBeenCalled();
+        expect(newLoader).toHaveBeenCalledWith('ne');
+        expect(writes.items).toEqual([[{ value: 'new', label: 'New' }]]);
+    });
+
+    it('fetches nothing and resets loading when the loader is removed during the debounce wait', async () => {
+        const oldLoader = vi.fn(() => Promise.resolve([{ value: 'old', label: 'Old' }]));
+        const { state, writes, actions, handleLoadOptions } = createHarness({ loadOptions: oldLoader });
+
+        let armed!: () => void;
+        actions.debounce.mockImplementationOnce((fn: () => void) => {
+            armed = fn;
+        });
+
+        handleLoadOptions('ne', { debounce: true });
+        (state as MockState).loadOptions = undefined;
+        armed();
+        await flush();
+
+        expect(oldLoader).not.toHaveBeenCalled();
+        expect(state.loading).toBe(false);
+        expect(writes.items).toBeUndefined();
+    });
+
     it('a disabled call invalidates the load already in flight', async () => {
         let resolveLoad!: (items: SelectItem[]) => void;
         const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));

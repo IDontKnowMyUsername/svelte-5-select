@@ -121,8 +121,18 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             const executeLoad = async () => {
                 // Cancelled or superseded while waiting in the debounce queue: never fetch
                 if (token !== requestSequence) return;
+                // Re-read the loader at fire time: the prop can be swapped (or
+                // removed) during the debounce wait, and the closure captured at
+                // arm time would run the old fetcher and attribute its response
+                // to the new prop
+                const load = state.loadOptions;
+                if (!load) {
+                    liveLoadFilterText = undefined;
+                    state.loading = false;
+                    return;
+                }
                 try {
-                    const result = await loadOptions(currentFilterText);
+                    const result = await load(currentFilterText);
                     if (token !== requestSequence) {
                         // Superseded by a newer request: the response must not land, but a
                         // dependency reload's validation verdict still applies to the deps

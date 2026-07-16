@@ -445,6 +445,26 @@ describe('useValue', () => {
             expect(actions.onchange).not.toHaveBeenCalled();
             expect(actions.onselect).not.toHaveBeenCalled();
         });
+
+        // 7th-audit pin: the filterText wipe ran before the no-op guard, so with
+        // filterSelectedItems={false} a re-click that selected nothing still
+        // cleared what the user had typed
+        it('keeps the typed filter text on a no-op re-selection', () => {
+            const { state, actions, manager } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                closeListOnChange: false,
+                filterText: 'app',
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+
+            manager.itemSelected({ value: 'a', label: 'Apple' });
+            flushSync();
+
+            expect(state.filterText).toBe('app');
+            expect(actions.closeList).not.toHaveBeenCalled();
+        });
     });
 
     describe('handleMultiItemClear', () => {

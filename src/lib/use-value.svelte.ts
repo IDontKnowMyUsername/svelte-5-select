@@ -239,7 +239,6 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         if (!selection) return;
         const { multiple, value, closeListOnChange, itemId } = state;
 
-        state.filterText = '';
         const item = { ...selection } as Item;
 
         if (item.groupHeader && !item.selectable) return;
@@ -249,7 +248,9 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         // onchange fired synchronously with a duplicate array ([a, a]) before a
         // later effect deduped state.value — leaving onchange disagreeing with the
         // (correctly suppressed) oninput. Single mode already no-ops the same way
-        // in handleItemClick / handleEnterKey.
+        // in handleItemClick / handleEnterKey. The no-op runs before the
+        // filterText wipe below: with filterSelectedItems={false} a re-click
+        // selects nothing and must not clear what the user typed.
         if (multiple && Array.isArray(value)) {
             const selectedId = getItemProperty(item, itemId);
             const alreadySelected = (value as (Item | string)[]).some(
@@ -262,6 +263,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             }
         }
 
+        state.filterText = '';
         state.value = multiple ? (value ? (value as Item[]).concat([item]) : [item]) : item;
 
         if (closeListOnChange) actions.closeList();
