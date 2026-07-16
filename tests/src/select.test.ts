@@ -25,12 +25,11 @@ import type { SelectItem, SelectValue } from '$lib/types';
 import { tick } from 'svelte';
 import userEvent from '@testing-library/user-event';
 
+// The render result's `component` is the component's EXPORTS only under
+// Svelte 5 — assigning props on it (component.value = ...) is a silent no-op.
+// Drive props through rerender() or a bind: harness fixture instead.
 type SelectInstance = {
-    focused?: boolean;
-    value?: any;
-    filterText?: string;
-    listOpen?: boolean;
-    reset?: () => void;
+    reset: () => void;
 };
 
 async function querySelectorClick(selector: string): Promise<void> {
@@ -199,6 +198,54 @@ describe('Select Component', () => {
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             expect(document.activeElement).not.toBe(selectInput);
             expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
+        });
+
+        it('releases focus and keyboard control when disabled while focused', async () => {
+            render(FocusedBindTest, { props: { items, focused: true } });
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(document.activeElement).toBe(selectInput);
+
+            (document.querySelector('[data-testid="set-disabled"]') as HTMLElement).click();
+            await tick();
+            await tick();
+
+            // a control disabled while it held focus used to stay fully
+            // keyboard-operable: ArrowDown reopened the list and Enter selected
+            expect(document.activeElement).not.toBe(selectInput);
+            expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
+
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard('Enter');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
+
+        it('does not focus on mount when disabled, even with focused: true', async () => {
+            render(Select, { props: { items, disabled: true, focused: true } });
+            await tick();
+            await tick();
+
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(document.activeElement).not.toBe(selectInput);
+            expect(document.querySelector('.svelte-select.focused')).toBeFalsy();
+
+            await handleKeyboard('ArrowDown');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('forwards focus from the hidden required fallback to the input', async () => {
+            render(Select, { props: { items, required: true } });
+            const fallback = document.querySelector('select.required') as HTMLSelectElement;
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+
+            // constraint validation focuses the first invalid control — the
+            // invisible aria-hidden fallback; it must hand focus straight over
+            fallback.focus();
+            await tick();
+
+            expect(document.activeElement).toBe(selectInput);
         });
     });
 
@@ -784,13 +831,19 @@ describe('Select Component', () => {
     });
 
     describe('Filter text', () => {
-        it('keeps an initial filterText on mount and opens the list filtered by it', async () => {
+        it('keeps an initial filterText on mount without opening the list or stealing focus', async () => {
             render(Select, { props: { items, filterText: 'Pi' } });
             await tick();
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             // an initial filterText used to be wiped by the mount-time close/clear path
             expect(selectInput.value).toBe('Pi');
+            // applied passively: no auto-opened list, no focus grab on page load
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.activeElement).not.toBe(selectInput);
+
+            await querySelectorClick('.svelte-select');
+            await tick();
 
             const listItems = document.querySelectorAll('.svelte-select-list .item');
             expect(listItems.length).toBe(1);
@@ -804,15 +857,20 @@ describe('Select Component', () => {
             render(Select, { props: { loadOptions, filterText: 'pi' } });
 
             await vi.waitFor(() => {
-                expect(document.querySelectorAll('.svelte-select-list .item').length).toBe(1);
+                expect(loadOptions).toHaveBeenCalledTimes(1);
             });
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             expect(selectInput.value).toBe('pi');
-            // the mount fetch used the preserved text, and the list opening at mount
-            // must not fire a duplicate "reopened stale" fetch for the same text
-            expect(loadOptions).toHaveBeenCalledTimes(1);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
             expect(loadOptions).toHaveBeenCalledWith('pi');
+
+            // opening shows the already-fetched results without a second fetch
+            await querySelectorClick('.svelte-select');
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.svelte-select-list .item').length).toBe(1);
+            });
+            expect(loadOptions).toHaveBeenCalledTimes(1);
         });
 
         it('hides selected item while typing', async () => {
@@ -885,20 +943,15 @@ describe('Select Component', () => {
             expect(selectInput.placeholder).toBe('Please select');
         });
 
-        it('populates while Select is focused and typing', () => {
-            render(Select, {
-                props: {
-                    items,
-                    focused: true,
-                },
-            });
+        it('ignores window keydown while the Select is not focused', async () => {
+            render(Select, { props: { items } });
 
-            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
-            input.blur();
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'e' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 's' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 't' }));
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard('Enter');
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.selected-item')).toBeFalsy();
         });
 
         it('filters list', async () => {
@@ -952,41 +1005,36 @@ describe('Select Component', () => {
         it('opens list when typing in filter', async () => {
             const user = userEvent.setup();
 
-            const { component } = render(Select, {
-                props: {
-                    items,
-                    focused: true,
-                },
-            }) as { component: SelectInstance };
+            render(Select, { props: { items, focused: true } });
             await tick();
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.click(selectInput);
+            // Close the click-toggled list so typing is what reopens it
+            await user.keyboard('{Escape}');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
 
-            component.filterText = '5';
+            await user.keyboard('p');
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(selectInput.value).toBe('p');
         });
 
-        it('highlights first item while filtering', async () => {
+        it('highlights first matching item while filtering', async () => {
             const user = userEvent.setup();
 
-            const { component } = render(Select, {
-                props: {
-                    items,
-                    focused: true,
-                },
-            }) as { component: SelectInstance };
+            render(Select, { props: { items, focused: true } });
             await tick();
 
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.click(selectInput);
-
-            component.filterText = 'I';
+            await user.keyboard('I');
             await tick();
 
-            expect(document.querySelector('.list-item .hover')).toBeTruthy();
+            // 'I' substring-matches Pizza, Chips, Ice Cream; hover sits on the first
+            const hovered = document.querySelector('.svelte-select-list .item.hover') as HTMLElement;
+            expect(hovered.textContent!.trim()).toBe('Pizza');
         });
     });
 
@@ -1085,6 +1133,9 @@ describe('Select Component', () => {
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
             await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(document.querySelector('.selected-item')).toBeTruthy();
         });
 
         it('state controls list visibility', async () => {
@@ -1915,12 +1966,12 @@ describe('Select Component', () => {
         });
 
         it.skip('Select height increases when items wrap', async () => {
-            const { component } = render(Select, {
+            const { rerender } = render(Select, {
                 props: {
                     multiple: true,
                     items,
                 },
-            }) as { component: SelectInstance };
+            });
 
             const container = document.querySelector('.svelte-select') as HTMLElement;
             container.style.maxWidth = '200px';
@@ -1928,10 +1979,12 @@ describe('Select Component', () => {
             const container1 = document.querySelector('.svelte-select') as HTMLElement;
             expect(container1.scrollHeight).toBe(40);
 
-            component.value = [
-                { value: 'chocolate', label: 'Chocolate' },
-                { value: 'pizza', label: 'Pizza' },
-            ];
+            await rerender({
+                value: [
+                    { value: 'chocolate', label: 'Chocolate' },
+                    { value: 'pizza', label: 'Pizza' },
+                ],
+            });
             await tick();
 
             const container2 = document.querySelector('.svelte-select') as HTMLElement;
@@ -2993,7 +3046,7 @@ describe('Select Component', () => {
         it('checks value[itemId] changed before firing input event', async () => {
             let inputFired: boolean = false;
 
-            const { component } = render(Select, {
+            const { rerender } = render(Select, {
                 props: {
                     items,
                     value: { value: 'cake', label: 'Cake' },
@@ -3001,10 +3054,9 @@ describe('Select Component', () => {
                         inputFired = true;
                     },
                 },
-            }) as { component: SelectInstance };
+            });
 
-            component.value = { value: 'cake', label: 'Cake' };
-            await tick();
+            await rerender({ value: { value: 'cake', label: 'Cake' } });
             expect(inputFired).toBeFalsy();
         });
 
@@ -4817,13 +4869,17 @@ describe('Select Component', () => {
 
         await tick();
 
-        // Click on the second item (Pizza)
+        // Chocolate is already selected and hidden from the list
+        // (filterSelectedItems), so the rendered rows are Pizza and Cake
         const listItems = container.querySelectorAll('.list-item');
         (listItems[1] as HTMLElement).click();
 
         await tick();
 
-        // This should have triggered updateValueDisplay with the array value
+        const multiItems = container.querySelectorAll('.multi-item');
+        expect(multiItems.length).toBe(2);
+        expect(multiItems[0].textContent).toContain('Chocolate');
+        expect(multiItems[1].textContent).toContain('Cake');
     });
 
     it('uses justValue to populate value on mount', async () => {
@@ -5809,7 +5865,7 @@ describe('Select Component', () => {
             // Verify value is rendered
             expect(document.querySelector('.selected-item')).toBeTruthy();
 
-            component.reset?.();
+            component.reset();
             await tick();
 
             // Value should be cleared - no selected item
@@ -5832,7 +5888,7 @@ describe('Select Component', () => {
             // Verify multi items are rendered
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
 
-            component.reset?.();
+            component.reset();
             await tick();
 
             // Multi items should be cleared
@@ -5857,7 +5913,7 @@ describe('Select Component', () => {
             expect(input.value).toBe('choc');
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
-            component.reset?.();
+            component.reset();
             await tick();
 
             expect(input.value).toBe('');
@@ -5878,7 +5934,7 @@ describe('Select Component', () => {
                 },
             }) as { component: SelectInstance };
 
-            component.reset?.();
+            component.reset();
             await tick();
 
             expect(changeFn).not.toHaveBeenCalled();
@@ -5898,7 +5954,7 @@ describe('Select Component', () => {
             await tick();
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
-            component.reset?.();
+            component.reset();
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
