@@ -702,11 +702,13 @@
     });
 
     // The listbox needs its own accessible name (ARIA 1.2): `ariaLabel` covers
-    // one recommended naming path, but the other — `id` + external `<label for>`
-    // — names only the input; label association does not cascade to the floating
-    // list. Resolve the associated label when the list opens: reference it via
-    // aria-labelledby when it has an id (live text), otherwise snapshot its text
-    // into aria-label. The consumer's label element is never mutated.
+    // one recommended naming path, but the others — `id` + external `<label for>`
+    // or an `aria-labelledby` supplied through `inputAttributes` — name only the
+    // input; neither cascades to the floating list. Resolve a name when the list
+    // opens, in the same precedence the input uses: explicit ariaLabel, then the
+    // input's own aria-labelledby (forwarded), then the associated label —
+    // referenced via aria-labelledby when it is external and has an id (live
+    // text), otherwise a text snapshot. The consumer's label is never mutated.
     let listboxLabelledby = $state<string | undefined>();
     let listboxLabelText = $state<string | undefined>();
     $effect(() => {
@@ -716,12 +718,31 @@
             listboxLabelledby = undefined;
             listboxLabelText = undefined;
             if (!listOpen || ariaLabel || !input) return;
+            const inputLabelledby = input.getAttribute('aria-labelledby');
+            if (inputLabelledby) {
+                listboxLabelledby = inputLabelledby;
+                return;
+            }
             const labelEl = input.labels?.[0];
             if (!labelEl) return;
-            if (labelEl.id) {
+            // An implicit wrapping <label> contains the component itself, so
+            // both aria-labelledby and a plain textContent snapshot would pull
+            // in everything rendered inside (chips, options, live regions).
+            // Snapshot only the label's own text — the nodes outside this
+            // component's subtree.
+            const wrapsComponent = container ? labelEl.contains(container) : false;
+            if (!wrapsComponent && labelEl.id) {
                 listboxLabelledby = labelEl.id;
-            } else {
+            } else if (!wrapsComponent) {
                 listboxLabelText = labelEl.textContent?.trim() || undefined;
+            } else {
+                let text = '';
+                for (const node of labelEl.childNodes) {
+                    if (node === container || (node instanceof Element && container && node.contains(container)))
+                        continue;
+                    text += node.textContent ?? '';
+                }
+                listboxLabelText = text.trim() || undefined;
             }
         });
     });
@@ -863,6 +884,11 @@
             filterText = '';
         }
         listOpen = false;
+        // Reset Tab's commit-intent synchronously, not only in the listOpen
+        // effect below: a consumer callback that reopens the list in the same
+        // flush would otherwise carry stale intent into the reopened list (the
+        // effect would run once and only ever observe listOpen === true)
+        selectState.userNavigatedSinceOpen = false;
         // A load armed by typing must not fire (spinner + stale items) on a closed list;
         // reads through the effect miss this when clearFilterTextOnBlur is false
         loadOptionsManager.cancelPendingFilterLoad();
@@ -918,6 +944,12 @@
         listOpen = true;
         selectState.prevFilterText = filterText;
         filterText = target.value;
+        // Typing this session is commit-intent for Tab (see handleTabKey).
+        // Marked here — on the real input event — rather than gating on the
+        // current filterText, so a consumer-seeded initial value or text
+        // retained across a close (clearFilterTextOnBlur={false}) can't arm a
+        // commit the user never expressed.
+        selectState.userNavigatedSinceOpen = true;
     }
 
     export function reset(): void {
@@ -967,6 +999,13 @@
             style={listStyle}
             onscroll={hoverManager.handleListScroll}
             onscrollend={hoverManager.handleListScrollEnd}
+            onmousemove={() => {
+                // Real pointer movement over the open list is commit-intent for
+                // Tab (see handleTabKey). mousemove — not mouseover — because
+                // browsers synthesize mouseover when the list renders under a
+                // stationary cursor, which is zero user action.
+                selectState.userNavigatedSinceOpen = true;
+            }}
             onpointerup={(ev) => {
                 if (ev.pointerType === 'mouse') ev.preventDefault();
                 ev.stopPropagation();

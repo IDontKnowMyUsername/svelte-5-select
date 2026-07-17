@@ -216,11 +216,14 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         // Committing also requires expressed intent: the cursor auto-parks on an
         // option the moment the list opens, so a bare open-then-Tab (click the
         // control, decide against picking, tab away) must close without
-        // selecting. Moving the cursor (keys or mouse) or typing filter text is
-        // that intent.
+        // selecting. Intent is navigating (keys, or real pointer movement over
+        // the list), type-ahead, or typing — all of which set the flag at their
+        // event sites. Deliberately NOT the current filterText: a seeded initial
+        // value or text retained across a close (clearFilterTextOnBlur={false})
+        // is not something the user typed this open.
         if (
             e.shiftKey || // Tabbing backwards leaves the field; it must never commit
-            (!state.userNavigatedSinceOpen && state.filterText.length === 0) ||
+            !state.userNavigatedSinceOpen ||
             filteredItems.length === 0 ||
             areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)
         ) {

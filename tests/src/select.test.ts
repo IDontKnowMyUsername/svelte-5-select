@@ -17,6 +17,7 @@ import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import LabelForTest from './LabelForTest.svelte';
+import WrappingLabelTest from './WrappingLabelTest.svelte';
 import FocusedBindTest from './FocusedBindTest.svelte';
 import InPlaceValuePushTest from './InPlaceValuePushTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
@@ -661,16 +662,130 @@ describe('Select Component', () => {
             });
             await tick();
 
-            // Hovering an option with the pointer is the same commit-intent as
-            // arrowing to it
+            // Pointing at an option is commit-intent — but intent comes from
+            // real pointer movement (mousemove), while mouseover alone moves
+            // only the visual cursor (browsers synthesize it for content
+            // appearing under a stationary pointer)
             const secondItem = document.querySelectorAll('.list-item')[1] as HTMLElement;
             secondItem.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            secondItem.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
             await tick();
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
             await tick();
 
             expect(selected && selected.label).toBe('Pizza');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('a synthetic mouseover without pointer movement is not Tab commit-intent', async () => {
+            // Browsers fire mouseover when the list renders under a stationary
+            // cursor — zero user action. The hover highlight may move, but Tab
+            // must not commit off it.
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            const secondItem = document.querySelectorAll('.list-item')[1] as HTMLElement;
+            secondItem.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            await tick();
+            // The visual cursor followed the synthetic hover...
+            expect(document.querySelector('.list-item .hover')!.textContent!.trim()).toBe('Pizza');
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+
+            // ...but Tab closed without selecting
+            expect(selected).toBeUndefined();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('typing this session arms Tab-commit; a seeded filterText does not', async () => {
+            const user = userEvent.setup();
+            let selected: any;
+            const { unmount } = render(Select, {
+                props: {
+                    focused: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // Real typing narrows the list and expresses intent: single-press
+            // Tab-commit on the top match is the documented behavior
+            const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
+            await user.type(input, 'pi');
+            await tick();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+            expect(selected && selected.label).toBe('Pizza');
+
+            unmount();
+            selected = undefined;
+
+            // A consumer-seeded filterText is not something the user typed this
+            // open — a bare Tab must close without committing the top match
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    filterText: 'pi',
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+            expect(selected).toBeUndefined();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('filter text retained across a close does not re-arm Tab on the next open', async () => {
+            const user = userEvent.setup();
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    clearFilterTextOnBlur: false,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // Type (intent), close without committing: the text survives the
+            // close (clearFilterTextOnBlur={false}) but the intent must not
+            const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
+            await user.type(input, 'pi');
+            await handleKeyboard('Escape');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            await querySelectorClick('.svelte-select');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+
+            expect(selected).toBeUndefined();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
@@ -2582,9 +2697,11 @@ describe('Select Component', () => {
             expect(document.querySelectorAll('.multi-item').length).toBe(1);
             const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
             expect(document.activeElement).toBe(input);
-            // The focus gate is open, so the selection region announces the remaining tag
+            // The focus gate is open, so the selection region announces the
+            // remaining selection — pinned by content, not mere non-emptiness
             const region = document.querySelector('.a11y-selection') as HTMLElement;
-            expect(region.textContent!.trim()).not.toBe('');
+            expect(region.textContent).toContain('Pizza');
+            expect(region.textContent).not.toContain('Chips');
         });
 
         it('always shows placeholder when placeholderAlwaysShow is true', async () => {
@@ -3904,6 +4021,9 @@ describe('Select Component', () => {
                 },
             });
 
+            // ArrowDown expresses commit-intent, so this Tab reaches the
+            // selectable guard rather than exiting via the no-intent arm
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }));
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
             await tick();
 
@@ -4355,6 +4475,37 @@ describe('Select Component', () => {
 
                 const list = document.querySelector('.svelte-select-list');
                 expect(list!.getAttribute('aria-label')).toBe('Food');
+                expect(list!.getAttribute('aria-labelledby')).toBeNull();
+            });
+
+            // 11th audit: the dev warning endorses inputAttributes
+            // aria-labelledby as a naming path, so the listbox must follow it too
+            it('forwards an aria-labelledby supplied via inputAttributes', async () => {
+                render(Select, {
+                    props: {
+                        items,
+                        listOpen: true,
+                        inputAttributes: { 'aria-labelledby': 'external-name' },
+                    },
+                });
+                await tick();
+                await tick();
+
+                const list = document.querySelector('.svelte-select-list');
+                expect(list!.getAttribute('aria-labelledby')).toBe('external-name');
+                expect(list!.getAttribute('aria-label')).toBeNull();
+            });
+
+            // 11th audit: an implicit wrapping <label> contains the component, so
+            // a naive textContent snapshot (or aria-labelledby to it) would name
+            // the listbox with every chip and option it renders
+            it('names from a wrapping label using only the text outside the component', async () => {
+                render(WrappingLabelTest);
+                await tick();
+                await tick();
+
+                const list = document.querySelector('.svelte-select-list');
+                expect(list!.getAttribute('aria-label')).toBe('Favourite food');
                 expect(list!.getAttribute('aria-labelledby')).toBeNull();
             });
         });

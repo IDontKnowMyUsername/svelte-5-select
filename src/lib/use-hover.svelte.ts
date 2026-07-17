@@ -96,9 +96,10 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
     function handleHover(i: number): void {
         if (state.isScrolling) return;
         state.hoverItemIndex = i;
-        // Pointing at an option is the same commit-intent for Tab as arrowing
-        // to it (see handleTabKey)
-        state.userNavigatedSinceOpen = true;
+        // Deliberately NOT commit-intent for Tab: browsers synthesize mouseover
+        // when the list renders under a stationary cursor, so hover alone can
+        // happen with zero user action. Intent comes from real pointer movement
+        // over the open list (the list's mousemove handler in Select.svelte).
     }
 
     let scrollEndFallback: ReturnType<typeof setTimeout> | undefined;

@@ -178,12 +178,14 @@ export interface SelectState<Item extends ItemLike = SelectItem> {
      */
     suppressValueHoverSnap: boolean;
     /**
-     * Whether the user has deliberately moved the option cursor (arrow/Home/End/
-     * Page keys, type-ahead, or mouse hover) since the list last opened. Tab only
-     * commits the hovered option when this is set or filter text was typed — the
-     * cursor auto-parks on an option the moment the list opens, and a bare
-     * open-then-Tab must close without selecting. Reset whenever the list closes.
-     * Deliberately non-reactive scratch, like the prev* fields.
+     * Whether the user has expressed commit-intent since the list last opened:
+     * moved the option cursor (arrow/Home/End/Page keys, type-ahead), typed in
+     * the input, or moved the pointer over the open list (mousemove, not
+     * mouseover — browsers synthesize mouseover for content appearing under a
+     * stationary cursor). Tab only commits the hovered option when this is set —
+     * the cursor auto-parks on an option the moment the list opens, and a bare
+     * open-then-Tab must close without selecting. Reset whenever the list
+     * closes. Deliberately non-reactive scratch, like the prev* fields.
      */
     userNavigatedSinceOpen: boolean;
 }
@@ -308,7 +310,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     focused?: boolean;
     /** Applies the error styling and sets `aria-invalid`. Pair with `ariaErrorMessage`. */
     hasError?: boolean;
-    /** Renders nothing instead of the "No options" row when the list is empty. */
+    /** Renders nothing instead of the "No options" row when the list is empty. Also suppresses a supplied `emptySnippet`. */
     hideEmptyState?: boolean;
     /** The input's `id`, for an external `<label for>`. Also seeds every internal id; one is generated if unset. */
     id?: string | null;
@@ -478,7 +480,9 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     // Naming: `onValueChange`/`onSelectionChange` are state-change callbacks named
     // in the headless-library convention — deliberately NOT DOM-event names. Their
     // lowercase siblings are either literal DOM passthroughs (`onblur`/`onfocus`)
-    // or component events with no DOM namesake.
+    // or component events (`onselect` does share a name with the DOM `select`
+    // event — text selection in inputs — but fires on option pick; its JSDoc
+    // disambiguates, and the collision is fringe enough not to rename).
     onblur?: (e: FocusEvent) => void;
     /** Clear-all receives the full removed value; removing one tag receives that single entry. */
     onclear?: (value: SelectClearValue<Item, Multiple>) => void;
@@ -525,16 +529,27 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     onValueChange?: (value: SelectValue<Item, Multiple>) => void;
 
     // Snippet props
+    /** Replaces the chevron icon; the boolean is `listOpen`, so the icon can flip while open. Rendered only with `showChevron`. */
     chevronIconSnippet?: Snippet<[boolean]>;
+    /** Replaces the icon inside the clear-all button (the button itself, its `ariaClearSelectLabel`, and its behavior stay). */
     clearIconSnippet?: Snippet;
+    /** Replaces the "No options" row of an open, empty list. Suppressed entirely by `hideEmptyState`. */
     emptySnippet?: Snippet;
+    /**
+     * Replaces the hidden input(s) used for native form submission; receives the
+     * current value. Overriding takes charge of serialization — render your own
+     * `<input type="hidden" name={...}>` (the default submits JSON-stringified
+     * items, or bare ids with `useJustValue`).
+     */
     inputHiddenSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
     /**
      * Renders one row of the list. Also renders synthesized group headers when
      * `groupBy` is set — narrow with `isGroupHeader`.
      */
     itemSnippet?: Snippet<[SelectRow<Item>, number]>;
+    /** Rendered inside the list after the options — e.g. a "load more" row or footer. */
     listAppendSnippet?: Snippet;
+    /** Rendered inside the list before the options — e.g. a sticky header. */
     listPrependSnippet?: Snippet;
     /**
      * Replaces the entire list body. Rows include any synthesized group headers —
@@ -545,9 +560,17 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * `role="option"` to keep the combobox navigable by screen readers.
      */
     listSnippet?: Snippet<[SelectRow<Item>[]]>;
+    /** Replaces the spinner shown while `loading` is true (or a `loadOptions` fetch is in flight). */
     loadingIconSnippet?: Snippet;
+    /** Replaces the icon inside each tag's remove button in multiple mode (the button and its `ariaRemoveItemLabel` stay). */
     multiClearIconSnippet?: Snippet;
+    /** Rendered inside the control before the selection and input — e.g. a search icon. */
     prependSnippet?: Snippet;
+    /**
+     * Replaces the hidden native `<select required>` fallback that blocks form
+     * submission while `required` and empty; receives the current value. An
+     * override owns the constraint-validation behavior.
+     */
     requiredSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
     /** Receives one item at a time: the value in single mode, each tag in multiple mode. */
     selectionSnippet?: Snippet<[Item, number?]>;

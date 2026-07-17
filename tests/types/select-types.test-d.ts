@@ -7,6 +7,7 @@
  * that genuinely errors or svelte-check fails with "unused @ts-expect-error".
  */
 import type {
+    FilterConfig,
     ItemLike,
     JustValue,
     SelectItem,
@@ -139,6 +140,38 @@ const _inferred17b = _inferProps({
     groupBy: _wrongGroupBy17,
 });
 type _17b = Expect<Equal<typeof _inferred17b, Country>>;
+
+// 18. The other NoInfer-guarded config callbacks are pinned too (11th audit:
+//     only `groupBy` was pinned, so dropping `NoInfer` from these would have
+//     passed the type suite). Loose-but-compatible consts must not hijack...
+const _looseItemFilter18 = (label: string, filterText: string, option: { name?: string }) => !!option.name;
+const _looseHeader18 = (groupValue: string, _item: { name?: string }) => ({ value: groupValue, label: groupValue });
+const _inferred18 = _inferProps({
+    items: _countries17,
+    itemFilter: _looseItemFilter18,
+    createGroupHeaderItem: _looseHeader18,
+});
+type _18 = Expect<Equal<typeof _inferred18, Country>>;
+
+// ...and an incompatible one errors on itself, leaving `Item` unharmed.
+const _wrongItemFilter18 = (label: string, filterText: string, option: { population: number }) => option.population > 0;
+const _inferred18b = _inferProps({
+    items: _countries17,
+    // @ts-expect-error the incompatible callback itself errors, not `items`
+    itemFilter: _wrongItemFilter18,
+});
+type _18b = Expect<Equal<typeof _inferred18b, Country>>;
+
+// 19. `filter` (guarded via `FilterConfig<NoInfer<Item>>`): a filter const
+//     annotated for a different item shape can no longer flip `Item`; the
+//     error lands on `filter` itself.
+const _looseFilter19 = (config: FilterConfig<{ name?: string }>) => config.applyGrouping([]);
+const _inferred19 = _inferProps({
+    items: _countries17,
+    // @ts-expect-error the mismatched filter errors on itself, not `items`
+    filter: _looseFilter19,
+});
+type _19 = Expect<Equal<typeof _inferred19, Country>>;
 
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.

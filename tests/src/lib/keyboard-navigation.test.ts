@@ -132,6 +132,10 @@ describe('useKeyboardNavigation', () => {
             focused: true,
             value: { value: 'a', label: 'A' },
             hoverItemIndex: 0,
+            // Intent expressed, so this test exercises the value-equality arm —
+            // without it the new no-intent arm exits first and the equality
+            // guard would be dead code to the suite (11th audit)
+            userNavigatedSinceOpen: true,
         });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
@@ -189,9 +193,11 @@ describe('useKeyboardNavigation', () => {
         expect(event.preventDefault).not.toHaveBeenCalled();
     });
 
-    it('Tab commits on typed filter text even without cursor movement', () => {
-        // Typing narrows the list to what the user asked for; single-press
-        // Tab-commit on the top match is the documented behavior.
+    it('filter text alone does not pass the Tab gate — intent is marked at the typing event, not read from state', () => {
+        // A seeded initial filterText (or text retained across a close with
+        // clearFilterTextOnBlur={false}) is not something the user typed this
+        // open: the component marks intent in its input handler, so at this
+        // level present-but-untyped text must NOT commit.
         const { state, actions } = createMock({
             listOpen: true,
             focused: true,
@@ -207,7 +213,7 @@ describe('useKeyboardNavigation', () => {
 
         handleKeyDown(event);
 
-        expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[0]);
+        expect(actions.handleSelect).not.toHaveBeenCalled();
         expect(actions.closeList).toHaveBeenCalled();
     });
 
