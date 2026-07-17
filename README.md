@@ -298,7 +298,7 @@ The `filter` prop replaces the entire filtering pipeline — override it at your
 | createGroupHeaderItem | `(groupValue: string, item) => SelectItem`        | Build the header item for a group. Defaults to `{ value: groupValue, label: groupValue }`.  |
 | debounce              | `(fn: () => void, wait: number) => void`          | Debounce strategy for `loadOptions`. Defaults to a `setTimeout` of `debounceWait` ms.       |
 | handleClear           | `(e?: MouseEvent) => void`                        | Runs when the clear indicator is clicked. Defaults to clearing `value` and refocusing.      |
-| filter                | `(config: FilterConfig) => SelectItem[]`          | Replaces the entire filtering pipeline. Defaults to the built-in `filter`. Override at your own risk. |
+| filter                | `(config: FilterConfig<Item>) => (Item \| SelectItem)[]` | Replaces the entire filtering pipeline. Defaults to the built-in `filter`. Override at your own risk. |
 
 ### Instance methods
 
