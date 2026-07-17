@@ -49,6 +49,9 @@
 
 ### Fixed
 
+* A replacement single value supplied together with a multiple→single flip survives: the transition wipe keyed on truthiness and cleared the deliberate new selection along with the stale array shape it was meant to remove
+* Mounting with `multiple` and a bare (non-array) item no longer dispatches a spurious `oninput([item])` — the mount wrap is shape normalization, not a selection change, and the dispatch baseline now follows it
+* A bare (non-array) value written while `multiple` stays on is wrapped into an array like it is at mount, instead of silently rendering no chip and deriving a scalar `justValue`
 * Moving a multiple-mode `value` between its two empty representations (`undefined`/`null` and `[]`) no longer dispatches a spurious `oninput([])` — both are the same no-selection state; a real clear (tags → empty) still reports `[]`
 * A seeded `justValue` is no longer clobbered when the initial `value` is an empty array: the sync derived `[]` from the not-yet-hydrated `value={[]}` and overwrote the very `justValue` hydration needed — permanently when items arrived late, leaving the selection unresolvable
 * `JustValue` includes `undefined`: every clear path writes `justValue = undefined` (the one empty representation, mirroring `value`), but the named union omitted it — a strict consumer binding `bind:justValue` to a `JustValue`-typed variable had the annotation violated at runtime on every clear, and `=== null` empty checks missed. The type now tells the truth; read an emptied `justValue` as falsy

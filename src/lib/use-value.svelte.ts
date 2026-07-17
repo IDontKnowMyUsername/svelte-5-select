@@ -50,6 +50,15 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         const { value, multiple } = state;
         if (value == null) return;
 
+        // A bare (non-array) value written while multiple is on gets the same
+        // wrap setupMulti gives it on the mode transition — mount supported the
+        // shape, so post-mount writes must too. The write re-runs this effect,
+        // which then resolves the entries below.
+        if (multiple && !Array.isArray(value)) {
+            state.value = [value] as Item[] | string[];
+            return;
+        }
+
         if (multiple && Array.isArray(value)) {
             if (value.length === 0) return;
             const resolved = (value as (Item | string)[]).map(resolveEntry);
@@ -218,13 +227,19 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     }
 
     function setupMulti() {
-        const { value } = state;
+        const { value, prevValue } = state;
         if (value) {
             if (Array.isArray(value)) {
                 state.value = [...value] as Item[] | string[];
             } else {
                 // A raw string value stays a string here; normalizeValue resolves it to an item
                 state.value = [value] as Item[] | string[];
+            }
+            // Wrapping is shape normalization, not a selection change: mirror it
+            // on the dispatch baseline, so a mount seeded with a bare item (or a
+            // single->multi flip) does not register as a change and fire oninput
+            if (prevValue && !Array.isArray(prevValue)) {
+                state.prevValue = [prevValue] as Item[] | string[];
             }
         }
     }
@@ -306,7 +321,10 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             if (state.multiple !== wasMultiple) {
                 if (state.multiple) {
                     setupMulti();
-                } else if (wasMultiple && state.value) {
+                } else if (wasMultiple && Array.isArray(state.value)) {
+                    // Only the old (array-shaped) value is wiped: a replacement
+                    // single value supplied together with the multiple flip is a
+                    // deliberate new selection and must survive.
                     // `undefined`, not `null`: an emptied value is `undefined`
                     // everywhere else (clear button, last tag removed, a deps
                     // reload invalidating the selection), and one empty

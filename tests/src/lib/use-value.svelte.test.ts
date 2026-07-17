@@ -342,6 +342,55 @@ describe('useValue', () => {
 
             expect(state.value).toEqual([{ value: 'a', label: 'Apple' }]);
         });
+
+        // 9th-audit pin: the multiple->single wipe keyed on truthiness, so a
+        // replacement single value supplied together with the flip was wiped too.
+        it('keeps a replacement single value supplied with a multiple->single flip', () => {
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+
+            state.multiple = false;
+            state.value = { value: 'b', label: 'Banana' };
+            flushSync();
+
+            expect(state.value).toEqual({ value: 'b', label: 'Banana' });
+            expect(actions.oninput).toHaveBeenCalledWith({ value: 'b', label: 'Banana' });
+        });
+
+        // 9th-audit pin: mount with `multiple` and a bare (non-array) item
+        // dispatched a spurious oninput([item]) — the wrap registered as an
+        // array-shape change against the bare-seeded prevValue.
+        it('mounting multiple with a bare item wraps it without dispatching oninput', () => {
+            const item = { value: 'a', label: 'Apple' };
+            // prevMultiple stays undefined: the mount transition runs setupMulti
+            const { state, actions } = createHarness({ multiple: true, value: item, prevValue: item });
+
+            expect(state.value).toEqual([item]);
+            expect(actions.oninput).not.toHaveBeenCalled();
+        });
+
+        // 9th-audit pin: a bare value written while multiple stayed on was never
+        // wrapped (setupMulti only runs on a mode transition), leaving a
+        // non-array value that rendered no chip and derived a scalar justValue.
+        it('wraps a bare value written while multiple stays on and dispatches it', () => {
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+
+            state.value = { value: 'b', label: 'Banana' };
+            flushSync();
+
+            expect(state.value).toEqual([{ value: 'b', label: 'Banana' }]);
+            expect(actions.oninput).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
+        });
     });
 
     describe('justValue sync effect', () => {
