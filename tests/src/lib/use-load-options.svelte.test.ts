@@ -397,6 +397,100 @@ describe('useLoadOptions', () => {
         expect(actions.onloaded).toHaveBeenCalledTimes(1);
     });
 
+    // 8th-audit pin: cancelPendingFilterLoad used the global invalidation, so a
+    // filter load armed on top of an in-flight deps reload took the reload down
+    // with it when cancelled — items and validation verdict both discarded,
+    // leaving stale options and an unvalidated stale selection with no re-fetch
+    // path. The cancel must hand authority back to the deps reload instead.
+    it('a cancelled filter load hands authority back to the in-flight deps reload (8th audit)', async () => {
+        const resolvers: Array<(items: SelectItem[]) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
+        const { state, writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({
+            loadOptions,
+            value: { value: 'stale-city', label: 'Stale City' },
+        });
+
+        // Country changed: deps reload A is in flight and must validate the city
+        handleLoadOptions('', { debounce: false, validateValue: true });
+
+        // User types within the debounce window: filter load B is armed on top
+        let armed: (() => void) | undefined;
+        actions.debounce.mockImplementation((fn: () => void) => {
+            armed = fn;
+        });
+        handleLoadOptions('x', { debounce: true });
+
+        // User closes the list before the debounce fires: B is cancelled
+        cancelPendingFilterLoad();
+        armed?.(); // the debounce timer fires anyway
+        await flush();
+        expect(loadOptions).toHaveBeenCalledTimes(1); // B never fetched
+
+        // A resolves: its items land and its verdict clears the stale selection
+        resolvers[0]([{ value: 'new-city', label: 'New City' }]);
+        await flush();
+
+        expect(writes.items).toEqual([[{ value: 'new-city', label: 'New City' }]]);
+        expect(writes.value).toEqual([undefined]);
+        expect(actions.onloaded).toHaveBeenCalledTimes(1);
+        // The cancel must not drop the loading flag while A is still pending
+        expect(writes.loading).toEqual([true, true, false]);
+        expect(state.loading).toBe(false);
+    });
+
+    it('a restored deps reload that errors still reports and clears loading', async () => {
+        const rejecters: Array<(err: Error) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((_r, reject) => rejecters.push(reject)));
+        const { state, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({ loadOptions });
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+
+        handleLoadOptions('', { debounce: false, validateValue: true });
+        actions.debounce.mockImplementation(() => {});
+        handleLoadOptions('x', { debounce: true });
+        cancelPendingFilterLoad();
+
+        rejecters[0](new Error('country service down'));
+        await flush();
+
+        expect(actions.onerror).toHaveBeenCalledTimes(1);
+        expect(state.loading).toBe(false);
+        expect(state.items).toBeNull();
+    });
+
+    it('a new load after the cancel supersedes the restored deps reload but keeps its verdict', async () => {
+        const resolvers: Array<(items: SelectItem[]) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
+        const { writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({
+            loadOptions,
+            value: { value: 'stale-city', label: 'Stale City' },
+        });
+
+        handleLoadOptions('', { debounce: false, validateValue: true }); // deps reload A
+        let armed: (() => void) | undefined;
+        actions.debounce.mockImplementation((fn: () => void) => {
+            armed = fn;
+        });
+        handleLoadOptions('x', { debounce: true }); // filter load B
+        cancelPendingFilterLoad(); // B cancelled, A restored
+
+        handleLoadOptions('y', { debounce: true }); // filter load C
+        armed?.();
+        await flush();
+        expect(loadOptions).toHaveBeenCalledTimes(2); // A and C fetched, B never did
+
+        // A resolves after C armed: C owns the items, but A's validation
+        // verdict still applies to the deps change (existing supersede channel)
+        resolvers[0]([{ value: 'new-city', label: 'New City' }]);
+        await flush();
+        expect(writes.items).toBeUndefined();
+        expect(writes.value).toEqual([undefined]);
+
+        resolvers[1]([{ value: 'y-match', label: 'Y Match' }]);
+        await flush();
+        expect(writes.items).toEqual([[{ value: 'y-match', label: 'Y Match' }]]);
+        expect(actions.onloaded).toHaveBeenCalledTimes(1);
+    });
+
     it('invalidateLoads discards an in-flight response', async () => {
         let resolveLoad!: (items: SelectItem[]) => void;
         const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => (resolveLoad = r)));

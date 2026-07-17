@@ -38,6 +38,18 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     // an initial filterText opens the list after the mount fetch is armed, and
     // that open must not fire a duplicate fetch.
     let liveLoadFilterText: string | undefined = undefined;
+    // Token of the newest validating (dependency-driven) load while it is
+    // unsettled; 0 otherwise. If a filter load that superseded it is cancelled,
+    // the deps reload is the most relevant request again and must get its full
+    // authority back — see restoredToken.
+    let liveValidatingToken = 0;
+    // A load allowed to land in full despite no longer being the newest request:
+    // cancelPendingFilterLoad hands currency back to the in-flight deps reload
+    // the cancelled load superseded. Without this, closing the list during a
+    // deps reload discarded both the reload's items and its validation verdict,
+    // leaving stale options and an unvalidated stale selection with no re-fetch
+    // path (the reopen-stale heuristic requires non-empty filter text).
+    let restoredToken = 0;
 
     // The filter text the currently-displayed items reflect (set when a load
     // settles). Lets a reopen tell "results are stale for the current text" from
@@ -50,14 +62,29 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     function invalidateLoads(): void {
         requestSequence++;
         latestLoadIsFilterDriven = false;
+        restoredToken = 0;
+        liveValidatingToken = 0;
     }
 
     // A filter-driven load becomes moot when the user selects an item, empties
     // the filter text, or closes the list before the debounce fires.
     function cancelPendingFilterLoad(): void {
         if (!latestLoadIsFilterDriven) return;
+        const validating = liveValidatingToken;
         invalidateLoads();
-        if (state.loading) state.loading = false;
+        if (validating !== 0) {
+            // The cancelled filter load had superseded an in-flight dependency
+            // reload. That reload is authoritative for the deps change — items
+            // and validation verdict — so restore its currency and keep the
+            // loading flag up until it settles. It stays restore-eligible so
+            // further type→cancel cycles before it settles hand back to it too;
+            // only a settle, a disable, or unmount (invalidateLoads callers)
+            // ends its authority.
+            restoredToken = validating;
+            liveValidatingToken = validating;
+        } else if (state.loading) {
+            state.loading = false;
+        }
     }
 
     function handleLoadOptions(currentFilterText: string, options: HandleLoadOptionsOptions = {}) {
@@ -76,6 +103,10 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             armedLoadValidates = validateValue;
             latestLoadIsFilterDriven = shouldDebounce;
             liveLoadFilterText = currentFilterText;
+            // A new request supersedes any restored one; a newer validating
+            // load also takes over the restore channel from an older one.
+            restoredToken = 0;
+            if (validateValue) liveValidatingToken = token;
 
             // Only a dependency-driven reload invalidates the selection: when a
             // parent select changes, a stale child value must clear. A
@@ -134,7 +165,8 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                 }
                 try {
                     const result = await load(currentFilterText);
-                    if (token !== requestSequence) {
+                    if (token === liveValidatingToken) liveValidatingToken = 0;
+                    if (token !== requestSequence && token !== restoredToken) {
                         // Superseded by a newer request: the response must not land, but a
                         // dependency reload's validation verdict still applies to the deps
                         // change — unless a newer armed load validates on its own.
@@ -143,6 +175,8 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                         }
                         return;
                     }
+                    // A restored load has settled; the channel is spent
+                    if (token === restoredToken) restoredToken = 0;
 
                     if (result && result.length > 0 && typeof result[0] === 'string') {
                         state.items = convertStringItemsToObjects(result as string[]) as Item[];
@@ -159,7 +193,11 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     state.loading = false;
                     actions.onloaded((state.items as SelectItem[]) || []);
                 } catch (err) {
-                    if (token !== requestSequence) return; // superseded; the newer request manages state
+                    // An errored load must lose restore eligibility, or a later
+                    // cancel would restore a request that can never settle
+                    if (token === liveValidatingToken) liveValidatingToken = 0;
+                    if (token !== requestSequence && token !== restoredToken) return; // superseded; the newer request manages state
+                    if (token === restoredToken) restoredToken = 0;
                     // Settled (with an error), so no longer live — a reopen may retry it
                     liveLoadFilterText = undefined;
                     console.error('loadOptions error:', err);
