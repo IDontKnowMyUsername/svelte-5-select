@@ -187,6 +187,35 @@ describe('useValue', () => {
             expect(actions.oninput).toHaveBeenCalledWith([]);
         });
 
+        // 9th-audit pin: undefined/null and [] are the same no-selection state
+        // in multiple mode — moving between them dispatched a spurious oninput([]).
+        it('does not dispatch when an empty multiple value changes representation', () => {
+            const { state, actions } = createHarness({ multiple: true, prevMultiple: true, value: [], prevValue: [] });
+            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+
+            state.value = undefined; // [] -> undefined
+            flushSync();
+            expect(actions.oninput).not.toHaveBeenCalled();
+
+            state.value = []; // undefined -> []
+            flushSync();
+            expect(actions.oninput).not.toHaveBeenCalled();
+        });
+
+        it('still reports a real clear from tags to an empty array', () => {
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+
+            state.value = [];
+            flushSync();
+
+            expect(actions.oninput).toHaveBeenCalledWith([]);
+        });
+
         it('does not re-dispatch when the value is unchanged', () => {
             const item = { value: 'a', label: 'Apple' };
             const { state, actions } = createHarness({ value: item, prevValue: item });
@@ -316,6 +345,34 @@ describe('useValue', () => {
     });
 
     describe('justValue sync effect', () => {
+        // 9th-audit pin: deriving justValue from a not-yet-hydrated `[]` value
+        // clobbered a seeded justValue with [] — permanently when items arrived
+        // late, because hydration needs the justValue that was just overwritten.
+        it('preserves a seeded justValue over an empty multiple value until hydration', () => {
+            const { state } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                useJustValue: true,
+                value: [],
+                prevValue: [],
+                justValue: ['a'],
+                items: null,
+            });
+
+            // No items yet: the seeded justValue must survive untouched
+            expect(state.justValue).toEqual(['a']);
+
+            state.items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            flushSync();
+
+            // Late items hydrate the selection from the preserved justValue
+            expect(state.value).toEqual([{ value: 'a', label: 'Apple' }]);
+            expect(state.justValue).toEqual(['a']);
+        });
+
         it('hydrates value from an initial justValue once items are present', () => {
             const items = [
                 { value: 'a', label: 'Apple' },

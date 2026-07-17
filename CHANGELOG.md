@@ -49,6 +49,8 @@
 
 ### Fixed
 
+* Moving a multiple-mode `value` between its two empty representations (`undefined`/`null` and `[]`) no longer dispatches a spurious `oninput([])` — both are the same no-selection state; a real clear (tags → empty) still reports `[]`
+* A seeded `justValue` is no longer clobbered when the initial `value` is an empty array: the sync derived `[]` from the not-yet-hydrated `value={[]}` and overwrote the very `justValue` hydration needed — permanently when items arrived late, leaving the selection unresolvable
 * `JustValue` includes `undefined`: every clear path writes `justValue = undefined` (the one empty representation, mirroring `value`), but the named union omitted it — a strict consumer binding `bind:justValue` to a `JustValue`-typed variable had the annotation violated at runtime on every clear, and `=== null` empty checks missed. The type now tells the truth; read an emptied `justValue` as falsy
 * The `exports` map gained a `default` condition on the main and `no-styles` entries: without it, every non-svelte-aware consumer — a plain node script importing the exported utilities (`filter`, `areItemsEqual`, `normalizeItem`), a test runner without the Svelte plugin, webpack/rspack without a custom `svelte` resolve condition — failed with `ERR_PACKAGE_PATH_NOT_EXPORTED` before their `.svelte` handling was ever consulted. The smoke test now resolves the package without the `svelte` condition to keep it that way
 * A disabled multi select no longer removes tags on mouse click when `multiFullItemClearable` is set: the keyboard removal path was gated on `disabled` but the click path was not, so a pointer could mutate a disabled control's value (and fire `onclear`/`oninput`)

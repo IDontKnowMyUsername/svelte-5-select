@@ -97,7 +97,11 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     ): JustValue {
         const { multiple, value, itemId, useJustValue, justValue, clearState } = snapshot;
 
-        if (useJustValue && !value && !clearState) {
+        // hasRealValue, not `!value`: an empty array is "nothing hydrated yet",
+        // and deriving [] from it would clobber a seeded justValue before
+        // hydration can resolve it (permanently, when items arrive late —
+        // hydration needs the justValue that was just overwritten)
+        if (useJustValue && !hasRealValue(multiple, value) && !clearState) {
             return justValue;
         }
 
@@ -185,11 +189,16 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     function dispatchSelectedItem() {
         const { multiple, value, prevValue, itemId } = state;
 
-        if (!value) {
-            // A cleared single select reports null: an empty array is truthy,
-            // so `if (payload)` in consumers would read "cleared" as "has value"
-            if (prevValue) actions.oninput(multiple ? [] : null);
-            state.prevValue = value;
+        // The two empty representations (undefined/null and []) are the same
+        // no-selection state: moving between them is not a change and must not
+        // dispatch. A real clear reports null in single mode — an empty array
+        // is truthy, so `if (payload)` in consumers would read "cleared" as
+        // "has value" — and [] in multiple mode.
+        const hasNoValue = !value || (Array.isArray(value) && value.length === 0);
+        if (hasNoValue) {
+            const hadNoValue = !prevValue || (Array.isArray(prevValue) && prevValue.length === 0);
+            if (!hadNoValue) actions.oninput(multiple ? [] : null);
+            state.prevValue = Array.isArray(value) ? (value.slice() as Item[] | string[]) : value;
             return;
         }
 
