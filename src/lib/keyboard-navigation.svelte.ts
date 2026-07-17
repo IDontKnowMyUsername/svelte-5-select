@@ -62,9 +62,11 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         typeAheadLastKeyTime = e.timeStamp;
         typeAheadQuery += e.key.toLowerCase();
 
+        let openedByThisKey = false;
         if (!state.listOpen) {
             state.listOpen = true;
             state.activeValue = undefined;
+            openedByThisKey = true;
         }
 
         const { filteredItems, hoverItemIndex, label } = state;
@@ -84,6 +86,12 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
             const itemLabel = String(getItemProperty(item, label) ?? '').toLowerCase();
             if (itemLabel.startsWith(query)) {
                 state.hoverItemIndex = i;
+                // Handlers run before effects flush: when this keypress also
+                // opened the list, the open-with-value hover effect would fire
+                // next and snap hover back to the selected value, clobbering
+                // the match we just parked it on. Only an open that found a
+                // match suppresses the snap — Arrow/Space opens keep it.
+                if (openedByThisKey) state.suppressValueHoverSnap = true;
                 return;
             }
         }

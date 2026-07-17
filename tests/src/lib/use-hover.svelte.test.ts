@@ -38,6 +38,7 @@ function baseState(overrides: Overrides = {}) {
         prevValue: undefined,
         prevFilterText: undefined,
         prevMultiple: undefined,
+        suppressValueHoverSnap: false,
         ...overrides,
     });
     return s;
@@ -168,6 +169,35 @@ describe('useHover', () => {
                 listOpen: true,
             });
 
+            expect(state.hoverItemIndex).toBe(2);
+        });
+
+        it('skips the value snap once when type-ahead opened the list (suppressValueHoverSnap)', () => {
+            // 8th audit: the first type-ahead keypress on a closed list parks
+            // hover on its match and opens the list in the same handler; the
+            // open-with-value effect then fired and snapped hover back to the
+            // selected value. The one-shot flag suppresses exactly that run.
+            const { state } = createHarness({
+                filteredItems: abc,
+                value: { value: 'c', label: 'C' },
+                normalizedValue: { value: 'c', label: 'C' },
+                listOpen: false,
+            });
+
+            // What handleTypeAheadKey does before effects flush
+            state.hoverItemIndex = 0; // the 'A' match
+            state.suppressValueHoverSnap = true;
+            state.listOpen = true;
+            flushSync();
+
+            expect(state.hoverItemIndex).toBe(0); // kept the type-ahead target
+            expect(state.suppressValueHoverSnap).toBe(false); // consumed
+
+            // The suppression is one-shot: the next open snaps to the value again
+            state.listOpen = false;
+            flushSync();
+            state.listOpen = true;
+            flushSync();
             expect(state.hoverItemIndex).toBe(2);
         });
 

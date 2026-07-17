@@ -1452,6 +1452,28 @@ describe('Select Component', () => {
             const hovered = document.querySelector('.list-item .hover');
             expect(hovered?.textContent?.trim()).toBe('Pizza');
         });
+
+        it('keeps the type-ahead match when the keypress itself opens a list with a value (8th audit)', async () => {
+            // The open-with-value hover effect used to fire on the listOpen
+            // transition after the handler and snap hover back to the selected
+            // value, so the first keypress looked ignored and only a repeat
+            // keypress (no transition) landed on the match.
+            render(Select, {
+                props: {
+                    items,
+                    searchable: false,
+                    focused: true,
+                    value: { value: 'chips', label: 'Chips' },
+                },
+            });
+
+            await handleKeyboard('p');
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered?.textContent?.trim()).toBe('Pizza');
+        });
     });
 
     describe('Loading', () => {

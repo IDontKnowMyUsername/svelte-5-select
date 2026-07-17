@@ -166,6 +166,14 @@ export interface SelectState<Item extends ItemLike = SelectItem> {
     prevValue: Item | Item[] | string | string[] | null | undefined;
     prevFilterText: string | undefined;
     prevMultiple: boolean | undefined;
+    /**
+     * One-shot handshake between type-ahead and the hover effects: set when a
+     * type-ahead keypress opens the list *and* parks hover on its match, so the
+     * open-with-value effect must not snap hover back to the selected value.
+     * Consumed (cleared) on the next run of that effect. Deliberately
+     * non-reactive scratch, like the prev* fields.
+     */
+    suppressValueHoverSnap: boolean;
 }
 
 /** The subset of {@link SelectState} that keyboard navigation needs; any object with these fields works. */
@@ -182,6 +190,8 @@ export interface KeyboardNavigationState<Item extends ItemLike = SelectItem> {
     readonly searchable: boolean;
     readonly focused: boolean;
     readonly disabled: boolean;
+    /** See {@link SelectState.suppressValueHoverSnap} — written by type-ahead when it opens the list. */
+    suppressValueHoverSnap: boolean;
 }
 
 export interface KeyboardNavigationActions {

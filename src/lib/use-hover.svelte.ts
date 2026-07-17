@@ -123,9 +123,15 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
 
     // Set value index as hover when list opens
     $effect(() => {
-        if (!state.multiple && state.listOpen && state.value && state.filteredItems) {
-            untrack(() => setValueIndexAsHoverIndex());
-        }
+        const shouldSnap = !state.multiple && state.listOpen && !!state.value && !!state.filteredItems;
+        untrack(() => {
+            // One-shot: a type-ahead keypress that opened the list has already
+            // parked hover on its match — snapping to the value would clobber
+            // it. Consume the flag on every run so it can never go stale.
+            const suppressed = state.suppressValueHoverSnap;
+            state.suppressValueHoverSnap = false;
+            if (shouldSnap && !suppressed) setValueIndexAsHoverIndex();
+        });
     });
 
     // Keep hover on a selectable item

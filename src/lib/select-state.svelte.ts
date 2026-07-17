@@ -7,7 +7,13 @@ import type { ItemLike, SelectItem, SelectState } from './types';
  */
 export type SelectStateProps<Item extends ItemLike = SelectItem> = Omit<
     SelectState<Item>,
-    'activeValue' | 'isScrolling' | 'clearState' | 'prevValue' | 'prevFilterText' | 'prevMultiple'
+    | 'activeValue'
+    | 'isScrolling'
+    | 'clearState'
+    | 'prevValue'
+    | 'prevFilterText'
+    | 'prevMultiple'
+    | 'suppressValueHoverSnap'
 >;
 
 /**
@@ -31,6 +37,7 @@ export function createSelectState<Item extends ItemLike = SelectItem>(
     let prevValue: SelectState<Item>['prevValue'] = props.value;
     let prevFilterText: string | undefined = props.filterText;
     let prevMultiple: boolean | undefined = undefined;
+    let suppressValueHoverSnap = false;
 
     return {
         get value() {
@@ -161,6 +168,12 @@ export function createSelectState<Item extends ItemLike = SelectItem>(
         },
         set prevMultiple(v) {
             prevMultiple = v;
+        },
+        get suppressValueHoverSnap() {
+            return suppressValueHoverSnap;
+        },
+        set suppressValueHoverSnap(v) {
+            suppressValueHoverSnap = v;
         },
     };
 }

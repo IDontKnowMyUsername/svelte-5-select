@@ -23,6 +23,7 @@ describe('useKeyboardNavigation', () => {
             searchable: true,
             focused: true,
             disabled: false,
+            suppressValueHoverSnap: false,
             ...overrides,
         };
 
