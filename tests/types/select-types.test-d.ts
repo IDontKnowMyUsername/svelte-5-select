@@ -111,6 +111,12 @@ const _norm14: Country | SelectItem | null = normalizeItem(_countryA);
 //     variable bound to `bind:justValue` was violated at runtime on clear).
 type _15 = Expect<Equal<Extract<JustValue, undefined>, undefined>>;
 
+// 16. `onloaded` rows are `Item | SelectItem`: a string-resolving loader
+//     delivers synthesized `{ value, label, index }` items, not the user's item
+//     type, so the rows must be narrowed before reading item fields.
+// @ts-expect-error a loaded option may be a synthesized SelectItem, whose fields are `unknown`
+const _onloaded16: SelectProps<Country>['onloaded'] = (opts) => opts.map((o): string => o.code);
+
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.
 // ---------------------------------------------------------------------------

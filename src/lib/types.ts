@@ -468,8 +468,14 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * those shapes appear — `bind:value` itself always empties to `undefined`.
      */
     oninput?: (value: SelectValue<Item, Multiple>) => void;
-    /** Fires with the options a `loadOptions` call resolved. */
-    onloaded?: (options: Item[]) => void;
+    /**
+     * Fires with the options a `loadOptions` call resolved. When the loader
+     * resolves raw strings, the delivered options are the synthesized
+     * `{ value, label, index }` items built from them — `SelectItem`s, not your
+     * item type — hence the widened element type. An item-resolving loader only
+     * ever delivers `Item`s.
+     */
+    onloaded?: (options: (Item | SelectItem)[]) => void;
     /**
      * Fires alongside {@link SelectProps.onchange} when the user picks an option, but
      * receives just the item selected rather than the whole value.

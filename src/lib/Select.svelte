@@ -494,7 +494,7 @@
 
     const loadOptionsManager = useLoadOptions(selectState, {
         debounce: (fn, wait) => debounce(fn, wait),
-        onloaded: (opts) => onloaded(opts as Item[]),
+        onloaded: (opts) => onloaded(opts as (Item | SelectItem)[]),
         onerror: (err) => onerror(err),
     });
 
