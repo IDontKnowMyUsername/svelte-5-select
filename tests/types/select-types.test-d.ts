@@ -8,6 +8,7 @@
  */
 import type {
     ItemLike,
+    JustValue,
     SelectItem,
     SelectValue,
     SelectValueProp,
@@ -104,6 +105,11 @@ declare const _countryA: Country;
 declare const _countryB: Country;
 const _eq14: boolean = areItemsEqual(_countryA, _countryB, 'code');
 const _norm14: Country | SelectItem | null = normalizeItem(_countryA);
+
+// 15. `JustValue` admits `undefined` — the one empty representation every clear
+//     path writes (9th audit: the union omitted it, so a `JustValue`-typed
+//     variable bound to `bind:justValue` was violated at runtime on clear).
+type _15 = Expect<Equal<Extract<JustValue, undefined>, undefined>>;
 
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.

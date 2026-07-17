@@ -94,7 +94,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             SelectState<Item>,
             'multiple' | 'value' | 'itemId' | 'useJustValue' | 'justValue' | 'clearState'
         >,
-    ): JustValue | undefined {
+    ): JustValue {
         const { multiple, value, itemId, useJustValue, justValue, clearState } = snapshot;
 
         if (useJustValue && !value && !clearState) {
@@ -108,7 +108,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         }
 
         if (!value || typeof value === 'string' || Array.isArray(value)) {
-            return value as JustValue | undefined;
+            return value as JustValue;
         }
 
         return getItemProperty(value, itemId) as JustValue;
@@ -119,9 +119,9 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // lastWrittenJustValue tells a justValue we derived ourselves (a stale echo
     // after such a clear) apart from fresh input that must hydrate.
     let lastSyncedHadValue = false;
-    let lastWrittenJustValue: JustValue | undefined;
+    let lastWrittenJustValue: JustValue;
 
-    function justValuesEqual(a: JustValue | undefined, b: JustValue | undefined): boolean {
+    function justValuesEqual(a: JustValue, b: JustValue): boolean {
         if (a === b) return true;
         // Proxied round trips break array identity; compare entries instead
         return Array.isArray(a) && Array.isArray(b) && a.length === b.length && a.every((entry, i) => entry === b[i]);
@@ -132,7 +132,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         return multiple ? Array.isArray(value) && value.length > 0 : !!value;
     }
 
-    function syncJustValue(): JustValue | undefined {
+    function syncJustValue(): JustValue {
         // Snapshot before hydration so the derivation sees the pre-hydration state
         const snapshot = {
             multiple: state.multiple,

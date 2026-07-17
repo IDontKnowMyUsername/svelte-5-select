@@ -48,6 +48,7 @@
 
 ### Fixed
 
+* `JustValue` includes `undefined`: every clear path writes `justValue = undefined` (the one empty representation, mirroring `value`), but the named union omitted it — a strict consumer binding `bind:justValue` to a `JustValue`-typed variable had the annotation violated at runtime on every clear, and `=== null` empty checks missed. The type now tells the truth; read an emptied `justValue` as falsy
 * The `exports` map gained a `default` condition on the main and `no-styles` entries: without it, every non-svelte-aware consumer — a plain node script importing the exported utilities (`filter`, `areItemsEqual`, `normalizeItem`), a test runner without the Svelte plugin, webpack/rspack without a custom `svelte` resolve condition — failed with `ERR_PACKAGE_PATH_NOT_EXPORTED` before their `.svelte` handling was ever consulted. The smoke test now resolves the package without the `svelte` condition to keep it that way
 * A disabled multi select no longer removes tags on mouse click when `multiFullItemClearable` is set: the keyboard removal path was gated on `disabled` but the click path was not, so a pointer could mutate a disabled control's value (and fire `onclear`/`oninput`)
 * The custom `filter` prop's return type is `(Item | SelectItem)[]` instead of `SelectItem[]`, so returning your own interface-typed items (no index signature) compiles — as the TypeScript docs promise. Existing filters returning `config.applyGrouping(...)` rows keep working

@@ -13,11 +13,7 @@ export function getItemProperty<T>(item: T, key: keyof T | string): T[keyof T] |
 }
 
 /** Compares two value entries by their `itemId` field, never by reference. Accepts any {@link ItemLike} item type. */
-export function areItemsEqual(
-    a: ItemLike | null | undefined,
-    b: ItemLike | null | undefined,
-    itemId: string,
-): boolean {
+export function areItemsEqual(a: ItemLike | null | undefined, b: ItemLike | null | undefined, itemId: string): boolean {
     if (!a || !b) return false;
     return getItemProperty(a, itemId) === getItemProperty(b, itemId);
 }

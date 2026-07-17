@@ -79,7 +79,13 @@ export interface FloatingConfig extends Partial<ComputePositionConfig> {
     autoUpdate?: boolean;
 }
 
-export type JustValue = string | number | string[] | number[] | null;
+/**
+ * The `justValue` shape: bare `itemId` values instead of whole items. Includes
+ * `undefined` because that is what the component writes for an emptied selection —
+ * on every clear path, mirroring `value` (see {@link SelectValueProp}). `null` and
+ * `[]` are accepted on the way in but never written back.
+ */
+export type JustValue = string | number | string[] | number[] | null | undefined;
 
 export interface SelectItem {
     value?: unknown;
@@ -135,7 +141,7 @@ export interface SelectState<Item extends ItemLike = SelectItem> {
     value: Item | Item[] | string | string[] | null | undefined;
     items: Item[] | string[] | null;
     filterText: string;
-    justValue: JustValue | undefined;
+    justValue: JustValue;
     listOpen: boolean;
     loading: boolean;
     focused: boolean;
@@ -254,6 +260,9 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * `items`, retrying when async items arrive. While a selection exists, `justValue`
      * is derived from it and a conflicting write is corrected back: write (or clear)
      * `value` to change the selection.
+     *
+     * Empty is always `undefined`: every clear path writes `undefined`, never `''`,
+     * `null`, or `[]` — read an emptied `justValue` as falsy rather than `=== null`.
      */
     justValue?: JustValue;
     /** Which field holds an item's display text. @default 'label' */
