@@ -262,32 +262,56 @@
             ? `listbox-${_id}-item-${hoverItemIndex}`
             : undefined,
     );
-    let _inputAttributes = $derived<HTMLInputAttributes>({
-        ...DEFAULT_INPUT_ATTRS,
-        role: 'combobox',
-        'aria-controls': listOpen ? `listbox-${_id}` : undefined,
-        'aria-expanded': listOpen,
-        'aria-haspopup': 'listbox',
-        'aria-activedescendant': _activeDescendantId,
-        // Only an explicit ariaLabel: a default aria-label would override an external
-        // <label for={id}> in accessible-name computation. Without either, the
-        // placeholder still names the input as the spec's last-resort fallback.
-        'aria-label': ariaLabel,
-        'aria-required': required || undefined,
-        'aria-invalid': hasError || undefined,
-        // aria-errormessage is only meaningful alongside aria-invalid="true"
-        'aria-errormessage': hasError && ariaErrorMessage ? ariaErrorMessage : undefined,
-        readonly: !searchable,
-        id: id ? id : undefined,
-        ...inputAttributes,
-        // Disabled is expressed with aria-disabled + readonly rather than the native
-        // `disabled` attribute so the current value stays in the accessibility tree
-        // and screen readers can still announce it. Spread last (after
-        // inputAttributes) so a disabled control is never left interactive or
-        // tab-reachable; interaction is blocked by the `disabled` guards in
-        // handleClick/handleFocus/handleItemClick and the disabled effect, which
-        // also force-closes a programmatically opened list.
-        ...(disabled ? { 'aria-disabled': true, readonly: true, tabindex: -1 } : {}),
+    let _inputAttributes = $derived.by<HTMLInputAttributes>(() => {
+        const attrs: HTMLInputAttributes = {
+            ...DEFAULT_INPUT_ATTRS,
+            role: 'combobox',
+            'aria-controls': listOpen ? `listbox-${_id}` : undefined,
+            'aria-expanded': listOpen,
+            'aria-haspopup': 'listbox',
+            'aria-activedescendant': _activeDescendantId,
+            // Only an explicit ariaLabel: a default aria-label would override an external
+            // <label for={id}> in accessible-name computation. Without either, the
+            // placeholder still names the input as the spec's last-resort fallback.
+            'aria-label': ariaLabel,
+            'aria-required': required || undefined,
+            'aria-invalid': hasError || undefined,
+            // aria-errormessage is only meaningful alongside aria-invalid="true"
+            'aria-errormessage': hasError && ariaErrorMessage ? ariaErrorMessage : undefined,
+            readonly: !searchable,
+            id: id ? id : undefined,
+            ...inputAttributes,
+            // Disabled is expressed with aria-disabled + readonly rather than the native
+            // `disabled` attribute so the current value stays in the accessibility tree
+            // and screen readers can still announce it. Spread last (after
+            // inputAttributes) so a disabled control is never left interactive or
+            // tab-reachable; interaction is blocked by the `disabled` guards in
+            // handleClick/handleFocus/handleItemClick and the disabled effect, which
+            // also force-closes a programmatically opened list.
+            ...(disabled ? { 'aria-disabled': true, readonly: true, tabindex: -1 } : {}),
+        };
+        // A consumer handler in inputAttributes must add to the input's own
+        // oninput/onblur/onfocus/onkeydown, not replace them: these attributes
+        // are spread after the template's handlers (later-spread-wins), which
+        // would otherwise silently disable filtering, focus handling, and
+        // keyboard navigation. Composed order: the component's handler first,
+        // then the consumer's.
+        const internalHandlers = {
+            oninput: handleInput,
+            onblur: handleBlur,
+            onfocus: handleFocus,
+            onkeydown: handleKeyDown,
+        };
+        for (const key of Object.keys(internalHandlers) as (keyof typeof internalHandlers)[]) {
+            const consumer = inputAttributes?.[key];
+            if (typeof consumer !== 'function') continue;
+            const internal = internalHandlers[key] as (e: Event) => unknown;
+            (attrs as Record<string, unknown>)[key] = (e: Event) => {
+                internal(e);
+                (consumer as (e: Event) => unknown)(e);
+            };
+        }
+        return attrs;
     });
     let prefloat = $state(true);
     let hasValue = $derived(multiple ? Array.isArray(value) && value.length > 0 : !!value);

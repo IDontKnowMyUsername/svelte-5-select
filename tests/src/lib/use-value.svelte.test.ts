@@ -529,6 +529,38 @@ describe('useValue', () => {
             expect(actions.onValueChange).toHaveBeenCalledWith(null);
         });
 
+        it('derives justValue as undefined when a parent clears bind:value with null', () => {
+            const { state } = createHarness({ useJustValue: true });
+
+            state.value = { value: 'a', label: 'Apple' };
+            flushSync();
+            expect(state.justValue).toBe('a');
+
+            // null is accepted on the way in, but the write-back must stay
+            // undefined (the JustValue contract), not echo the parent's null
+            state.value = null;
+            flushSync();
+
+            expect(state.justValue).toBeUndefined();
+        });
+
+        it('derives justValue as undefined when a parent empties a multiple value with []', () => {
+            const items = [
+                { value: 'a', label: 'Apple' },
+                { value: 'b', label: 'Banana' },
+            ];
+            const { state } = createHarness({ multiple: true, useJustValue: true, items });
+
+            state.value = [items[0]];
+            flushSync();
+            expect(state.justValue).toEqual(['a']);
+
+            state.value = [];
+            flushSync();
+
+            expect(state.justValue).toBeUndefined();
+        });
+
         it('flushes clearState even when no value change accompanies it', () => {
             const { state } = createHarness();
 

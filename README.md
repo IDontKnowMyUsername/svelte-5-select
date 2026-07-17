@@ -54,7 +54,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | focused                | `boolean` | `false`         | Input focus; set `true` to focus the input, `false` to blur it and close the list |
 | listAutoWidth          | `boolean` | `true`          | If `false` will ignore width of select                         |
 | showChevron            | `boolean` | `false`         | Show chevron                                                   |
-| inputAttributes        | `object`  | `{}`            | Pass in HTML attributes to Select's input                      |
+| inputAttributes        | `object`  | `{}`            | Pass in HTML attributes to Select's input; `on*` handlers run after the component's own, not instead of them |
 | placeholderAlwaysShow  | `boolean` | `false`         | When `multiple` placeholder text will always show              |
 | loading                | `boolean` | `false`         | Shows `loading-icon`. `loadOptions` will override this         |
 | listOffset             | `number`  | `5`             | `px` space between select and list                             |

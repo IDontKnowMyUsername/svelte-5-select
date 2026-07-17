@@ -1,5 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/svelte';
+import { userEvent } from '@vitest/browser/context';
 import { tick } from 'svelte';
 import axe from 'axe-core';
 import Select from '$lib/Select.svelte';
@@ -43,6 +44,51 @@ async function expectNoViolations(context: Element) {
         ].join('\n'),
     );
     expect(violations).toEqual([]);
+}
+
+// axe does not evaluate border contrast, so resolve a computed color (oklch in
+// Tailwind v4) to sRGB via canvas and check WCAG ratios directly.
+function resolveColor(css: string): [number, number, number] {
+    const canvas = document.createElement('canvas');
+    canvas.width = canvas.height = 1;
+    const ctx = canvas.getContext('2d')!;
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(0, 0, 1, 1);
+    ctx.fillStyle = css;
+    ctx.fillRect(0, 0, 1, 1);
+    const [r, g, b] = ctx.getImageData(0, 0, 1, 1).data;
+    return [r, g, b];
+}
+
+function contrastOnWhite([r, g, b]: [number, number, number]): number {
+    const lin = (c: number) => {
+        const s = c / 255;
+        return s <= 0.04045 ? s / 12.92 : ((s + 0.055) / 1.055) ** 2.4;
+    };
+    const luminance = 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+    return 1.05 / (luminance + 0.05);
+}
+
+// Forced-colors rendering cannot be emulated here, so pin rules structurally:
+// find a selector's rule inside an @media (forced-colors: active) block.
+function findForcedColorsRule(selector: string): CSSStyleRule | undefined {
+    for (const sheet of Array.from(document.styleSheets)) {
+        if (sheet.disabled) continue;
+        let rules: CSSRuleList;
+        try {
+            rules = sheet.cssRules;
+        } catch {
+            continue;
+        }
+        for (const rule of Array.from(rules)) {
+            if (rule instanceof CSSMediaRule && rule.conditionText.includes('forced-colors')) {
+                for (const inner of Array.from(rule.cssRules)) {
+                    if (inner instanceof CSSStyleRule && inner.selectorText === selector) return inner;
+                }
+            }
+        }
+    }
+    return undefined;
 }
 
 // The shipped Tailwind theme (src/lib/tailwind.css) targets the no-styles
@@ -140,5 +186,35 @@ describe('tailwind theme — axe scan (WCAG A/AA)', () => {
         expect(style.outlineStyle).not.toBe('none');
         expect(style.outlineWidth).not.toBe('0px');
         await expectNoViolations(container);
+    });
+
+    it('hovering keeps the container border at >=3:1 boundary contrast', async () => {
+        render(Select, { props: { items, ariaLabel: 'Food' } });
+        await settle();
+
+        const select = document.querySelector('.svelte-select') as HTMLElement;
+        await userEvent.hover(select);
+        await settle(20);
+
+        // Direct pin for the 12th-audit bug: hover:border-gray-400 *lightened*
+        // the boundary (preflight borders default to currentColor) to ~2.5:1,
+        // below the 3:1 non-text bar (WCAG 1.4.11) the default theme documents
+        // for --border-hover. Real pointer hover so :hover actually applies.
+        const border = getComputedStyle(select).borderTopColor;
+        expect(
+            contrastOnWhite(resolveColor(border)),
+            `hover border "${border}" must stay >=3:1 on the white container`,
+        ).toBeGreaterThanOrEqual(3);
+        await userEvent.unhover(select);
+    });
+
+    it('forced-colors keeps the arrow-key tag cursor distinguishable without colour', () => {
+        // Forced-colors flattens author outline colours, so the tag cursor must
+        // differ from an ordinary chip by width + style, not colour alone
+        // (12th audit); the normal-mode .multi-item.active rule is colour-only.
+        const rule = findForcedColorsRule('.multi-item.active');
+        expect(rule, 'expected a forced-colors rule for .multi-item.active').toBeTruthy();
+        expect(rule!.style.outlineStyle).toBe('dashed');
+        expect(rule!.style.outlineWidth).toBe('2px');
     });
 });

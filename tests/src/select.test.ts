@@ -709,6 +709,46 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
+        it('a completed selection consumes Tab commit-intent when the list stays open', async () => {
+            // closeListOnChange={false} keeps the list open after picking; the
+            // selected item leaves the filtered list, so the cursor re-parks on
+            // a neighbouring option. Tabbing away must close without committing
+            // that neighbour (12th audit).
+            const selections: any[] = [];
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    multiple: true,
+                    closeListOnChange: false,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selections.push(value);
+                    },
+                },
+            });
+            await tick();
+
+            // ArrowDown arms intent and moves the cursor; Enter selects but
+            // leaves the list open
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            await tick();
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            await tick();
+
+            expect(selections).toHaveLength(1);
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+
+            // Still exactly one selection — Tab closed the list without
+            // committing the option the cursor re-parked on
+            expect(selections).toHaveLength(1);
+            expect(selections[0].map((entry: any) => entry.label)).toEqual(['Pizza']);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
         it('typing this session arms Tab-commit; a seeded filterText does not', async () => {
             const user = userEvent.setup();
             let selected: any;
@@ -4275,6 +4315,49 @@ describe('Select Component', () => {
             expect(el).toBeTruthy();
             expect(el.id).toBe('testId');
             expect(el.getAttribute('autocomplete')).toBe('custom-value');
+        });
+
+        it('composes a consumer oninput with the internal handler instead of replacing it', async () => {
+            // The spread lands after the template's own handlers
+            // (later-spread-wins), so an un-composed consumer oninput would
+            // silently disable filtering and list-opening (12th audit)
+            const oninput = vi.fn();
+            render(Select, { props: { items, inputAttributes: { oninput } } });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'pizza';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            // The internal handler still ran: typing filtered and opened the list...
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(document.querySelectorAll('.list-item')).toHaveLength(1);
+            // ...and the consumer's handler was invoked too
+            expect(oninput).toHaveBeenCalledTimes(1);
+        });
+
+        it('composes a consumer onkeydown after the internal keyboard handling', async () => {
+            // The window fallback listener also closes on Escape, so "list
+            // closed" alone cannot tell composed from replaced. Ordering can:
+            // the internal handler prevents Escape's default before the
+            // consumer's composed handler runs, so the consumer must observe
+            // defaultPrevented — a replaced handler would see a pristine event.
+            let sawDefaultPrevented: boolean | undefined;
+            const onkeydown = vi.fn((e: KeyboardEvent) => {
+                sawDefaultPrevented = e.defaultPrevented;
+            });
+            render(Select, {
+                props: { items, focused: true, listOpen: true, inputAttributes: { onkeydown } },
+            });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(onkeydown).toHaveBeenCalledTimes(1);
+            expect(sawDefaultPrevented).toBe(true);
         });
     });
 

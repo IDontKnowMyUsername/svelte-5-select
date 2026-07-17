@@ -2,12 +2,16 @@
 
 .svelte-select {
     @apply border rounded box-border h-10 relative flex items-center px-4 py-0 bg-white m-0	w-full
-        hover:border-gray-400;
+        hover:border-gray-500;
+    /* gray-500 (~4.8:1 on white), not gray-400 (~2.5:1): preflight defaults the
+       border to currentColor, so a gray-400 hover *lightened* the control's
+       boundary below the 3:1 non-text bar (WCAG 1.4.11) at the moment of
+       interaction — mirrors --border-hover (#67727d) in styles/default.css. */
 }
 
 .svelte-select input {
     @apply cursor-default border-none text-gray-600 h-10 leading-10 px-4 py-0 bg-transparent text-sm absolute left-0 m-0 w-full
-        focus:outline-none hover:border-gray-400
+        focus:outline-none
         placeholder:text-gray-500 placeholder:opacity-100;
     /* Without an explicit placeholder color, Tailwind v4 preflight's 50%-alpha
        currentColor ::placeholder applies — ~2.3:1 on white, a WCAG 1.4.3
@@ -208,6 +212,15 @@
     /* The chip's focus ring is an author colour, which is flattened here */
     .multi-item:focus-visible {
         outline: 2px solid Highlight;
+    }
+
+    /* The arrow-key tag cursor (the normal-mode .multi-item.active rule above)
+       differs from an ordinary chip only by an author outline colour, which is
+       flattened here — width + style survive the forced palette, so the
+       Backspace target stays visible. */
+    .multi-item.active {
+        outline: 2px dashed Highlight;
+        outline-offset: -2px;
     }
 }
 

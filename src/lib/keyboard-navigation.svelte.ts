@@ -218,7 +218,10 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         // control, decide against picking, tab away) must close without
         // selecting. Intent is navigating (keys, or real pointer movement over
         // the list), type-ahead, or typing — all of which set the flag at their
-        // event sites. Deliberately NOT the current filterText: a seeded initial
+        // event sites — and a completed selection consumes it (see
+        // itemSelected): with closeListOnChange={false} the list stays open and
+        // the cursor re-parks on a neighbour, which tabbing away must not
+        // commit. Deliberately NOT the current filterText: a seeded initial
         // value or text retained across a close (clearFilterTextOnBlur={false})
         // is not something the user typed this open.
         if (

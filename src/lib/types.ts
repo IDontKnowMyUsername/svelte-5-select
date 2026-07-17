@@ -376,7 +376,13 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     floatingConfig?: FloatingConfig;
     /** Bindable. Index of the option under the keyboard cursor. */
     hoverItemIndex?: number;
-    /** Extra attributes for the text input. Merged over the component's own ARIA wiring, so it can override it. */
+    /**
+     * Extra attributes for the text input. Merged over the component's own ARIA
+     * wiring, so it can override it. Event handlers are the exception: an
+     * `oninput`/`onblur`/`onfocus`/`onkeydown` here composes with (runs after)
+     * the component's own handler instead of replacing it, so filtering, focus
+     * handling, and keyboard navigation keep working alongside yours.
+     */
     inputAttributes?: HTMLInputAttributes;
     /** Size the list to the container's width. @default true */
     listAutoWidth?: boolean;

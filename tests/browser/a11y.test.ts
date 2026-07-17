@@ -114,4 +114,34 @@ describe('axe scan (WCAG A/AA)', () => {
         expect(list!.getAttribute('aria-labelledby')).toBe('food-label');
         await expectNoViolations();
     });
+
+    it('forced-colors keeps the arrow-key tag cursor distinguishable without colour', () => {
+        // Every chip carries a 1px outline and .multi-item.active differs only
+        // by outline colour, which the forced palette flattens — the Backspace
+        // target vanished under Windows High Contrast (12th audit). Forced
+        // colors cannot be emulated here, so pin the rule structurally: the
+        // theme must distinguish the cursor by width + style, not colour.
+        // Substring match: default.css is @imported into Select.svelte's style
+        // block, so Svelte appends its scoping class to every selector.
+        let rule: CSSStyleRule | undefined;
+        for (const sheet of Array.from(document.styleSheets)) {
+            let rules: CSSRuleList;
+            try {
+                rules = sheet.cssRules;
+            } catch {
+                continue;
+            }
+            for (const outer of Array.from(rules)) {
+                if (outer instanceof CSSMediaRule && outer.conditionText.includes('forced-colors')) {
+                    for (const inner of Array.from(outer.cssRules)) {
+                        if (inner instanceof CSSStyleRule && inner.selectorText.includes('.multi-item.active'))
+                            rule = inner;
+                    }
+                }
+            }
+        }
+        expect(rule, 'expected a forced-colors rule for .multi-item.active').toBeTruthy();
+        expect(rule!.style.outlineStyle).toBe('dashed');
+        expect(rule!.style.outlineWidth).toBe('2px');
+    });
 });

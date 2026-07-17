@@ -413,4 +413,12 @@ input:focus {
     .multi-item:focus-visible {
         outline: 2px solid Highlight;
     }
+
+    /* Every chip carries a 1px outline and the arrow-key tag cursor differs
+       only by outline colour — flattened to the same system colour here, the
+       Backspace target vanished. Width + style survive the forced palette. */
+    .multi-item.active {
+        outline: 2px dashed Highlight;
+        outline-offset: -2px;
+    }
 }

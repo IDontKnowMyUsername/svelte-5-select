@@ -123,13 +123,19 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             return justValue;
         }
 
+        // Every remaining empty representation (undefined, null, []) derives as
+        // undefined: null and [] are accepted on the way in but never written
+        // back (the JustValue contract) — returning `value` verbatim here would
+        // leak a parent's `bind:value = null` clear into justValue.
+        if (!hasRealValue(multiple, value)) return undefined;
+
         if (multiple && Array.isArray(value)) {
             return (value as (SelectItem | string)[]).map((item) => getItemProperty(item, itemId)) as
                 | string[]
                 | number[];
         }
 
-        if (!value || typeof value === 'string' || Array.isArray(value)) {
+        if (typeof value === 'string' || Array.isArray(value)) {
             return value as JustValue;
         }
 
@@ -306,6 +312,13 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         actions.retireStaleValidation?.();
         state.filterText = '';
         state.value = multiple ? (value ? (value as Item[]).concat([item]) : [item]) : item;
+
+        // A completed selection consumes Tab's commit-intent: with
+        // closeListOnChange={false} the list stays open and (with
+        // filterSelectedItems) the cursor re-parks on a neighbouring option,
+        // which a later Tab must not commit. closeList() also resets the flag,
+        // but only when the selection actually closes the list.
+        state.userNavigatedSinceOpen = false;
 
         if (closeListOnChange) actions.closeList();
         state.activeValue = undefined;
