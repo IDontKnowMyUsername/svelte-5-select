@@ -3,6 +3,15 @@ import type { ItemLike, JustValue, SelectItem, SelectState, ValueActions } from 
 import { getItemProperty, hasValueChanged } from './utils';
 
 export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<Item>, actions: ValueActions) {
+    // Tracked-read helper for the effects' trigger sections: reading length AND
+    // every entry makes any in-place mutation of a bound array retrigger the
+    // effect — push (length change) and index assignment (value[0] = x) alike.
+    function trackArrayEntries(value: unknown): void {
+        if (!Array.isArray(value)) return;
+        value.length;
+        for (let i = 0; i < value.length; i += 1) value[i];
+    }
+
     function findItemByValue(id: unknown): Item | undefined {
         const { items, itemId } = state;
         return (items as Item[] | null)?.find((item) => getItemProperty(item, itemId) === id);
@@ -305,7 +314,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // async items arrive so fallback entries upgrade to the real item
     $effect(() => {
         const value = state.value;
-        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
+        trackArrayEntries(value); // in-place growth and entry replacement both retrigger
         state.items;
         untrack(() => normalizeValue());
     });
@@ -314,7 +323,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     $effect(() => {
         state.multiple;
         const value = state.value;
-        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
+        trackArrayEntries(value); // in-place growth and entry replacement both retrigger
         untrack(() => {
             const wasMultiple = state.prevMultiple;
             state.prevMultiple = state.multiple;
@@ -342,7 +351,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     // Dispatch oninput when value changes (selection, update, or clear)
     $effect(() => {
         const value = state.value;
-        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
+        trackArrayEntries(value); // in-place growth and entry replacement both retrigger
         untrack(() => dispatchSelectedItem());
     });
 
@@ -364,7 +373,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         state.multiple;
         state.itemId;
         const value = state.value;
-        if (Array.isArray(value)) value.length; // also track in-place growth of a bound array
+        trackArrayEntries(value); // in-place growth and entry replacement both retrigger
         state.items;
         state.clearState;
         state.justValue;

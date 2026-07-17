@@ -228,6 +228,26 @@ describe('useValue', () => {
             expect(actions.oninput).not.toHaveBeenCalled();
         });
 
+        // 9th-audit pin: the trigger reads tracked only value + value.length, so
+        // an in-place index assignment (no length change) never dispatched while
+        // push (length change) did.
+        it('dispatches oninput when a bound multi entry is replaced in place (value[0] = x)', () => {
+            const { state, actions } = createHarness({
+                multiple: true,
+                prevMultiple: true,
+                useJustValue: true,
+                value: [{ value: 'a', label: 'Apple' }],
+                prevValue: [{ value: 'a', label: 'Apple' }],
+            });
+            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+
+            (state.value as SelectItem[])[0] = { value: 'b', label: 'Banana' };
+            flushSync();
+
+            expect(actions.oninput).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
+            expect(state.justValue).toEqual(['b']);
+        });
+
         // 7th-audit pin: the dispatch/justValue effects tracked only the value
         // reference, and prevValue aliased the live array, so a consumer's
         // in-place `value.push(...)` never dispatched and left justValue stale.

@@ -22,4 +22,6 @@
 <Select multiple {items} bind:value bind:justValue {oninput} />
 
 <button data-testid="push-value" onclick={() => value.push(items[1])}>push</button>
+<!-- 9th audit: index assignment changes no length, so it needs entry tracking -->
+<button data-testid="assign-value" onclick={() => (value[0] = items[1])}>assign</button>
 <div data-testid="just-value">{JSON.stringify(justValue)}</div>

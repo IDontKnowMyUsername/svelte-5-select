@@ -49,6 +49,7 @@
 
 ### Fixed
 
+* Replacing an entry of a bound `value` array in place (`value[0] = x`) now registers like `value.push` already did: the tag re-renders either way, but `oninput` never fired and `justValue` went stale because the effects tracked only the array reference and its length — they now track the entries too
 * A replacement single value supplied together with a multiple→single flip survives: the transition wipe keyed on truthiness and cleared the deliberate new selection along with the stale array shape it was meant to remove
 * Mounting with `multiple` and a bare (non-array) item no longer dispatches a spurious `oninput([item])` — the mount wrap is shape normalization, not a selection change, and the dispatch baseline now follows it
 * A bare (non-array) value written while `multiple` stays on is wrapped into an array like it is at mount, instead of silently rendering no chip and deriving a scalar `justValue`

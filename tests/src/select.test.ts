@@ -6287,6 +6287,26 @@ describe('Select Component', () => {
             );
         });
 
+        // 9th-audit pin: index assignment (value[0] = x) changes no length, so
+        // the length-only trigger reads missed it while value.push registered.
+        it('registers a parent value[0] assignment: tag updates, oninput fires, justValue updates', async () => {
+            const oninput = vi.fn();
+            render(InPlaceValuePushTest, { props: { oninput } });
+            await tick();
+            oninput.mockClear();
+
+            (document.querySelector('[data-testid="assign-value"]') as HTMLButtonElement).click();
+            await tick();
+            await tick();
+
+            const tags = document.querySelectorAll('.multi-item');
+            expect(tags.length).toBe(1);
+            expect(tags[0].textContent).toContain('Pizza');
+            expect(oninput).toHaveBeenCalledTimes(1);
+            expect(oninput).toHaveBeenCalledWith([expect.objectContaining({ value: 'pizza' })]);
+            expect(document.querySelector('[data-testid="just-value"]')?.textContent).toBe(JSON.stringify(['pizza']));
+        });
+
         it('collapses the value to null when multiple flips from true to false', async () => {
             const oninput = vi.fn();
             const { rerender } = render(Select, {
