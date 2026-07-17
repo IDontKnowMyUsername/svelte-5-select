@@ -263,6 +263,10 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             }
         }
 
+        // A committed selection retires a pending deps-reload verdict when the
+        // displayed results it was picked from are fresher than that reload —
+        // otherwise the reload's late response wipes this selection
+        actions.retireStaleValidation?.();
         state.filterText = '';
         state.value = multiple ? (value ? (value as Item[]).concat([item]) : [item]) : item;
 

@@ -482,6 +482,8 @@
     // Initialize composables (creation order is effect order: value, hover, load options)
     const valueManager = useValue(selectState, {
         closeList,
+        // Deferred: loadOptionsManager is created a few lines below
+        retireStaleValidation: () => loadOptionsManager.retireValidationForFreshSelection(),
         oninput: (v) => oninput?.(v as unknown as SelectValue<Item, Multiple>),
         onchange: (v) => onchange?.(v as unknown as SelectValue<Item, Multiple>),
         onclear: (v) => onclear(v as unknown as SelectClearValue<Item, Multiple>),

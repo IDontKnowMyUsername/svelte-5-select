@@ -50,6 +50,11 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     // leaving stale options and an unvalidated stale selection with no re-fetch
     // path (the reopen-stale heuristic requires non-empty filter text).
     let restoredToken = 0;
+    // Token of the newest load whose response fully landed (items written).
+    // Lets a user selection tell whether the options it was picked from are
+    // fresher than a still-pending validating reload — see
+    // retireValidationForFreshSelection.
+    let lastLandedToken = 0;
 
     // The filter text the currently-displayed items reflect (set when a load
     // settles). Lets a reopen tell "results are stale for the current text" from
@@ -85,6 +90,21 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         } else if (state.loading) {
             state.loading = false;
         }
+    }
+
+    // A user selection picked from results FRESHER than a still-pending
+    // validating (dependency-driven) reload retires that reload's authority:
+    // its late verdict would judge the new selection against results fetched
+    // for the pre-selection filter text and wipe a choice the user made from
+    // post-deps-change options. A selection made from results OLDER than the
+    // reload (a stale pick while it is still in flight) keeps the verdict —
+    // validating exactly that pick is the reload's job.
+    function retireValidationForFreshSelection(): void {
+        if (liveValidatingToken === 0 || lastLandedToken < liveValidatingToken) return;
+        // The retired reload may also own the restore channel (a cancel handed
+        // currency back to it); spend that too so its items cannot land either
+        if (restoredToken === liveValidatingToken) restoredToken = 0;
+        liveValidatingToken = 0;
     }
 
     function handleLoadOptions(currentFilterText: string, options: HandleLoadOptionsOptions = {}) {
@@ -165,12 +185,17 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                 }
                 try {
                     const result = await load(currentFilterText);
-                    if (token === liveValidatingToken) liveValidatingToken = 0;
+                    // Captured before clearing: a reload retired by a fresh user
+                    // selection (retireValidationForFreshSelection) is no longer
+                    // live-validating and must not deliver its verdict below
+                    const wasLiveValidating = token === liveValidatingToken;
+                    if (wasLiveValidating) liveValidatingToken = 0;
                     if (token !== requestSequence && token !== restoredToken) {
                         // Superseded by a newer request: the response must not land, but a
                         // dependency reload's validation verdict still applies to the deps
-                        // change — unless a newer armed load validates on its own.
-                        if (validateValue && armedToken === requestSequence && !armedLoadValidates) {
+                        // change — unless a newer armed load validates on its own, or a
+                        // fresh user selection retired the verdict.
+                        if (validateValue && wasLiveValidating && armedToken === requestSequence && !armedLoadValidates) {
                             validateValueAgainstLoaded(result ?? null);
                         }
                         return;
@@ -187,6 +212,7 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     // the same text won't refetch
                     loadedFilterText = currentFilterText;
                     liveLoadFilterText = undefined;
+                    lastLandedToken = token;
 
                     if (validateValue) validateValueAgainstLoaded(state.items);
 
@@ -320,6 +346,7 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     return {
         handleLoadOptions,
         cancelPendingFilterLoad,
+        retireValidationForFreshSelection,
         invalidateLoads,
     };
 }

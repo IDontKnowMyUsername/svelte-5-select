@@ -203,6 +203,12 @@ export interface KeyboardNavigationActions {
 
 export interface ValueActions {
     closeList: () => void;
+    /**
+     * Retire a pending dependency-reload's validation verdict when the selection
+     * being committed was picked from fresher results (see useLoadOptions).
+     * Optional: standalone useValue has no async loading to retire.
+     */
+    retireStaleValidation?: () => void;
     oninput: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
     onchange: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
     onclear: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;

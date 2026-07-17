@@ -89,6 +89,7 @@ function createHarness(overrides: Partial<MockState> = {}) {
         actions,
         handleLoadOptions: manager.handleLoadOptions,
         cancelPendingFilterLoad: manager.cancelPendingFilterLoad,
+        retireValidationForFreshSelection: manager.retireValidationForFreshSelection,
         invalidateLoads: manager.invalidateLoads,
     };
 }
@@ -489,6 +490,94 @@ describe('useLoadOptions', () => {
         await flush();
         expect(writes.items).toEqual([[{ value: 'y-match', label: 'Y Match' }]]);
         expect(actions.onloaded).toHaveBeenCalledTimes(1);
+    });
+
+    // 9th-audit pin: a user selection never retired the pending deps-validation
+    // authority. Deps reload A slow → filter load B lands with post-deps
+    // results → user selects from them → the close cancels B and restored A's
+    // currency — A then landed late and its verdict wiped the fresh, valid
+    // selection (oninput(null) with the user watching).
+    it('a selection from fresher results retires the pending deps verdict (9th audit)', async () => {
+        const resolvers: Array<(items: SelectItem[]) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
+        const {
+            state,
+            writes,
+            handleLoadOptions,
+            cancelPendingFilterLoad,
+            retireValidationForFreshSelection,
+        } = createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
+
+        // Country changed: deps reload A is in flight
+        handleLoadOptions('', { debounce: false, validateValue: true });
+        // User types: filter load B arms (immediate debounce) and lands with post-deps results
+        handleLoadOptions('ber', { debounce: true });
+        resolvers[1]([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        // User selects Berlin from B's results; the selection retires A's
+        // verdict before the close cancels B (itemSelected order in the component)
+        state.value = { value: 'berlin', label: 'Berlin' };
+        retireValidationForFreshSelection();
+        cancelPendingFilterLoad();
+
+        // A resolves late: neither its items nor its verdict may land
+        resolvers[0]([{ value: 'new-city', label: 'New City' }]);
+        await flush();
+
+        expect(writes.items).toEqual([[{ value: 'berlin', label: 'Berlin' }]]);
+        expect(writes.value).toEqual([{ value: 'berlin', label: 'Berlin' }]);
+        expect(state.value).toEqual({ value: 'berlin', label: 'Berlin' });
+        expect(state.loading).toBe(false);
+    });
+
+    it('a stale pick made while the deps reload is in flight is still validated', async () => {
+        const resolvers: Array<(items: SelectItem[]) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
+        const { state, writes, handleLoadOptions, cancelPendingFilterLoad, retireValidationForFreshSelection } =
+            createHarness({ loadOptions });
+
+        // Deps reload A in flight; the user picks from the still-displayed
+        // pre-deps options before anything fresher lands
+        handleLoadOptions('', { debounce: false, validateValue: true });
+        state.value = { value: 'stale-city', label: 'Stale City' };
+        retireValidationForFreshSelection(); // no-op: nothing fresher than A has landed
+        cancelPendingFilterLoad(); // no-op: A is not filter-driven
+
+        resolvers[0]([{ value: 'new-city', label: 'New City' }]);
+        await flush();
+
+        // A's verdict still applies — validating exactly that pick is its job
+        expect(writes.items).toEqual([[{ value: 'new-city', label: 'New City' }]]);
+        expect(writes.value).toEqual([{ value: 'stale-city', label: 'Stale City' }, undefined]);
+    });
+
+    it('retiring also spends the restore channel a cancel handed to the reload', async () => {
+        const resolvers: Array<(items: SelectItem[]) => void> = [];
+        const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
+        const {
+            state,
+            writes,
+            handleLoadOptions,
+            cancelPendingFilterLoad,
+            retireValidationForFreshSelection,
+        } = createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
+
+        handleLoadOptions('', { debounce: false, validateValue: true }); // deps reload A
+        handleLoadOptions('ber', { debounce: true }); // filter load B (immediate debounce)
+        resolvers[1]([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        cancelPendingFilterLoad(); // close without selecting: A restored
+        state.value = { value: 'berlin', label: 'Berlin' };
+        retireValidationForFreshSelection(); // reopen + selection from B's landed results
+
+        resolvers[0]([{ value: 'new-city', label: 'New City' }]);
+        await flush();
+
+        // A must not land items OR a verdict despite the earlier restore
+        expect(writes.items).toEqual([[{ value: 'berlin', label: 'Berlin' }]]);
+        expect(state.value).toEqual({ value: 'berlin', label: 'Berlin' });
     });
 
     it('invalidateLoads discards an in-flight response', async () => {
