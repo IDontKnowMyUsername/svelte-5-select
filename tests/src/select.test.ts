@@ -874,19 +874,32 @@ describe('Select Component', () => {
             expect(loadOptions).toHaveBeenCalledTimes(1);
         });
 
-        it('hides selected item while typing', async () => {
+        it('hides the selected item while typing', async () => {
+            // 8th audit: the old assertion queried the dead selector `.value`
+            // (no element carries that class), so it passed unconditionally and
+            // the hide-selected-item behavior was pinned nowhere.
             render(Select, {
                 props: {
                     items,
-                    filterText: 'potato',
+                    value: { value: 'chips', label: 'Chips' },
                 },
             });
 
-            await querySelectorClick('.svelte-select');
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            expect(document.querySelector('.svelte-select .value')).toBeFalsy();
+            const selected = () => document.querySelector('.selected-item') as HTMLElement;
+            expect(selected().classList.contains('hide-selected-item')).toBe(false);
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'c';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            expect(selected().classList.contains('hide-selected-item')).toBe(true);
+
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            expect(selected().classList.contains('hide-selected-item')).toBe(false);
         });
 
         it('closes list when clearing selected item', async () => {
@@ -1208,6 +1221,10 @@ describe('Select Component', () => {
 
     describe('Two-way binding', () => {
         it('works between Select and parent component', async () => {
+            // 8th audit: the old test captured DOM nodes, called cleanup(), and
+            // kept asserting on the detached first-render nodes — comparing a
+            // stale string to itself. Re-query per step and assert selection
+            // actually flows back into the parent's bound value.
             render(ParentContainer, {
                 props: {
                     items,
@@ -1215,28 +1232,18 @@ describe('Select Component', () => {
                 },
             });
 
-            const selectedItem = document.querySelector('.selected-item') as HTMLElement;
-            const result = document.querySelector('.result') as HTMLElement;
-
-            expect(selectedItem.textContent).toBe(result.textContent);
-
-            cleanup();
-
-            render(ParentContainer, {
-                props: {
-                    items,
-                    value: { value: 'ice-cream', label: 'Ice Cream' },
-                },
-            });
-
-            expect(selectedItem.textContent).toBe(result.textContent);
+            expect(document.querySelector('.selected-item')?.textContent).toBe('Chips');
+            expect(document.querySelector('.result')?.textContent).toBe('Chips');
 
             await querySelectorClick('.svelte-select');
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+            await tick();
 
-            expect(selectedItem.textContent).toBe(result.textContent);
+            const selected = document.querySelector('.selected-item')?.textContent;
+            expect(selected).toBeTruthy();
+            expect(selected).not.toBe('Chips');
+            expect(document.querySelector('.result')?.textContent).toBe(selected);
         });
     });
 
@@ -3505,7 +3512,11 @@ describe('Select Component', () => {
     });
 
     describe('ShowChevron', () => {
-        it('only shows chevron when no value', () => {
+        it('shows the chevron alongside the clear button when a value is set', () => {
+            // 8th audit: the old test queried the dead selector `.indicator`
+            // (the container class is `indicators`) while claiming a
+            // chevron-only-without-value behavior that never existed — the
+            // chevron renders whenever showChevron is true.
             render(Select, {
                 props: {
                     items,
@@ -3514,7 +3525,8 @@ describe('Select Component', () => {
                 },
             });
 
-            expect(document.querySelectorAll('.indicator').length).toBe(0);
+            expect(document.querySelector('.indicators .chevron')).toBeTruthy();
+            expect(document.querySelector('.indicators .clear-select')).toBeTruthy();
         });
 
         it('shows chevron when no value', () => {

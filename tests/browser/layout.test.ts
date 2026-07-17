@@ -25,6 +25,22 @@ describe('layout in a real browser', () => {
         expect(list.top).toBeGreaterThanOrEqual(container.bottom);
     });
 
+    it('the open list settles visible and clickable (prefloat cleared)', async () => {
+        // 8th audit: the anti-flicker .prefloat class (opacity 0, pointer-events
+        // none) is cleared by a timeout after positioning. If that regressed,
+        // the open list would be permanently invisible for real users while
+        // every jsdom query, getBoundingClientRect assertion, and synthetic
+        // .click() in the suite still passed — nothing else pins visibility.
+        render(Select, { props: { items: fewItems, listOpen: true } });
+        await settle();
+
+        const list = document.querySelector('.svelte-select-list') as HTMLElement;
+        expect(list.classList.contains('prefloat')).toBe(false);
+        const style = getComputedStyle(list);
+        expect(style.opacity).toBe('1');
+        expect(style.pointerEvents).not.toBe('none');
+    });
+
     it('positions the list above the input when placement is top', async () => {
         render(Select, {
             props: {

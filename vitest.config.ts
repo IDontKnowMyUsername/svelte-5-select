@@ -34,6 +34,12 @@ export default defineConfig({
         exclude: ['**/examples/**', 'tests/browser/**'],
         coverage: {
             provider: 'v8',
+            // Vitest 4 dropped coverage.all: without an explicit include, only
+            // files some test imports appear in the report, so a new source
+            // file nothing imports would be invisible to the gate (0% covered,
+            // CI green). Everything under src/lib is in scope; exclusions below
+            // still apply on top.
+            include: ['src/lib/**'],
             // Floors sit a few points below the current numbers (stmts ~97, branch
             // ~94, funcs ~97, lines ~99) so an unrelated change has headroom but a
             // real coverage regression fails CI. Ratchet these up as coverage rises.
@@ -51,8 +57,6 @@ export default defineConfig({
                 '**/dist/**',
                 '**/examples/**',
                 '**/.svelte-kit/**',
-                'src/remove-styles.ts',
-                'src/post-prepare.ts',
                 'tests/**',
                 '**/types.ts',
                 'src/lib/index.ts',
