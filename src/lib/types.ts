@@ -52,9 +52,6 @@ export interface SelectErrorEvent {
     details: unknown;
 }
 
-/** @deprecated Renamed to {@link SelectErrorEvent} — this alias shadows the DOM's global `ErrorEvent`. */
-export type ErrorEvent = SelectErrorEvent;
-
 export interface FilterConfig<Item extends ItemLike = SelectItem> {
     loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
     filterText: string;
@@ -231,6 +228,15 @@ export interface ScrollActionParams {
     scroll: boolean;
 }
 
+/**
+ * Props of the `<Select>` component.
+ *
+ * The surface is deliberately closed: unknown attributes are not spread onto the
+ * container element. Style via `class`/`containerStyles`, reach the input element
+ * via `inputAttributes`/`id`, and wrap the component when the container itself
+ * needs extra attributes (e.g. `data-testid`). Keeping it closed means a later
+ * release can add passthrough without a breaking change — the reverse is not true.
+ */
 export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extends boolean = false> {
     // Core data props
     /**
@@ -316,7 +322,15 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     closeListOnChange?: boolean;
     /** Hide already-selected items from the list. @default true */
     filterSelectedItems?: boolean;
-    /** Let group headers be selected like options; otherwise they are presentational. */
+    /**
+     * Let group headers be selected like options; otherwise they are presentational.
+     *
+     * A selected header is the synthesized {@link SelectGroupHeader} row, not one of
+     * your items — but `value` and the `onselect`/`onchange`/`oninput` payloads
+     * deliberately keep their ergonomic `Item` typing rather than forcing every
+     * consumer through a union. If you enable this, narrow those payloads with
+     * `isGroupHeader` before reading item fields off them.
+     */
     groupHeaderSelectable?: boolean;
     /** Clicking anywhere on a tag removes it, and the whole tag becomes a keyboard tab stop. */
     multiFullItemClearable?: boolean;

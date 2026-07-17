@@ -330,7 +330,7 @@ Everything `svelte-5-select` exports:
 | `isGroupHeader` | function | Type guard narrowing a `SelectRow` to a group header synthesized by `groupBy`. |
 | `normalizeItem` | function | Resolves a raw string to a `{ value, label }` item; passes items through. |
 
-Types: `ItemLike`, `SelectItem`, `SelectGroupHeader`, `SelectRow`, `SelectProps`, `SelectValue`, `SelectValueProp`, `SelectClearValue`, `JustValue`, `FloatingConfig`, `FilterConfig`, and `SelectErrorEvent` (plus its deprecated alias `ErrorEvent`).
+Types: `ItemLike`, `SelectItem`, `SelectGroupHeader`, `SelectRow`, `SelectProps`, `SelectValue`, `SelectValueProp`, `SelectClearValue`, `JustValue`, `FloatingConfig`, `FilterConfig`, and `SelectErrorEvent`.
 
 Subpath exports: `svelte-5-select/styles/default.css` (the default stylesheet on its own), `svelte-5-select/tailwind.css`, and `svelte-5-select/no-styles/Select.svelte` (the component with its style block stripped — see the [experimental section](#-experimental-replace-styles-tailwind-bootstrap-bulma-etc)).
 
@@ -399,7 +399,7 @@ Every change below is covered in detail in the [changelog](CHANGELOG.md); this i
 
 - **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disabling a `loadOptions` select, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `oninput(null)` instead of `oninput([])`.
 - **Removed exports.** `useKeyboardNavigation` (with the `KeyboardNavigationContext`/`isCancelled` surface and the `SelectState`, `KeyboardNavigationState`, `KeyboardNavigationActions` types) and `isStringArray` are gone; the composables are internal.
-- **`ErrorEvent` is renamed `SelectErrorEvent`** (the old name shadowed the DOM global; it remains as a deprecated alias).
+- **`ErrorEvent` is renamed `SelectErrorEvent`** — the old name shadowed the DOM's global `ErrorEvent` and has been removed; update imports.
 - **Rendered-list surfaces are typed `SelectRow<Item>`.** `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` see the group headers `groupBy` synthesizes; narrow rows with the exported `isGroupHeader` guard.
 - **`SelectValue` takes a `Multiple` type parameter** (inferred from the `multiple` prop), and `onclear` receives the `Multiple`-discriminated `SelectClearValue` instead of a flat union.
 - **`loadOptions` triggers changed.** It fires on mount, on typing, on `loadOptionsDeps` changes, and on disabled toggles — never on list open/close. Pending fetches that become moot are cancelled, results are no longer re-filtered by `itemFilter`, and only deps-driven reloads clear a stale value.

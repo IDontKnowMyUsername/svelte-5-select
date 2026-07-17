@@ -27,5 +27,4 @@ export type {
     FloatingConfig,
     FilterConfig,
     SelectErrorEvent,
-    ErrorEvent,
 } from './types';
