@@ -8,6 +8,7 @@
  */
 import type {
     ItemLike,
+    SelectItem,
     SelectValue,
     SelectValueProp,
     SelectClearValue,
@@ -15,7 +16,7 @@ import type {
     SelectProps,
     SelectRow,
 } from '$lib/types';
-import { isGroupHeader } from '$lib/utils';
+import { areItemsEqual, isGroupHeader, normalizeItem } from '$lib/utils';
 
 // A sample item declared as an `interface` — crucially with NO index signature.
 // Interfaces have no implicit index signature, so this proves the `ItemLike`
@@ -95,6 +96,14 @@ const _filter13a: NonNullable<SelectProps<Country>['filter']> = (config) =>
 // ...and the pipeline helpers' output stays returnable too (grouped rows are
 // synthesized `SelectItem`s, not `Country`s).
 const _filter13b: NonNullable<SelectProps<Country>['filter']> = (config) => config.applyGrouping([]);
+
+// 14. The exported utils accept interface-typed items (9th audit: they were
+//     typed `SelectItem`, so an interface with no index signature hit TS2345 —
+//     the exact failure the `ItemLike` bound exists to prevent).
+declare const _countryA: Country;
+declare const _countryB: Country;
+const _eq14: boolean = areItemsEqual(_countryA, _countryB, 'code');
+const _norm14: Country | SelectItem | null = normalizeItem(_countryA);
 
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.

@@ -12,9 +12,10 @@ export function getItemProperty<T>(item: T, key: keyof T | string): T[keyof T] |
     return item && typeof item === 'object' ? (item as any)[key] : undefined;
 }
 
+/** Compares two value entries by their `itemId` field, never by reference. Accepts any {@link ItemLike} item type. */
 export function areItemsEqual(
-    a: SelectItem | null | undefined,
-    b: SelectItem | null | undefined,
+    a: ItemLike | null | undefined,
+    b: ItemLike | null | undefined,
     itemId: string,
 ): boolean {
     if (!a || !b) return false;
@@ -30,16 +31,23 @@ export function isItemSelectableCheck(item: SelectItem | undefined): boolean {
     return !Object.prototype.hasOwnProperty.call(item, 'selectable') || item.selectable !== false;
 }
 
-export function normalizeItem(value: string | SelectItem | null | undefined): SelectItem | null;
+/**
+ * Normalizes a raw string value into a synthesized `{ value, label }` item; items
+ * (and arrays of them) pass through unchanged. Accepts any {@link ItemLike} item
+ * type — a synthesized entry is a `SelectItem`, not your item type.
+ */
+export function normalizeItem<Item extends ItemLike = SelectItem>(
+    value: string | Item | null | undefined,
+): Item | SelectItem | null;
+export function normalizeItem<Item extends ItemLike = SelectItem>(
+    value: string | Item | (Item | string)[] | null | undefined,
+): Item | SelectItem | (Item | SelectItem)[] | null;
 export function normalizeItem(
-    value: string | SelectItem | (SelectItem | string)[] | null | undefined,
-): SelectItem | SelectItem[] | null;
-export function normalizeItem(
-    value: string | SelectItem | (SelectItem | string)[] | null | undefined,
-): SelectItem | SelectItem[] | null {
+    value: string | ItemLike | (ItemLike | string)[] | null | undefined,
+): ItemLike | ItemLike[] | null {
     if (!value) return null;
     // Entries of an array value may still be raw strings; callers normalize per entry
-    return typeof value === 'string' ? { value, label: value } : (value as SelectItem | SelectItem[]);
+    return typeof value === 'string' ? { value, label: value } : (value as ItemLike | ItemLike[]);
 }
 
 // The comparable id of a value entry: a raw string is its own id, an item uses
