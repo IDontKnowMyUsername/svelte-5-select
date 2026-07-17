@@ -54,7 +54,11 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
         const _item = filteredItems[hoverItemIndex];
 
         if (listOpen && _item) {
-            const count = filteredItems.length;
+            // Presentational group headers are aria-hidden and unreachable by the
+            // cursor, so counting them would announce more "results" than a
+            // screen-reader user can ever reach. Selectable headers
+            // (groupHeaderSelectable) are real options and do count.
+            const count = filteredItems.filter((item) => !(item.groupHeader && !item.selectable)).length;
             return config.ariaListOpen(_item[label] as string, count);
         } else {
             return config.ariaFocused();

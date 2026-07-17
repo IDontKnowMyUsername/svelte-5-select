@@ -217,4 +217,25 @@ describe('tailwind theme — axe scan (WCAG A/AA)', () => {
         expect(rule!.style.outlineStyle).toBe('dashed');
         expect(rule!.style.outlineWidth).toBe('2px');
     });
+
+    it('activation targets meet the 24px minimum (WCAG 2.2 2.5.8)', async () => {
+        // 12th audit: the theme's clear button was 20px tall and the tag-remove
+        // buttons 20x20 — axe's target-size check did not flag them, so pin the
+        // real geometry
+        const { container } = render(Select, {
+            props: { items, ariaLabel: 'Food', multiple: true, value: [items[0], items[1]] },
+        });
+        await settle();
+
+        const remove = document.querySelector('.multi-item-clear') as HTMLElement;
+        const removeRect = remove.getBoundingClientRect();
+        expect(removeRect.width).toBeGreaterThanOrEqual(24);
+        expect(removeRect.height).toBeGreaterThanOrEqual(24);
+
+        const clear = document.querySelector('.clear-select') as HTMLElement;
+        const clearRect = clear.getBoundingClientRect();
+        expect(clearRect.width).toBeGreaterThanOrEqual(24);
+        expect(clearRect.height).toBeGreaterThanOrEqual(24);
+        await expectNoViolations(container);
+    });
 });

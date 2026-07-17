@@ -6,6 +6,7 @@
  * surfaces as a type error, and each `// @ts-expect-error` must sit on a line
  * that genuinely errors or svelte-check fails with "unused @ts-expect-error".
  */
+import type { Snippet } from 'svelte';
 import type {
     FilterConfig,
     ItemLike,
@@ -200,3 +201,42 @@ const _onValueChange9a: SelectProps<Country, false>['onValueChange'] = (v) => v.
 
 // ...while optional-chaining the null away is fine (no @ts-expect-error).
 const _onValueChange9b: SelectProps<Country, false>['onValueChange'] = (v) => v?.name;
+
+// ---------------------------------------------------------------------------
+// 12th-audit pins: selectionSnippet NoInfer + honest FilterConfig.value
+// ---------------------------------------------------------------------------
+// 20. `selectionSnippet` (guarded via `NoInfer<Item>`): a pre-typed snippet const
+//     with a looser item shape no longer hijacks `Item` — inference stays driven
+//     by `items` (pre-fix this inferred `{ name?: string }`, so the Equal pin
+//     failed); the looser snippet itself stays accepted (contravariance).
+declare const _looseSelectionSnippet20: Snippet<[{ name?: string }, number?]>;
+const _inferred20 = _inferProps({
+    items: _countries17,
+    selectionSnippet: _looseSelectionSnippet20,
+});
+type _20 = Expect<Equal<typeof _inferred20, Country>>;
+
+// ...and an incompatible snippet errors on itself, not on `items`.
+declare const _incompatSelectionSnippet20b: Snippet<[{ population: number }, number?]>;
+const _inferred20b = _inferProps({
+    items: _countries17,
+    // @ts-expect-error the incompatible selection snippet errors on itself, not `items`
+    selectionSnippet: _incompatSelectionSnippet20b,
+});
+type _20b = Expect<Equal<typeof _inferred20b, Country>>;
+
+// 21. `FilterConfig.value` carries the consumer's `Item` type: the field admits
+//     the consumer's items (and synthesized `SelectItem`s), and a narrowed entry
+//     exposes its own fields without casts (`in` alone cannot exclude
+//     `SelectItem` — its index signature admits any key — so narrow by typeof).
+type _21 = Expect<
+    Equal<FilterConfig<Country>['value'], Country | SelectItem | (Country | SelectItem)[] | null | undefined>
+>;
+const _filterValue21: FilterConfig<Country>['value'] = [
+    { code: 'fr', name: 'France' },
+    { value: 'synth', label: 'synth' },
+];
+const _readOwnField21 = (config: FilterConfig<Country>): string | undefined => {
+    const entry = Array.isArray(config.value) ? config.value[0] : config.value;
+    return entry && typeof entry.code === 'string' ? entry.code : undefined;
+};

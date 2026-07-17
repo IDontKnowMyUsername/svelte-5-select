@@ -278,6 +278,39 @@ describe('useAriaHandlers', () => {
             expect(result).toBe('Item A - 2 items');
         });
 
+        it('excludes presentational group headers from the announced count', () => {
+            const config = {
+                ariaValues: vi.fn(),
+                ariaListOpen: vi.fn((label, count) => `${label} - ${count} items`),
+                ariaFocused: vi.fn(),
+            };
+
+            const { handleAriaContent } = useAriaHandlers(config);
+
+            // A presentational header is aria-hidden and unreachable, so it must
+            // not inflate the announced count; a selectable header
+            // (groupHeaderSelectable) is a real option and still counts.
+            const items: SelectItem[] = [
+                { value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: false },
+                { value: 'cake', label: 'Cake', groupItem: true },
+                { value: 'Savory', label: 'Savory', groupHeader: true, selectable: true },
+                { value: 'pizza', label: 'Pizza', groupItem: true },
+                { value: 'chips', label: 'Chips', groupItem: true },
+            ];
+
+            const result = handleAriaContent({
+                value: null,
+                filteredItems: items,
+                hoverItemIndex: 1,
+                listOpen: true,
+                multiple: false,
+                label: 'label',
+            });
+
+            expect(config.ariaListOpen).toHaveBeenCalledWith('Cake', 4);
+            expect(result).toBe('Cake - 4 items');
+        });
+
         it('calls ariaFocused when list is closed', () => {
             const config = {
                 ariaValues: vi.fn(),

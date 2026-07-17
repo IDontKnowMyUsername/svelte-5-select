@@ -26,6 +26,25 @@ describe('layout in a real browser', () => {
         expect(list.top).toBeGreaterThanOrEqual(container.bottom);
     });
 
+    it('activation targets meet the 24px minimum (WCAG 2.2 2.5.8)', async () => {
+        // 12th audit: the tag-remove buttons shrank to their 20px icon; real
+        // geometry is the only honest way to measure the activation target
+        render(Select, {
+            props: { items: fewItems, multiple: true, value: [fewItems[0], fewItems[1]] },
+        });
+        await settle();
+
+        const remove = document.querySelector('.multi-item-clear') as HTMLElement;
+        const removeRect = remove.getBoundingClientRect();
+        expect(removeRect.width).toBeGreaterThanOrEqual(24);
+        expect(removeRect.height).toBeGreaterThanOrEqual(24);
+
+        const clear = document.querySelector('.clear-select') as HTMLElement;
+        const clearRect = clear.getBoundingClientRect();
+        expect(clearRect.width).toBeGreaterThanOrEqual(24);
+        expect(clearRect.height).toBeGreaterThanOrEqual(24);
+    });
+
     it('the open list settles visible and clickable (prefloat cleared)', async () => {
         // 8th audit: the anti-flicker .prefloat class (opacity 0, pointer-events
         // none) is cleared by a timeout after positioning. If that regressed,

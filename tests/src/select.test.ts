@@ -4361,6 +4361,95 @@ describe('Select Component', () => {
         });
     });
 
+    describe('Select-only mode (searchable={false}) a11y', () => {
+        it('omits aria-autocomplete when searchable is false, keeps it otherwise', async () => {
+            // A readonly select-only input never refines its list by typing, so
+            // advertising list-autocomplete would misinform AT (APG select-only)
+            const { unmount } = render(Select, { props: { items } });
+            let input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-autocomplete')).toBe('list');
+            unmount();
+
+            render(Select, { props: { items, searchable: false } });
+            input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-autocomplete')).toBeNull();
+        });
+
+        it('drops "type to refine" from the default focus announcement in select-only mode', async () => {
+            const { unmount } = render(Select, { props: { items, focused: true } });
+            await tick();
+            let status = Array.from(document.querySelectorAll('[role="status"]'), (el) => el.textContent).join(' ');
+            expect(status).toContain('type to refine list');
+            unmount();
+
+            render(Select, { props: { items, searchable: false, focused: true } });
+            await tick();
+            status = Array.from(document.querySelectorAll('[role="status"]'), (el) => el.textContent).join(' ');
+            expect(status).toContain('press down to open the menu');
+            expect(status).not.toContain('type to refine');
+        });
+
+        it('opens a closed list with Enter instead of passing it through', async () => {
+            render(Select, { props: { items, searchable: false, focused: true } });
+            await tick();
+
+            const event = new KeyboardEvent('keydown', { key: 'Enter', cancelable: true });
+            window.dispatchEvent(event);
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(event.defaultPrevented).toBe(true);
+        });
+    });
+
+    describe('Selection description (aria-describedby)', () => {
+        it('describes the input with the rendered selection in single mode', async () => {
+            // The combobox's accessible value is only the filter text, so the
+            // element itself must point at the rendered selection for
+            // browse-mode users who inspect it without focusing (12th audit)
+            render(Select, { props: { items, value: items[1] } });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            const describedby = input.getAttribute('aria-describedby');
+            expect(describedby).toBeTruthy();
+            expect(document.getElementById(describedby!)!.textContent).toContain('Pizza');
+        });
+
+        it('leaves the input undescribed with no selection and in multiple mode', async () => {
+            const { unmount } = render(Select, { props: { items } });
+            let input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-describedby')).toBeNull();
+            unmount();
+
+            // Multiple mode: each chip is separately focusable and announced,
+            // and a description would also read every remove-button label
+            render(Select, { props: { items, multiple: true, value: [items[0]] } });
+            await tick();
+            input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-describedby')).toBeNull();
+        });
+    });
+
+    describe('Localized empty and loading copy', () => {
+        it('renders the visible empty/loading copy from ariaEmpty/ariaLoading', async () => {
+            // The visible copy and the announcement come from the same props, so
+            // a localized consumer never shows one language and announces another
+            const { unmount } = render(Select, {
+                props: { items: [], listOpen: true, ariaEmpty: () => 'Aucune option' },
+            });
+            await tick();
+            expect(document.querySelector('.empty')!.textContent).toBe('Aucune option');
+            unmount();
+
+            render(Select, {
+                props: { items: [], listOpen: true, loading: true, ariaLoading: () => 'Chargement en cours' },
+            });
+            await tick();
+            expect(document.querySelector('.empty')!.textContent).toBe('Chargement en cours');
+        });
+    });
+
     describe('Hidden input', () => {
         it('has name when supplied', () => {
             render(Select, {
@@ -5484,12 +5573,14 @@ describe('Select Component', () => {
             },
         });
 
-        await tick();
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // Check if multi-items are rendered
-        const multiItems = container.querySelectorAll('.multi-item');
-        expect(multiItems.length).toBeGreaterThan(0);
+        // All-or-nothing hydration: both entries must resolve, with the right labels
+        await vi.waitFor(() => {
+            const multiItems = container.querySelectorAll('.multi-item');
+            expect(Array.from(multiItems, (el) => el.textContent)).toEqual([
+                expect.stringContaining('Chocolate'),
+                expect.stringContaining('Pizza'),
+            ]);
+        });
     });
 
     it('computes value from justValue in single mode', async () => {
@@ -5514,11 +5605,11 @@ describe('Select Component', () => {
             },
         });
 
-        await tick();
-        await new Promise((resolve) => setTimeout(resolve, 100));
-
-        // The component should have computed value from justValue
-        expect(boundValue).toBeDefined();
+        // The hydrated value must be the matching item — not merely something
+        await vi.waitFor(() => {
+            expect(boundValue).toEqual(items[1]);
+        });
+        expect(document.querySelector('.selected-item')!.textContent).toContain('Pizza');
     });
 
     it('suppresses hover while the list is scrolling, then resumes once it settles', async () => {

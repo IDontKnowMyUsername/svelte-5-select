@@ -14,7 +14,7 @@
 
 ## Demos
 
-[💥 Examples of every prop, event, snippet and more 💥](https://github.com/IDontKnowMyUsername/svelte-5-select/tree/master/src/routes/examples)
+[💥 Examples of every event and snippet, plus the major props 💥](https://github.com/IDontKnowMyUsername/svelte-5-select/tree/master/src/routes/examples)
 
 ## Installation
 
@@ -69,7 +69,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | useJustValue           | `boolean` | `false`         | Hidden form input uses `justValue` (raw id) instead of JSON    |
 | filterSelectedItems    | `boolean` | `true`          | When `multiple`, hide selected items from the list             |
 | inputStyles            | `string`  | `''`            | Add inline styles to the input                                 |
-| listStyle              | `string`  | `''`            | Add inline styles to the list                                  |
+| listStyles             | `string`  | `''`            | Add inline styles to the list                                  |
 | hoverItemIndex         | `number`  | `0`             | Index of the currently hovered item (bindable)                 |
 | loadOptionsDeps        | `any[]`   | `[]`            | When these values change, `loadOptions` re-fires. Compared by `===` — pass primitives or stable references, not inline literals |
 | ariaLabel              | `string`  | `undefined`     | Explicit `aria-label` for the input (and the listbox); when omitted, a `<label for={id}>` (or the placeholder, as a last resort) names it |
@@ -297,7 +297,7 @@ The `filter` prop replaces the entire filtering pipeline — override it at your
 | itemFilter            | `(label: string, filterText: string, option) => boolean` | Whether one item matches `filterText`. Defaults to a case-insensitive substring match.  |
 | groupBy               | `(item) => string`                                | Group items under headers by the returned key. Unset by default.                            |
 | groupFilter           | `(groups: string[]) => string[]`                  | Sort or filter the group order. Defaults to identity (`(groups) => groups`).                |
-| createGroupHeaderItem | `(groupValue: string, item) => SelectItem`        | Build the header item for a group. Defaults to `{ value: groupValue, label: groupValue }`.  |
+| createGroupHeaderItem | `(groupValue: string, item) => SelectItem`        | Build the header item for a group. Defaults to `{ value: groupValue, [label]: groupValue }` — the header's text is keyed by the `label` prop. |
 | debounce              | `(fn: () => void, wait: number) => void`          | Debounce strategy for `loadOptions`. Defaults to a `setTimeout` of `debounceWait` ms.       |
 | handleClear           | `(e?: MouseEvent) => void`                        | Runs when the clear indicator is clicked. Defaults to clearing `value` and refocusing.      |
 | filter                | `(config: FilterConfig<Item>) => (Item \| SelectItem)[]` | Replaces the entire filtering pipeline. Defaults to the built-in `filter`. Override at your own risk. |
@@ -402,16 +402,17 @@ Every change below is covered in detail in the [changelog](CHANGELOG.md); this i
 - **`oninput` and `onchange` are renamed.** `oninput` is now `onValueChange` and `onchange` is now `onSelectionChange` — same payloads, same firing rules. The old names collided with DOM-event expectations on a component wrapping a text input (`oninput` never fired per keystroke; typing is `bind:filterText`).
 - **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disabling a `loadOptions` select, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `onValueChange(null)` instead of `onValueChange([])`.
 - **`onloaded` receives `(Item | SelectItem)[]`, not `Item[]`.** A loader that resolves raw strings delivers the synthesized `{ value, label, index }` items built from them, so handlers explicitly annotated `(options: Item[]) => void` need the widened element type (narrow rows before reading item fields).
-- **Removed exports.** `useKeyboardNavigation` (with the `KeyboardNavigationContext`/`isCancelled` surface and the `SelectState`, `KeyboardNavigationState`, `KeyboardNavigationActions` types) and `isStringArray` are gone; the composables are internal.
+- **Removed exports.** `useKeyboardNavigation` (with its `KeyboardNavigationContext`/`isCancelled` surface) and `isStringArray` are gone; the composables are internal.
+- **`listStyle` is renamed `listStyles`**, matching the `containerStyles`/`inputStyles` pluralization.
 - **`ErrorEvent` is renamed `SelectErrorEvent`** — the old name shadowed the DOM's global `ErrorEvent` and has been removed; update imports.
 - **Rendered-list surfaces are typed `SelectRow<Item>`.** `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` see the group headers `groupBy` synthesizes; narrow rows with the exported `isGroupHeader` guard.
 - **`SelectValue` takes a `Multiple` type parameter** (inferred from the `multiple` prop), and `onclear` receives the `Multiple`-discriminated `SelectClearValue` instead of a flat union.
 - **`loadOptions` triggers changed.** It fires on mount, on typing, on `loadOptionsDeps` changes, and on disabled toggles — never on list open/close. Pending fetches that become moot are cancelled, results are no longer re-filtered by `itemFilter`, and only deps-driven reloads clear a stale value.
-- **Enter and Escape pass through when the list is closed.** Keys are only claimed when the component acts on them, so Enter on a closed select now submits the surrounding form and Escape now closes the surrounding dialog — re-test forms and dialogs that relied on the old swallow-everything behavior.
+- **Enter and Escape pass through when the list is closed.** Keys are only claimed when the component acts on them, so Enter on a closed select now submits the surrounding form and Escape now closes the surrounding dialog — re-test forms and dialogs that relied on the old swallow-everything behavior. Exception: in select-only mode (`searchable={false}`) Enter on a closed list opens it instead of passing through, per the APG select-only combobox pattern.
 - **Tab only commits after real navigation.** Tab still selects the highlighted option in a single press, but only once you've moved the cursor (keys or pointer movement over the list) or typed filter text during that open — merely opening the list and tabbing away now closes it without selecting, instead of silently committing the first option. A seeded or retained `filterText` doesn't count as typing.
 - **`selectable: undefined` is keyboard-reachable.** Arrow navigation uses the same rule as click/Enter (`selectable !== false`), so an item carrying an explicit `selectable: undefined` is no longer skipped by the keyboard.
 - **`selectionSnippet` is `Snippet<[Item, number?]>`** — always a single item, also in multiple mode.
-- **`FilterConfig.filterGroupedItems` is renamed `applyGrouping`** (only affects custom `filter` implementations).
+- **Custom `filter` implementations:** `FilterConfig.filterGroupedItems` is renamed `applyGrouping`, and `FilterConfig.value` is now honestly typed `Item | SelectItem | (Item | SelectItem)[] | null | undefined` (it was `SelectItem`-only) — implementations annotating that field may need the widened type.
 - **Markup and a11y changes.** The multi-select remove control is a real `<button>` in the tab order; grouped options are wrapped in `role="group"` regions named by their headers; the input no longer defaults its `aria-label` to the placeholder (name it with `ariaLabel` or an external `<label for>`).
 - **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus; disabling releases focus and keyboard control; and an initial `filterText` is kept on mount (it used to be silently cleared) — it filters and drives the mount `loadOptions` fetch, without opening the list or moving focus.
 - **Node >= 18 at runtime** (Svelte 5's own floor); **TypeScript >= 5.4** for the published types (they use `NoInfer`). Developing this repository needs Node >= 22.12.

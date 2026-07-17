@@ -47,22 +47,35 @@ export type SelectClearValue<
     Multiple extends boolean = boolean,
 > = Multiple extends true ? Item[] | string[] | Item | string | null : Item | string | null;
 
+/** Payload of the `onerror` callback. `type` discriminates the failure source; `loadOptions` (a rejected loader promise) is currently the only emitter, with the rejection reason in `details`. */
 export interface SelectErrorEvent {
-    type: string;
+    type: 'loadOptions';
     details: unknown;
 }
 
+/** The configuration object a custom `filter` prop receives — a snapshot of everything the built-in pipeline uses. See the exported `filter` for the default implementation to delegate to or replace. */
 export interface FilterConfig<Item extends ItemLike = SelectItem> {
+    /** The `loadOptions` prop, if set. When present, results are already filtered remotely — the default pipeline skips `itemFilter` entirely. */
     loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
+    /** The current filter text. */
     filterText: string;
+    /** The `items` prop as supplied — entries may still be raw strings; pass them through `convertStringItemsToObjects` before reading item fields. */
     items: Item[] | string[] | null;
+    /** The `multiple` prop. */
     multiple: boolean;
-    value: SelectItem | SelectItem[] | null | undefined;
+    /** The current (normalized) selection; raw string entries have already been synthesized into `SelectItem`s. Used with `filterSelectedItems` to hide picked options. */
+    value: Item | SelectItem | (Item | SelectItem)[] | null | undefined;
+    /** The `itemId` prop — the field name selections are compared by. */
     itemId: string;
+    /** The `groupBy` prop, if set. */
     groupBy?: (item: Item) => string;
+    /** The `label` prop — the field name option text is read from. */
     label: string;
+    /** The `filterSelectedItems` prop: hide already-selected options in multiple mode. */
     filterSelectedItems: boolean;
+    /** The per-item match predicate (the `itemFilter` prop). The default pipeline skips it when `loadOptions` is set. */
     itemFilter: (label: string, filterText: string, option: Item) => boolean;
+    /** Synthesizes `{ value, label, index }` items from raw string entries. */
     convertStringItemsToObjects: (items: string[]) => SelectItem[];
     /**
      * Transforms the flat filtered list into a grouped one (inserting headers and
@@ -72,6 +85,7 @@ export interface FilterConfig<Item extends ItemLike = SelectItem> {
     applyGrouping: (items: SelectItem[]) => SelectItem[];
 }
 
+/** The `floatingConfig` prop shape: floating-ui's `computePosition` options plus `autoUpdate` to reposition on scroll/resize. */
 export interface FloatingConfig extends Partial<ComputePositionConfig> {
     autoUpdate?: boolean;
 }
@@ -84,6 +98,7 @@ export interface FloatingConfig extends Partial<ComputePositionConfig> {
  */
 export type JustValue = string | number | string[] | number[] | null | undefined;
 
+/** The default item shape (and the shape synthesized for raw string items). Your own item type does not need to extend it — any {@link ItemLike} works; these are just the fields the component reads when present. */
 export interface SelectItem {
     value?: unknown;
     label?: string;
@@ -237,10 +252,6 @@ export interface LoadOptionsActions {
     onerror: (error: SelectErrorEvent) => void;
 }
 
-export interface ScrollActionParams {
-    scroll: boolean;
-}
-
 /**
  * Props of the `<Select>` component.
  *
@@ -320,10 +331,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     loading?: boolean;
     /** Name of the hidden input, for native form submission. */
     name?: string | null;
-    /** @default 'Please select' */
+    /** Prompt shown in the empty input; also the input's last-resort accessible name (see `ariaLabel`). @default 'Please select' */
     placeholder?: string;
     /** Keep the placeholder visible even when an item is selected (multiple mode). */
     placeholderAlwaysShow?: boolean;
+    /** Show the chevron indicator on the right of the control. @default false */
     showChevron?: boolean;
 
     // Behavior props
@@ -367,7 +379,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     /** Inline styles on the text input. */
     inputStyles?: string;
     /** Inline styles on the option list. */
-    listStyle?: string;
+    listStyles?: string;
 
     // Advanced props
     /** How long typing settles before `loadOptions` fires, in ms. Only typing is debounced. @default 300 */
@@ -448,11 +460,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     ariaCleared?: () => string;
     /** `aria-label` for the clear-all button. */
     ariaClearSelectLabel?: string;
-    /** Announced when an open list has no results. */
+    /** Announced when an open list has no results. Also rendered as the list's visible empty-state copy (unless `emptySnippet` replaces it), so overriding it localizes both. */
     ariaEmpty?: () => string;
     /** id of an external element describing the error; wired to `aria-errormessage` only while `hasError` is true. */
     ariaErrorMessage?: string;
-    /** Announced when the input is focused with the list closed. */
+    /** Announced when the input is focused with the list closed. The default omits its "type to refine list" phrase when `searchable` is `false`. */
     ariaFocused?: () => string;
     /**
      * Accessible name for the input. Prefer an external `<label for={id}>`; this
@@ -466,7 +478,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * as the cursor reaches it. Receives the focused option's label and the count.
      */
     ariaListOpen?: (label: string, count: number) => string;
-    /** Announced while an open list is still fetching options. */
+    /** Announced while an open list is still fetching options. Also rendered as the list's visible loading copy (unless `emptySnippet` replaces it), so overriding it localizes both. */
     ariaLoading?: () => string;
     /** `aria-label` for each multi-select tag's remove button; receives the item's label. */
     ariaRemoveItemLabel?: (label: string) => string;
@@ -489,6 +501,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     // or component events (`onselect` does share a name with the DOM `select`
     // event — text selection in inputs — but fires on option pick; its JSDoc
     // disambiguates, and the collision is fringe enough not to rename).
+    /** Literal DOM `blur` passthrough from the text input. Fires after the component's own blur handling (list close, filter-text reset). */
     onblur?: (e: FocusEvent) => void;
     /** Clear-all receives the full removed value; removing one tag receives that single entry. */
     onclear?: (value: SelectClearValue<Item, Multiple>) => void;
@@ -499,6 +512,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * synthesized group headers — narrow with `isGroupHeader`.
      */
     onfilter?: (items: SelectRow<Item>[]) => void;
+    /** Literal DOM `focus` passthrough from the text input. Fires after the component's own focus handling. */
     onfocus?: (e: FocusEvent) => void;
     /** Fires with the index of the option under the keyboard/mouse cursor. */
     onhoveritem?: (index: number) => void;
@@ -579,7 +593,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      */
     requiredSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
     /** Receives one item at a time: the value in single mode, each tag in multiple mode. */
-    selectionSnippet?: Snippet<[Item, number?]>;
+    selectionSnippet?: Snippet<[NoInfer<Item>, number?]>;
 
     // DOM references (for binding)
     /** Bindable, read-only: the container element, once mounted. */

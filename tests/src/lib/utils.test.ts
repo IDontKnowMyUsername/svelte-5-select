@@ -5,6 +5,7 @@ import {
     convertStringItemsToObjects,
     createGroupHeaderItem,
     hasValueChanged,
+    isGroupHeader,
     normalizeItem,
 } from '$lib/utils';
 
@@ -116,5 +117,20 @@ describe('createGroupHeaderItem', () => {
 
     it('honors a custom label key', () => {
         expect(createGroupHeaderItem('Sweet', 'name')).toEqual({ value: 'Sweet', name: 'Sweet' });
+    });
+});
+
+describe('isGroupHeader', () => {
+    it('narrows a synthesized header row', () => {
+        expect(isGroupHeader({ value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: false })).toBe(true);
+        expect(isGroupHeader({ value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: true })).toBe(true);
+    });
+
+    it('rejects plain items, truthy non-boolean markers, and empties', () => {
+        expect(isGroupHeader({ value: 'pizza', label: 'Pizza' })).toBe(false);
+        // The guard demands the literal `true`, not any truthy marker
+        expect(isGroupHeader({ groupHeader: 'yes' as unknown as boolean })).toBe(false);
+        expect(isGroupHeader(null)).toBe(false);
+        expect(isGroupHeader(undefined)).toBe(false);
     });
 });

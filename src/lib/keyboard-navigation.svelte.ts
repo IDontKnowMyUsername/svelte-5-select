@@ -146,7 +146,19 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
     function handleEnterKey(e: KeyboardEvent): void {
         const { listOpen, filteredItems, hoverItemIndex, value, multiple, itemId } = state;
 
-        if (!listOpen) return;
+        if (!listOpen) {
+            // Searchable mode leaves Enter alone on a closed list (implicit form
+            // submission must keep working), but the select-only combobox
+            // pattern (APG, searchable={false}) specifies Enter opens the
+            // listbox — a native-<select>-like control must not submit the form
+            // instead of opening.
+            if (state.searchable) return;
+            e.preventDefault();
+            e.stopPropagation();
+            state.listOpen = true;
+            state.activeValue = undefined;
+            return;
+        }
 
         e.preventDefault();
         e.stopPropagation();

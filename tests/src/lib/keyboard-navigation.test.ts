@@ -88,6 +88,24 @@ describe('useKeyboardNavigation', () => {
         expect(event.stopPropagation).not.toHaveBeenCalled();
     });
 
+    it('Enter opens a closed list in select-only mode (APG select-only pattern)', () => {
+        // With searchable={false} the control is a select-only combobox: Enter
+        // must open the listbox, not submit the surrounding form (12th audit)
+        const { state, actions } = createMock({ listOpen: false, searchable: false });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Enter' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+        Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(state.listOpen).toBe(true);
+        expect(actions.handleSelect).not.toHaveBeenCalled();
+        expect(event.preventDefault).toHaveBeenCalled();
+        expect(event.stopPropagation).toHaveBeenCalled();
+    });
+
     it('handles ArrowDown when list is closed', () => {
         const { state, writes, actions } = createMock();
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
@@ -776,6 +794,179 @@ describe('useKeyboardNavigation', () => {
 
             expect(writes.hoverItemIndex).toBeUndefined();
             expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('skips label-less options and matches the next labelled one', () => {
+            const { state, writes, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: [{ value: 'bare' }, { value: 'apple', label: 'Apple' }] as SelectItem[],
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('a', 1000));
+
+            // The label-less item stringifies to '' (never matches); the cursor
+            // lands on the labelled match instead of erroring or stalling
+            expect(writes.hoverItemIndex).toEqual([1]);
+            expect(state.hoverItemIndex).toBe(1);
+        });
+
+        it('is a no-op on an open list with no options', () => {
+            const { writes, state, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: [],
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent('a', 1000));
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+        });
+
+        it('leaves a modified Space (Ctrl+Space) alone in select-only mode', () => {
+            const { state, writes, actions } = createMock({ searchable: false, listOpen: false });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent(' ', 1000, { ctrlKey: true }));
+
+            expect(writes.listOpen).toBeUndefined();
+            expect(actions.handleSelect).not.toHaveBeenCalled();
+        });
+
+        it('Space on an open empty list selects nothing and stays open', () => {
+            const { state, actions } = createMock({
+                searchable: false,
+                listOpen: true,
+                filteredItems: [],
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEvent(' ', 1000));
+
+            expect(actions.handleSelect).not.toHaveBeenCalled();
+            expect(actions.closeList).not.toHaveBeenCalled();
+        });
+    });
+
+    describe('navigation edge branches', () => {
+        function keyEventPlain(key: string) {
+            const event = new KeyboardEvent('keydown', { key });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+            Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+            return event;
+        }
+
+        it('Alt+ArrowUp on a closed list is a no-op', () => {
+            const { state, actions } = createMock({ listOpen: false });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+            handleKeyDown(event);
+
+            expect(actions.closeList).not.toHaveBeenCalled();
+        });
+
+        it('Home leaves the cursor alone when no option is selectable', () => {
+            const { state, writes, actions } = createMock({
+                listOpen: true,
+                filteredItems: [
+                    { value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: false },
+                    { value: 'Savory', label: 'Savory', groupHeader: true, selectable: false },
+                ] as SelectItem[],
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(new KeyboardEvent('keydown', { key: 'Home' }));
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+        });
+
+        it('PageDown and PageUp pass through when the list is closed', () => {
+            const { state, writes, actions } = createMock({ listOpen: false });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const down = keyEventPlain('PageDown');
+            handleKeyDown(down);
+            const up = keyEventPlain('PageUp');
+            handleKeyDown(up);
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+            expect(down.preventDefault).not.toHaveBeenCalled();
+            expect(up.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('PageDown anchors a header-parked cursor and jumps selectable rows only', () => {
+            const rows = [
+                { value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: false },
+                { value: 'a', label: 'Cake' },
+                { value: 'b', label: 'Chocolate' },
+            ] as SelectItem[];
+            const { state, writes, actions } = createMock({
+                listOpen: true,
+                filteredItems: rows,
+                hoverItemIndex: 0,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEventPlain('PageDown'));
+
+            // Parked on the non-selectable header: the page clamps to the last
+            // selectable row, never onto the header itself
+            expect(writes.hoverItemIndex).toEqual([2]);
+        });
+
+        it('PageUp anchors a cursor parked on a trailing non-selectable row', () => {
+            const rows = [
+                { value: 'a', label: 'Cake' },
+                { value: 'b', label: 'Chocolate' },
+                { value: 'End', label: 'End', groupHeader: true, selectable: false },
+            ] as SelectItem[];
+            const { state, writes, actions } = createMock({
+                listOpen: true,
+                filteredItems: rows,
+                hoverItemIndex: 2,
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            handleKeyDown(keyEventPlain('PageUp'));
+
+            expect(writes.hoverItemIndex).toEqual([0]);
+        });
+
+        it('PageDown passes through when no row is selectable', () => {
+            const { state, writes, actions } = createMock({
+                listOpen: true,
+                filteredItems: [
+                    { value: 'Sweet', label: 'Sweet', groupHeader: true, selectable: false },
+                ] as SelectItem[],
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = keyEventPlain('PageDown');
+            handleKeyDown(event);
+
+            expect(writes.hoverItemIndex).toBeUndefined();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('ArrowRight ignores a bare (non-array) multiple value', () => {
+            const { state, writes, actions } = createMock({
+                multiple: true,
+                value: { value: 'a', label: 'A' } as SelectItem,
+                activeValue: 0,
+                filterText: '',
+            });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = keyEventPlain('ArrowRight');
+            handleKeyDown(event);
+
+            expect(writes.activeValue).toBeUndefined();
+            expect(event.stopPropagation).not.toHaveBeenCalled();
         });
     });
 });

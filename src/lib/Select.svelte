@@ -1,5 +1,13 @@
 <svelte:options runes={true} />
 
+<!--
+@component
+A select/autocomplete/typeahead control: a WAI-ARIA combobox with a floating
+listbox popup. Generic over your item type; supports multi-select, async
+loading (`loadOptions`), grouping (`groupBy`), and snippet-based customization.
+Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
+-->
+
 <script lang="ts" generics="Item extends ItemLike = SelectItem, Multiple extends boolean = false">
     import { onDestroy, onMount, tick, untrack } from 'svelte';
     import { DEV } from 'esm-env';
@@ -80,7 +88,7 @@
         // Styling props
         containerStyles = '',
         inputStyles = '',
-        listStyle = '',
+        listStyles = '',
         hideEmptyState = false,
 
         // Advanced props
@@ -118,7 +126,11 @@
             return `No options`;
         },
         ariaFocused = () => {
-            return `Select is focused, type to refine list, press down to open the menu.`;
+            // In select-only mode (searchable={false}) the input is readonly, so
+            // "type to refine" would instruct an action that does nothing
+            return searchable
+                ? `Select is focused, type to refine list, press down to open the menu.`
+                : `Select is focused, press down to open the menu.`;
         },
         ariaListOpen = (label: string, count: number) => {
             return `You are currently focused on option ${label}. There are ${count} results available.`;
@@ -265,6 +277,17 @@
     let _inputAttributes = $derived.by<HTMLInputAttributes>(() => {
         const attrs: HTMLInputAttributes = {
             ...DEFAULT_INPUT_ATTRS,
+            // The APG select-only pattern has no autocomplete behavior: with
+            // searchable={false} the input is readonly and typing never refines
+            // the list, so advertising list-autocomplete would misinform AT
+            'aria-autocomplete': searchable ? ('list' as const) : undefined,
+            // The selection renders in a sibling div, so the combobox's own
+            // accessible value is the (empty) filter text; describe the element
+            // holding the selection so browse-mode users can read it from the
+            // input itself. Multiple mode is excluded: each chip is separately
+            // focusable and announced, and the description would also read
+            // every remove-button label.
+            'aria-describedby': !multiple && value ? `selected-${_id}` : undefined,
             role: 'combobox',
             'aria-controls': listOpen ? `listbox-${_id}` : undefined,
             'aria-expanded': listOpen,
@@ -327,8 +350,11 @@
     let showClear = $derived(hasValue && clearable && !disabled && !loading);
     let hideSelectedItem = $derived(hasValue && filterText.length > 0);
 
-    // Instance export — call via a bind:this reference. Rows include any group
-    // headers synthesized by groupBy, hence SelectRow rather than Item.
+    /**
+     * Instance export — call via a `bind:this` reference: returns the currently
+     * rendered rows. They include any group headers synthesized by `groupBy`
+     * (hence `SelectRow` rather than `Item`); narrow with `isGroupHeader`.
+     */
     export function getFilteredItems(): SelectRow<Item>[] {
         return filteredItems as SelectRow<Item>[];
     }
@@ -976,6 +1002,11 @@
         selectState.userNavigatedSinceOpen = true;
     }
 
+    /**
+     * Instance export — call via a `bind:this` reference: clears the selection,
+     * filter text, and open/focus state back to an empty control. Does not fire
+     * `onclear` (it is a programmatic reset, not a user clear).
+     */
     export function reset(): void {
         selectState.clearState = true;
         value = undefined;
@@ -1020,7 +1051,7 @@
             bind:this={list}
             class="svelte-select-list"
             class:prefloat
-            style={listStyle}
+            style={listStyles}
             onscroll={hoverManager.handleListScroll}
             onscrollend={hoverManager.handleListScrollEnd}
             onmousemove={() => {
@@ -1112,11 +1143,14 @@
                     {@render emptySnippet()}
                 {:else if !loading}
                     <!-- Decorative: this state is announced via the role="status" live
-                         region below (using ariaEmpty/ariaLoading), so hide the visual
-                         copy from AT to avoid stray non-option text inside the listbox -->
-                    <div class="empty" aria-hidden="true">No options</div>
+                         region below, so hide the visual copy from AT to avoid stray
+                         non-option text inside the listbox. The visible copy comes from
+                         the same ariaEmpty/ariaLoading props as the announcement, so a
+                         localized consumer never shows one language and announces
+                         another. -->
+                    <div class="empty" aria-hidden="true">{ariaEmpty()}</div>
                 {:else}
-                    <div class="empty" aria-hidden="true">Loading Data</div>
+                    <div class="empty" aria-hidden="true">{ariaLoading()}</div>
                 {/if}
             {/if}
             {#if listAppendSnippet}
@@ -1229,7 +1263,7 @@
                     </div>
                 {/each}
             {:else}
-                <div class="selected-item" class:hide-selected-item={hideSelectedItem}>
+                <div id="selected-{_id}" class="selected-item" class:hide-selected-item={hideSelectedItem}>
                     {#if selectionSnippet}
                         {@render selectionSnippet(value as Item)}
                     {:else}

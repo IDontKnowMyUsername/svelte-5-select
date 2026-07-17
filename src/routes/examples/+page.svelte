@@ -17,8 +17,8 @@
         <a href="https://npmjs.org/package/svelte-5-select">
             <img src="https://badgen.now.sh/npm/dm/svelte-5-select" alt="downloads" />
         </a>
-        <a href="https://github.com/rob-balfre/svelte-5-select">
-            <img src="https://badgen.net/badge/icon/github?icon=github&label" alt="downloads" />
+        <a href="https://github.com/IDontKnowMyUsername/svelte-5-select">
+            <img src="https://badgen.net/badge/icon/github?icon=github&label" alt="GitHub repository" />
         </a>
     </div>
     <div style="width:80%;margin-top:4rem;"></div>

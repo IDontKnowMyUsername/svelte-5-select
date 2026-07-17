@@ -233,6 +233,10 @@ input:focus {
     align-items: center;
     justify-content: center;
     cursor: pointer;
+    /* The button stretches to the chip's height (25px); without a width floor
+       it shrinks to the 20px icon, under the 24px activation-target minimum
+       (WCAG 2.2 2.5.8) */
+    min-width: var(--multi-item-clear-min-width, 24px);
     --clear-icon-color: var(--multi-item-clear-icon-color, #000);
 }
 

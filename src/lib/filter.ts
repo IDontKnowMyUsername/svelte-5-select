@@ -1,6 +1,14 @@
 import type { FilterConfig, ItemLike, SelectItem } from './types';
 import { areItemsEqual, isStringArray } from '$lib/utils';
 
+/**
+ * The built-in filtering pipeline: converts raw string items, applies
+ * `itemFilter` against the filter text (skipped when `loadOptions` is set —
+ * loader results are already filtered remotely), hides selected options in
+ * multiple mode (`filterSelectedItems`), and applies grouping. Exported so a
+ * custom `filter` prop can delegate to it before or after its own logic; see
+ * {@link FilterConfig} for what each field carries.
+ */
 export default function filter<Item extends ItemLike = SelectItem>({
     loadOptions,
     filterText = '',
@@ -34,7 +42,7 @@ export default function filter<Item extends ItemLike = SelectItem>({
         let matchesFilter: boolean = loadOptions ? true : itemFilter(item[label] as string, filterText, item as Item);
 
         if (matchesFilter && multiple && Array.isArray(value) && value.length > 0) {
-            matchesFilter = !value.some((x: SelectItem): boolean => {
+            matchesFilter = !value.some((x): boolean => {
                 return filterSelectedItems ? areItemsEqual(x, item, itemId) : false;
             });
         }

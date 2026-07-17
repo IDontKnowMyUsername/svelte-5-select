@@ -55,7 +55,9 @@
 }
 
 .svelte-select .clear-select {
-    @apply px-2 h-5 text-gray-500 flex-none w-9;
+    /* h-6: 24px minimum in both dimensions (WCAG 2.2 2.5.8 target size) —
+       h-5 left the activation target 20px tall */
+    @apply px-2 h-6 text-gray-500 flex-none w-9;
 }
 
 .svelte-select .chevron {
@@ -182,7 +184,9 @@
 }
 
 .multi-item-clear {
-    @apply flex items-center justify-center w-5;
+    /* w-6 + self-stretch: a 24x32px activation target (WCAG 2.2 2.5.8) —
+       w-5 alone left the remove button 20x20px */
+    @apply flex items-center justify-center w-6 self-stretch;
 }
 
 @media (prefers-reduced-motion: reduce) {
