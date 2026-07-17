@@ -19,6 +19,7 @@ import HoverItemIndexTest from './HoverItemIndexTest.svelte';
 import LabelForTest from './LabelForTest.svelte';
 import WrappingLabelTest from './WrappingLabelTest.svelte';
 import FocusedBindTest from './FocusedBindTest.svelte';
+import ListOpenCloseTest from './ListOpenCloseTest.svelte';
 import InPlaceValuePushTest from './InPlaceValuePushTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
 import LabelForSelectTest from './LabelForSelectTest.svelte';
@@ -4431,6 +4432,38 @@ describe('Select Component', () => {
         });
     });
 
+    describe('itemId dev warning', () => {
+        it('warns when items are missing the itemId field', async () => {
+            // Items missing the itemId field all compare equal (undefined ===
+            // undefined) — a completely silent config error before the warning
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, { props: { ariaLabel: 'Food', items: [{ label: 'A' }, { label: 'B' }] } });
+            await tick();
+
+            expect(warn.mock.calls.some(([msg]) => String(msg).includes('itemId'))).toBe(true);
+            warn.mockRestore();
+        });
+
+        it('stays silent for keyed items, raw strings, and a matching custom itemId', async () => {
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            const { unmount } = render(Select, { props: { ariaLabel: 'Food', items } });
+            await tick();
+            unmount();
+
+            const { unmount: unmount2 } = render(Select, { props: { ariaLabel: 'Food', items: ['one', 'two'] } });
+            await tick();
+            unmount2();
+
+            render(Select, {
+                props: { ariaLabel: 'Food', itemId: 'id', items: [{ id: 1, label: 'A' }] },
+            });
+            await tick();
+
+            expect(warn.mock.calls.some(([msg]) => String(msg).includes('itemId'))).toBe(false);
+            warn.mockRestore();
+        });
+    });
+
     describe('Localized empty and loading copy', () => {
         it('renders the visible empty/loading copy from ariaEmpty/ariaLoading', async () => {
             // The visible copy and the announcement come from the same props, so
@@ -6837,6 +6870,109 @@ describe('Select Component', () => {
             await rerender({ loadOptions });
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
             expect(loadOptions).toHaveBeenLastCalledWith('');
+        });
+
+        it('discards an in-flight response after the loadOptions prop is removed', async () => {
+            let resolveLoad!: (rows: { value: string; label: string }[]) => void;
+            const loadOptions = vi.fn(() => new Promise<{ value: string; label: string }[]>((r) => (resolveLoad = r)));
+            const onloaded = vi.fn();
+            const { rerender } = render(Select, { props: { loadOptions, onloaded } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount fetch, in flight
+
+            await rerender({ loadOptions: undefined, onloaded });
+            await tick();
+            // With no landing left to clear it, removal drops the loading flag
+            expect(document.querySelector('.icon.loading')).toBeFalsy();
+
+            resolveLoad([{ value: 'late', label: 'Late' }]);
+            await new Promise((resolve) => setTimeout(resolve, 20));
+
+            // The late response must not land items or fire onloaded on a
+            // Select that no longer has a loader
+            expect(onloaded).not.toHaveBeenCalled();
+        });
+
+        it('a programmatic bind:listOpen=false cancels a load armed by typing', async () => {
+            // closeList() cancels synchronously, but an external listOpen write
+            // never goes through closeList — the armed debounced load used to
+            // fire a spinner and stale items onto the closed list
+            const loadOptions = vi.fn(() => Promise.resolve([{ value: 'a', label: 'A' }]));
+            render(ListOpenCloseTest, { props: { loadOptions, debounceWait: 100 } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount fetch
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            (document.querySelector('[data-testid="close-list"]') as HTMLElement).click();
+            await tick();
+
+            // Absence proof past the 100ms debounce window: the typed load never fires
+            await new Promise((resolve) => setTimeout(resolve, 250));
+            expect(loadOptions).toHaveBeenCalledTimes(1);
+            expect(document.querySelector('.icon.loading')).toBeFalsy();
+        });
+
+        it('reopening with an emptied filter refetches the baseline results', async () => {
+            const loadOptions = vi.fn((text: string) =>
+                Promise.resolve(
+                    text ? [{ value: text, label: text.toUpperCase() }] : [{ value: 'base', label: 'Base' }],
+                ),
+            );
+            render(Select, { props: { loadOptions, debounceWait: 0, focused: true } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount ''
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'a';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2)); // typed 'a'
+            await tick();
+
+            // Escape closes and wipes the text; the loaded items are still the
+            // 'a'-narrowed set
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }));
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            // Reopening under an empty input must not show the stale narrowed
+            // results — the '' refetch restores the baseline set
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(3));
+            expect(loadOptions).toHaveBeenLastCalledWith('');
+            await vi.waitFor(() =>
+                expect(document.querySelector('.svelte-select-list')!.textContent).toContain('Base'),
+            );
+        });
+
+        it('typing clears an armed tag cursor when loadOptions is set', async () => {
+            const loadOptions = vi.fn(() => Promise.resolve([]));
+            render(Select, {
+                props: {
+                    loadOptions,
+                    debounceWait: 0,
+                    multiple: true,
+                    focused: true,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
+            });
+            await tick();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
+            await tick();
+            expect(document.querySelector('.multi-item.active')).toBeTruthy();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'x';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            // The loadOptions branch of setupFilterText used to skip this reset,
+            // leaving the tag highlighted and announced while the user typed
+            expect(document.querySelector('.multi-item.active')).toBeFalsy();
         });
 
         it('keeps a selection the new loadOptionsDeps results still offer', async () => {

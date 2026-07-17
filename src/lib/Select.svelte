@@ -39,6 +39,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     import {
         areItemsEqual,
         convertStringItemsToObjects,
+        getItemProperty,
         isItemSelectableCheck,
         normalizeItem,
         createGroupHeaderItem as _createGroupHeaderItem,
@@ -726,6 +727,33 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         });
     });
 
+    // Dev-only: items are compared by their `itemId` field everywhere
+    // (selection, hover, dedup), and entries missing that field all compare
+    // equal — the first pick works, every later click on a different option
+    // reads "already selected" and just closes the list, and every option
+    // renders selected. The failure is completely silent, so surface the
+    // config error instead.
+    let warnedAboutMissingItemId = false;
+    $effect(() => {
+        if (!DEV) return;
+        const currentItems = items;
+        const currentItemId = itemId;
+        untrack(() => {
+            if (warnedAboutMissingItemId || !currentItems?.length) return;
+            const missing = (currentItems as (Item | string)[]).some(
+                (item) => typeof item !== 'string' && getItemProperty(item, currentItemId) === undefined,
+            );
+            if (!missing) return;
+            warnedAboutMissingItemId = true;
+            console.warn(
+                `[svelte-select] Some items have no "${currentItemId}" field (the current \`itemId\`). ` +
+                    'Items are compared by that field, so items without it all compare as the same ' +
+                    'item — selection, hover state, and deduplication will misbehave. Point `itemId` ' +
+                    'at a field your items actually have, or add the field to your items.',
+            );
+        });
+    });
+
     // Dev-only: warn once the input is mounted if it has no robust accessible
     // name. The placeholder is only a last-resort fallback that some screen
     // readers ignore, so an unnamed combobox is a real gap worth surfacing.
@@ -863,8 +891,13 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
 
     function setupFilterText() {
         if (loadOptions) {
-            if (filterText.length > 0 && !listOpen) {
-                listOpen = true;
+            if (filterText.length > 0) {
+                if (!listOpen) listOpen = true;
+                // Typing dismisses an armed tag cursor here too — mirrors the
+                // non-loadOptions branch below; without this the cursor stayed
+                // highlighted and announced while the user typed (Backspace
+                // itself was already guarded by the filterText check)
+                if (multiple) selectState.activeValue = undefined;
             }
             return;
         }

@@ -93,16 +93,25 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         // Hydration is all-or-nothing and retries when items change: writing a
         // partial (or empty) match would silently narrow justValue and block
         // later hydration against fuller items
-        const typedItems = (state.items as Item[] | null) || [];
+        const typedItems = (state.items as (Item | string)[] | null) || [];
+        // A raw string item is its own id, so string[] items hydrate too; the
+        // normalize effect upgrades a matched raw string to its synthesized item
+        const idOf = (item: Item | string) => (typeof item === 'string' ? item : getItemProperty(item, itemId));
         if (multiple && Array.isArray(justValue)) {
             const justValueArr = justValue as (string | number)[];
-            const matches = typedItems.filter((item) =>
-                justValueArr.includes(getItemProperty(item, itemId) as string | number),
-            );
-            if (matches.length === justValueArr.length) state.value = matches;
+            // Match in justValue order: hydration must not reorder the parent's
+            // entries to items order (the reordered array would then be written
+            // back over the parent's bound justValue as a spurious correction)
+            const matches: (Item | string)[] = [];
+            for (const jv of justValueArr) {
+                const match = typedItems.find((item) => idOf(item) === jv);
+                if (match === undefined) return;
+                matches.push(match);
+            }
+            state.value = matches as Item[] | string[];
         } else {
-            const match = typedItems.find((item) => getItemProperty(item, itemId) === justValue);
-            if (match) state.value = match;
+            const match = typedItems.find((item) => idOf(item) === justValue);
+            if (match !== undefined) state.value = match as Item | string;
         }
     }
 

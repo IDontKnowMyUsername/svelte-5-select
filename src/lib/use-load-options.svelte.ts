@@ -47,8 +47,8 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
     // cancelPendingFilterLoad hands currency back to the in-flight deps reload
     // the cancelled load superseded. Without this, closing the list during a
     // deps reload discarded both the reload's items and its validation verdict,
-    // leaving stale options and an unvalidated stale selection with no re-fetch
-    // path (the reopen-stale heuristic requires non-empty filter text).
+    // leaving stale options and an unvalidated stale selection (the reopen-stale
+    // heuristic could re-fetch the items later, but never the verdict).
     let restoredToken = 0;
     // Token of the newest load whose response fully landed (items written).
     // Lets a user selection tell whether the options it was picked from are
@@ -301,9 +301,21 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         const listOpen = state.listOpen;
 
         if (!state.loadOptions) {
-            // A removed loader resets the run history: restoring it later must
-            // behave like mount (initial fetch), not like "nothing changed"
-            prevRun = undefined;
+            // Only a genuine removal (a loader ran before) does anything here:
+            // a Select that never had a loader owns its `loading` prop and must
+            // not have it stomped. A removed loader resets the run history —
+            // restoring it later must behave like mount (initial fetch), not
+            // like "nothing changed" — and invalidates: an in-flight response
+            // must not land items (and fire onloaded) on a Select that no
+            // longer has a loader. With no landing left to clear it, the
+            // loading flag drops here too.
+            if (prevRun !== undefined) {
+                prevRun = undefined;
+                untrack(() => {
+                    invalidateLoads();
+                    if (state.loading) state.loading = false;
+                });
+            }
             return;
         }
 
@@ -322,13 +334,16 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         // filterText opens the list right after the mount fetch) is not stale —
         // its response is already on the way.
         const loadIsLiveForText = armedToken === requestSequence && liveLoadFilterText === filterText;
+        // No non-empty requirement on filterText: results narrowed by a typed
+        // query whose text was wiped at close (Escape) are just as stale under
+        // an empty input on reopen — the '' re-fetch restores the baseline set.
+        // A mount load still in flight is covered by loadIsLiveForText.
         const reopenedStale =
             !isFirstRun &&
             listOpen &&
             !prev.listOpen &&
             !filterTextChanged &&
             !disabled &&
-            filterText.length > 0 &&
             filterText !== loadedFilterText &&
             !loadIsLiveForText;
 
@@ -341,14 +356,23 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                 }),
             );
         } else if (reopenedStale) {
-            // Reopened with retained filter text whose load was cancelled on close
-            // (clearFilterTextOnBlur=false): the shown items are stale for this
-            // text, so refresh immediately. A typing-open is handled by the branch
-            // above (filterText changed → debounced); a pure reopen whose results
-            // already match, an empty filter, and the initial mount never reach here.
+            // Reopened onto results that do not reflect the current filter text —
+            // retained text whose load was cancelled on close
+            // (clearFilterTextOnBlur=false), or an empty input over query-narrowed
+            // results (Escape wiped the text): refresh immediately. A typing-open
+            // is handled by the branch above (filterText changed → debounced); a
+            // pure reopen whose results already match and the initial mount never
+            // reach here.
             untrack(() => handleLoadOptions(filterText, { debounce: false }));
         } else if (filterTextChanged) {
             // Filter text was emptied: a load armed for the old text is moot now
+            untrack(() => cancelPendingFilterLoad());
+        } else if (!listOpen && prev.listOpen) {
+            // The list closed without a text change — a programmatic
+            // bind:listOpen=false write, which never goes through closeList()'s
+            // synchronous cancel: a load armed by typing must not fire (spinner
+            // + stale items) on a closed list. No-op when nothing filter-driven
+            // is armed.
             untrack(() => cancelPendingFilterLoad());
         }
     });

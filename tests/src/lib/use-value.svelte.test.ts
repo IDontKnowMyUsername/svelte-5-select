@@ -561,6 +561,48 @@ describe('useValue', () => {
             expect(state.justValue).toBeUndefined();
         });
 
+        it('hydrates a justValue against raw string items', () => {
+            // A raw string item is its own id (getItemProperty on a string is
+            // undefined, which used to make string[] items unhydratable)
+            const { state } = createHarness({ useJustValue: true, justValue: 'two', items: ['one', 'two'] });
+
+            expect(state.value).toMatchObject({ value: 'two' });
+            expect(state.justValue).toBe('two');
+        });
+
+        it('hydrates a multiple justValue against raw string items, in justValue order', () => {
+            const { state } = createHarness({
+                multiple: true,
+                useJustValue: true,
+                justValue: ['three', 'one'],
+                items: ['one', 'two', 'three'],
+            });
+
+            const ids = (state.value as (SelectItem | string)[]).map((entry) =>
+                typeof entry === 'string' ? entry : entry.value,
+            );
+            expect(ids).toEqual(['three', 'one']);
+            expect(state.justValue).toEqual(['three', 'one']);
+        });
+
+        it('preserves justValue order over items order and does not echo a reordered array', () => {
+            const items = [
+                { value: 'chocolate', label: 'Chocolate' },
+                { value: 'pizza', label: 'Pizza' },
+            ];
+            const { state } = createHarness({
+                multiple: true,
+                useJustValue: true,
+                justValue: ['pizza', 'chocolate'],
+                items,
+            });
+
+            expect((state.value as SelectItem[]).map((entry) => entry.value)).toEqual(['pizza', 'chocolate']);
+            // The write-back echo must equal what the parent seeded — hydration
+            // used to reorder to items order and "correct" the parent's binding
+            expect(state.justValue).toEqual(['pizza', 'chocolate']);
+        });
+
         it('flushes clearState even when no value change accompanies it', () => {
             const { state } = createHarness();
 
