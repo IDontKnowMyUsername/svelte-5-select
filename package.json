@@ -89,11 +89,13 @@
     "exports": {
         ".": {
             "types": "./dist/index.d.ts",
-            "svelte": "./dist/index.js"
+            "svelte": "./dist/index.js",
+            "default": "./dist/index.js"
         },
         "./no-styles/*": {
             "types": "./dist/no-styles/*.d.ts",
-            "svelte": "./dist/no-styles/*"
+            "svelte": "./dist/no-styles/*",
+            "default": "./dist/no-styles/*"
         },
         "./styles/*": "./dist/styles/*",
         "./tailwind.css": "./dist/tailwind.css",

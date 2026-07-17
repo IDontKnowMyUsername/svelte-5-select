@@ -83,4 +83,14 @@ import.meta.resolve('svelte-5-select/styles/default.css');
 console.log('css subpaths resolve');
 "
 
+# Deliberately NO --conditions=svelte: without a 'default' export condition
+# these threw ERR_PACKAGE_PATH_NOT_EXPORTED for every non-svelte-aware
+# consumer (plain node scripts importing the exported utils, webpack/rspack
+# without a custom 'svelte' resolve condition).
+node --input-type=module -e "
+import.meta.resolve('svelte-5-select');
+import.meta.resolve('svelte-5-select/no-styles/Select.svelte');
+console.log('exports resolve without the svelte condition');
+"
+
 echo "SMOKE TEST PASSED"
