@@ -1054,7 +1054,9 @@
                         class:disabled
                         onclick={(ev) => {
                             ev.preventDefault();
-                            return multiFullItemClearable ? valueManager.handleMultiItemClear(i) : {};
+                            // Gated like the keydown path below: a pointer must never
+                            // mutate a disabled control's value (see handleItemClick)
+                            if (multiFullItemClearable && !disabled) void valueManager.handleMultiItemClear(i);
                         }}
                         onkeydown={multiFullItemClearable && !disabled
                             ? (ev) => {

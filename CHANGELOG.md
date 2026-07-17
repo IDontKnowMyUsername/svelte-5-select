@@ -48,6 +48,7 @@
 
 ### Fixed
 
+* A disabled multi select no longer removes tags on mouse click when `multiFullItemClearable` is set: the keyboard removal path was gated on `disabled` but the click path was not, so a pointer could mutate a disabled control's value (and fire `onclear`/`oninput`)
 * The custom `filter` prop's return type is `(Item | SelectItem)[]` instead of `SelectItem[]`, so returning your own interface-typed items (no index signature) compiles — as the TypeScript docs promise. Existing filters returning `config.applyGrouping(...)` rows keep working
 * Closing the list (or emptying the filter text) while a `loadOptionsDeps` reload was in flight no longer destroys that reload: cancelling the moot typing query used the global invalidation, which also discarded the dependency reload's items *and* its stale-selection validation verdict — the list kept the previous dependency's options and an invalid selection survived, with nothing left to re-fetch. The cancel now hands authority back to the in-flight dependency reload, whose response then lands in full
 * With `searchable={false}` and a selected value, the first type-ahead keypress on a closed list no longer looks ignored: the keypress opened the list and moved the keyboard cursor to its match, but the open-with-value hover effect then fired on the open transition and snapped the cursor back to the selected value — only a repeated press (no transition) landed on the match. Arrow/Space opens still snap to the selected value per the APG pattern

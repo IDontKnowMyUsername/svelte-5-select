@@ -2313,6 +2313,38 @@ describe('Select Component', () => {
             expect(capturedValue && capturedValue[0].label).toBe('Pizza');
         });
 
+        it('does not remove a multiFullItemClearable tag when disabled', async () => {
+            // 9th audit: only the keydown path was gated on disabled — a mouse
+            // click on a chip mutated a disabled control's value and fired
+            // onclear/oninput despite aria-disabled
+            const oninput = vi.fn();
+            const onclear = vi.fn();
+
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    disabled: true,
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    oninput,
+                    onclear,
+                },
+            });
+
+            await tick();
+            oninput.mockClear();
+            await querySelectorClick('.multi-item');
+            await tick();
+
+            expect(onclear).not.toHaveBeenCalled();
+            expect(oninput).not.toHaveBeenCalled();
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+        });
+
         it('always shows placeholder when placeholderAlwaysShow is true', async () => {
             render(Select, {
                 props: {
