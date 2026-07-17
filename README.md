@@ -338,7 +338,7 @@ Internal wiring (the shared state store, the composables, and their types) is de
 
 ## TypeScript
 
-The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `oninput`/`onchange` payloads are `Item[]`; without it they are `Item | null` (`null` is dispatched when the selection is cleared).
+The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `oninput`/`onchange` payloads are `Item[]`; without it they are `Item | null`. The `null` appears only in the dispatch payloads (`oninput(null)` on clear) — an emptied `bind:value` is always `undefined`, so test it with falsiness, not `=== null`.
 
 ```svelte
 <script lang="ts">

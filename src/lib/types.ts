@@ -361,8 +361,12 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     createGroupHeaderItem?: (groupValue: string, item: Item) => SelectItem;
     /** Replace the debounce strategy used for typing-driven `loadOptions` calls. */
     debounce?: (fn: () => void, wait: number) => void;
-    /** Replace the whole filtering pipeline. Most cases only need `itemFilter`. */
-    filter?: (config: FilterConfig<Item>) => SelectItem[];
+    /**
+     * Replace the whole filtering pipeline. Most cases only need `itemFilter`.
+     * May return your own `Item`s directly, rows from `config.applyGrouping` /
+     * `config.convertStringItemsToObjects`, or a mix.
+     */
+    filter?: (config: FilterConfig<Item>) => (Item | SelectItem)[];
     /**
      * Returns the group an item belongs to. Setting this makes the list interleave
      * synthesized header rows with your items — see {@link SelectRow}.

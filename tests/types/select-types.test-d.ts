@@ -86,6 +86,16 @@ if (isGroupHeader(_row)) {
     type _12b = Expect<Equal<typeof _row, Country>>;
 }
 
+// 13. A custom `filter` prop may return plain interface-typed items (8th audit:
+//     the former `SelectItem[]` return type rejected `Country[]` for lacking an
+//     index signature, contradicting the README's TypeScript promise)...
+const _filter13a: NonNullable<SelectProps<Country>['filter']> = (config) =>
+    (config.items as Country[]).filter((c) => c.name.startsWith(config.filterText));
+
+// ...and the pipeline helpers' output stays returnable too (grouped rows are
+// synthesized `SelectItem`s, not `Country`s).
+const _filter13b: NonNullable<SelectProps<Country>['filter']> = (config) => config.applyGrouping([]);
+
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.
 // ---------------------------------------------------------------------------
