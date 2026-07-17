@@ -117,6 +117,29 @@ type _15 = Expect<Equal<Extract<JustValue, undefined>, undefined>>;
 // @ts-expect-error a loaded option may be a synthesized SelectItem, whose fields are `unknown`
 const _onloaded16: SelectProps<Country>['onloaded'] = (opts) => opts.map((o): string => o.code);
 
+// 17. `NoInfer` on config callbacks (10th audit): a pre-annotated callback const
+//     with a looser param type must not hijack `Item` inference — only `items`/
+//     `value`/`loadOptions` drive it. TypeScript prefers contravariant (param)
+//     candidates, so without `NoInfer` the loose `groupBy` below would flip
+//     `Item` to `{ name?: string }` and fail the `Equal` pin. Simulated with a
+//     generic function whose param is `SelectProps<Item>` — which is how Svelte
+//     infers a component's generics from its props.
+declare function _inferProps<Item extends ItemLike>(props: SelectProps<Item, false>): Item;
+declare const _countries17: Country[];
+const _looseGroupBy17 = (item: { name?: string }) => item.name ?? '';
+const _inferred17 = _inferProps({ items: _countries17, groupBy: _looseGroupBy17 });
+type _17 = Expect<Equal<typeof _inferred17, Country>>;
+
+// ...and when the callback's param type is genuinely incompatible, the error
+// lands on the offending callback prop — not on `items`/`loadOptions`.
+const _wrongGroupBy17 = (item: { population: number }) => String(item.population);
+const _inferred17b = _inferProps({
+    items: _countries17,
+    // @ts-expect-error the incompatible callback itself errors, not `items`
+    groupBy: _wrongGroupBy17,
+});
+type _17b = Expect<Equal<typeof _inferred17b, Country>>;
+
 // ---------------------------------------------------------------------------
 // NEGATIVE cases — each guarded line must be rejected by the compiler.
 // ---------------------------------------------------------------------------
@@ -132,15 +155,15 @@ const _rowCode: string = _rawRow.code;
 // @ts-expect-error single Country is not assignable to a multiple value (expects an array)
 const _p7: SelectProps<Country, true>['value'] = { code: 'x', name: 'y' };
 
-// 8. In multiple mode `oninput` receives `Country[]`; treating it as a single
+// 8. In multiple mode `onValueChange` receives `Country[]`; treating it as a single
 //    item (`.name`) must error — arrays have no `name` property.
 // @ts-expect-error value is Country[] in multiple mode, so `.name` does not exist
-const _oninput8: SelectProps<Country, true>['oninput'] = (v) => v.name;
+const _onValueChange8: SelectProps<Country, true>['onValueChange'] = (v) => v.name;
 
-// 9. In single mode `oninput` receives `Country | null`; an unguarded `.name`
+// 9. In single mode `onValueChange` receives `Country | null`; an unguarded `.name`
 //    must error because the value may be null...
 // @ts-expect-error value may be null, so `.name` requires a guard
-const _oninput9a: SelectProps<Country, false>['oninput'] = (v) => v.name;
+const _onValueChange9a: SelectProps<Country, false>['onValueChange'] = (v) => v.name;
 
 // ...while optional-chaining the null away is fine (no @ts-expect-error).
-const _oninput9b: SelectProps<Country, false>['oninput'] = (v) => v?.name;
+const _onValueChange9b: SelectProps<Country, false>['onValueChange'] = (v) => v?.name;

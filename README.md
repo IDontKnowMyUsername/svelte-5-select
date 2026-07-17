@@ -93,7 +93,7 @@ The `aria*` text-builder defaults are shown in the [A11y](#a11y-accessibility) s
 <Select {items} bind:value bind:listOpen />
 ```
 
-> **The DOM input's value is the filter text, not the selection.** A selection is rendered in an element beside the input (so it can be rich markup via `selectionSnippet`, or multiple tags) and announced to screen readers via the live regions — it is never written into the textbox, so `input.value` is `''` unless the user is filtering. Read the selection from `bind:value`/`bind:justValue`, the `oninput`/`onchange` callbacks, or the submitted form field (`name` prop); in tests, assert on `.selected-item` (or `.multi-item`) rather than the input's value.
+> **The DOM input's value is the filter text, not the selection.** A selection is rendered in an element beside the input (so it can be rich markup via `selectionSnippet`, or multiple tags) and announced to screen readers via the live regions — it is never written into the textbox, so `input.value` is `''` unless the user is filtering. Read the selection from `bind:value`/`bind:justValue`, the `onValueChange`/`onSelectionChange` callbacks, or the submitted form field (`name` prop); in tests, assert on `.selected-item` (or `.multi-item`) rather than the input's value.
 
 
 ## Snippets
@@ -138,21 +138,23 @@ Rendering is customized with [snippets](https://svelte.dev/docs/svelte/snippet).
 Events are plain callback props. Handlers receive the value directly — there is no `CustomEvent` and no `event.detail`.
 
 ```svelte
-<Select {items} onchange={(value) => console.log('selected', value)} />
+<Select {items} onSelectionChange={(value) => console.log('selected', value)} />
 ```
 
-| Prop        | Arguments           | Description                                                        |
-| ----------- | ------------------- | ------------------------------------------------------------------ |
-| onblur      | `event: FocusEvent` | fires when the input loses focus                                   |
-| onchange    | `value`             | fires when the user selects an option                              |
-| onclear     | `value`             | fires when the value is cleared or a multi-select item is removed  |
-| onerror     | `{ type, details }` | fires when an error is caught (e.g. a `loadOptions` rejection)     |
-| onfilter    | `items`             | fires when `listOpen: true` and items are filtered                 |
-| onfocus     | `event: FocusEvent` | fires when the input gains focus                                   |
-| onhoveritem | `index`             | fires when `hoverItemIndex` changes                                |
-| oninput     | `value`             | fires when the value has been changed                              |
-| onloaded    | `options`           | fires when `loadOptions` resolves                                  |
-| onselect    | `selection`         | fires when an item is selected                                     |
+| Prop              | Arguments           | Description                                                                             |
+| ----------------- | ------------------- | --------------------------------------------------------------------------------------- |
+| onblur            | `event: FocusEvent` | fires when the input loses focus                                                        |
+| onclear           | `value`             | fires when the value is cleared or a multi-select item is removed                       |
+| onerror           | `{ type, details }` | fires when an error is caught (e.g. a `loadOptions` rejection)                          |
+| onfilter          | `items`             | fires when `listOpen: true` and items are filtered                                      |
+| onfocus           | `event: FocusEvent` | fires when the input gains focus                                                        |
+| onhoveritem       | `index`             | fires when `hoverItemIndex` changes                                                     |
+| onloaded          | `options`           | fires when `loadOptions` resolves                                                       |
+| onselect          | `selection`         | fires with just the picked item when the user selects an option                         |
+| onSelectionChange | `value`             | fires with the whole value when the user selects an option (never on clears or writes)  |
+| onValueChange     | `value`             | fires on _every_ value change — selection, clear, programmatic write, deps invalidation |
+
+`onSelectionChange` and `onValueChange` are component state-change callbacks (headless-library naming), not DOM events — typing lives in `bind:filterText`, and only `onblur`/`onfocus` are literal DOM event passthroughs.
 
 
 ### Items
@@ -338,7 +340,7 @@ Internal wiring (the shared state store, the composables, and their types) is de
 
 ## TypeScript
 
-The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `oninput`/`onchange` payloads are `Item[]`; without it they are `Item | null`. The `null` appears only in the dispatch payloads (`oninput(null)` on clear) — an emptied `bind:value` is always `undefined`, so test it with falsiness, not `=== null`.
+The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed (TypeScript >= 5.4). Only `items`, `value`, and `loadOptions` drive that inference: configuration callbacks like `groupBy`/`itemFilter` receive the inferred `Item` but never widen it, so a loosely-typed callback const can't silently change what `Item` means. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `onValueChange`/`onSelectionChange` payloads are `Item[]`; without it they are `Item | null`. The `null` appears only in the dispatch payloads (`onValueChange(null)` on clear) — an emptied `bind:value` is always `undefined`, so test it with falsiness, not `=== null`.
 
 ```svelte
 <script lang="ts">
@@ -354,14 +356,14 @@ The component is generic over your item type: values, items, snippets, and callb
   let value: Country[] | undefined = $state();
 </script>
 
-<Select items={countries} itemId="code" label="name" multiple bind:value oninput={(v) => v.length} />
+<Select items={countries} itemId="code" label="name" multiple bind:value onValueChange={(v) => v.length} />
 ```
 
 `SelectProps`, `SelectItem`, `SelectValue`, and `SelectValueProp` (the bindable `value` shape, which also accepts raw string ids) are exported for annotating your own wrappers.
 
 ## A11y (Accessibility)
 
-The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab, Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the option under the keyboard cursor shows a >=3:1 outline (`--item-hover-outline`) on top of the hover background; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
+The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab (commits the highlighted option — but only after you've navigated or typed, so tabbing straight past an opened list never selects), Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The open listbox is named by `ariaLabel` or, when you use the `id` + `<label for>` path, by that label. The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the option under the keyboard cursor shows a >=3:1 outline (`--item-hover-outline`) on top of the hover background; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
 
 The textbox itself only ever contains the typed filter text — the current selection is rendered beside it and conveyed to assistive tech through two polite `role="status"` live regions (customizable via the `ariaValues`, `ariaFocused`, `ariaListOpen`, `ariaEmpty`, `ariaLoading`, and `ariaCleared` builders): focusing a valued Select announces the selection, and selecting/clearing announces the change.
 
@@ -389,7 +391,7 @@ Selection and list state (including the empty/loading state) are announced throu
 The public API moved to idiomatic Svelte 5:
 
 - **Slots → snippets.** `<div slot="item" let:item />` becomes `{#snippet itemSnippet(item, index)}...{/snippet}` declared inside `<Select>`. See the [Snippets](#snippets) table for the full mapping (`slot="chevron-icon"` → `chevronIconSnippet`, etc.).
-- **Events → callback props.** `on:change={(e) => e.detail}` becomes `onchange={(value) => ...}` — handlers receive the value directly, with no `event.detail`.
+- **Events → callback props.** `on:change={(e) => e.detail}` becomes `onSelectionChange={(value) => ...}` and `on:input` becomes `onValueChange={(value) => ...}` — handlers receive the value directly, with no `event.detail`.
 - **`export let` overrides → regular props.** Functions like `itemFilter`, `groupBy`, and the aria text builders are passed as props.
 - **CSS variables are kebab-case.** `--borderRadius` is now `--border-radius`; see [the full list](/docs/theming_variables.md).
 
@@ -397,19 +399,22 @@ The public API moved to idiomatic Svelte 5:
 
 Every change below is covered in detail in the [changelog](CHANGELOG.md); this is the upgrade checklist:
 
-- **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disabling a `loadOptions` select, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `oninput(null)` instead of `oninput([])`.
+- **`oninput` and `onchange` are renamed.** `oninput` is now `onValueChange` and `onchange` is now `onSelectionChange` — same payloads, same firing rules. The old names collided with DOM-event expectations on a component wrapping a text input (`oninput` never fired per keystroke; typing is `bind:filterText`).
+- **An emptied `value` is always `undefined`.** Every clear path (clear button, last tag removed, `loadOptionsDeps` invalidation, disabling a `loadOptions` select, multiple→single switch) writes `undefined` — never `null` or `[]` — so test emptiness with falsiness, not `=== null`. `justValue` follows the same rule. Clearing a single select dispatches `onValueChange(null)` instead of `onValueChange([])`.
+- **`onloaded` receives `(Item | SelectItem)[]`, not `Item[]`.** A loader that resolves raw strings delivers the synthesized `{ value, label, index }` items built from them, so handlers explicitly annotated `(options: Item[]) => void` need the widened element type (narrow rows before reading item fields).
 - **Removed exports.** `useKeyboardNavigation` (with the `KeyboardNavigationContext`/`isCancelled` surface and the `SelectState`, `KeyboardNavigationState`, `KeyboardNavigationActions` types) and `isStringArray` are gone; the composables are internal.
 - **`ErrorEvent` is renamed `SelectErrorEvent`** — the old name shadowed the DOM's global `ErrorEvent` and has been removed; update imports.
 - **Rendered-list surfaces are typed `SelectRow<Item>`.** `getFilteredItems()`, `onfilter`, `listSnippet`, and `itemSnippet` see the group headers `groupBy` synthesizes; narrow rows with the exported `isGroupHeader` guard.
 - **`SelectValue` takes a `Multiple` type parameter** (inferred from the `multiple` prop), and `onclear` receives the `Multiple`-discriminated `SelectClearValue` instead of a flat union.
 - **`loadOptions` triggers changed.** It fires on mount, on typing, on `loadOptionsDeps` changes, and on disabled toggles — never on list open/close. Pending fetches that become moot are cancelled, results are no longer re-filtered by `itemFilter`, and only deps-driven reloads clear a stale value.
 - **Enter and Escape pass through when the list is closed.** Keys are only claimed when the component acts on them, so Enter on a closed select now submits the surrounding form and Escape now closes the surrounding dialog — re-test forms and dialogs that relied on the old swallow-everything behavior.
+- **Tab only commits after real navigation.** Tab still selects the highlighted option in a single press, but only once you've moved the cursor (keys or mouse) or typed filter text — merely opening the list and tabbing away now closes it without selecting, instead of silently committing the first option.
 - **`selectable: undefined` is keyboard-reachable.** Arrow navigation uses the same rule as click/Enter (`selectable !== false`), so an item carrying an explicit `selectable: undefined` is no longer skipped by the keyboard.
 - **`selectionSnippet` is `Snippet<[Item, number?]>`** — always a single item, also in multiple mode.
 - **`FilterConfig.filterGroupedItems` is renamed `applyGrouping`** (only affects custom `filter` implementations).
 - **Markup and a11y changes.** The multi-select remove control is a real `<button>` in the tab order; grouped options are wrapped in `role="group"` regions named by their headers; the input no longer defaults its `aria-label` to the placeholder (name it with `ariaLabel` or an external `<label for>`).
 - **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus; disabling releases focus and keyboard control; and an initial `filterText` is kept on mount (it used to be silently cleared) — it filters and drives the mount `loadOptions` fetch, without opening the list or moving focus.
-- **Node >= 18 at runtime** (Svelte 5's own floor). Developing this repository needs Node >= 22.12.
+- **Node >= 18 at runtime** (Svelte 5's own floor); **TypeScript >= 5.4** for the published types (they use `NoInfer`). Developing this repository needs Node >= 22.12.
 
 ## CSS custom properties (variables)
 

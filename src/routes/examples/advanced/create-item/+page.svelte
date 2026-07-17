@@ -33,7 +33,7 @@
     }
 </script>
 
-<Select onchange={handleChange} onfilter={handleFilter} bind:filterText {items}>
+<Select onSelectionChange={handleChange} onfilter={handleFilter} bind:filterText {items}>
     {#snippet itemSnippet(item: SelectItem)}
         <div>
             {item.created ? 'Add new: ' : ''}

@@ -16,6 +16,7 @@ import ItemHeightTest from './ItemHeightTest.svelte';
 import MultiItemColor from './MultiItemColor.svelte';
 import GroupHeaderNotSelectable from './GroupHeaderNotSelectable.svelte';
 import HoverItemIndexTest from './HoverItemIndexTest.svelte';
+import LabelForTest from './LabelForTest.svelte';
 import FocusedBindTest from './FocusedBindTest.svelte';
 import InPlaceValuePushTest from './InPlaceValuePushTest.svelte';
 import BindRefsTest from './BindRefsTest.svelte';
@@ -402,7 +403,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithIndex,
-                    onchange: (event: any) => {
+                    onSelectionChange: (event: any) => {
                         value = JSON.stringify(event);
                     },
                 },
@@ -422,7 +423,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithIndex,
-                    onchange: (selectedValue: SelectValue) => {
+                    onSelectionChange: (selectedValue: SelectValue) => {
                         value = JSON.stringify(selectedValue);
                     },
                 },
@@ -443,7 +444,7 @@ describe('Select Component', () => {
                     listOpen: true,
                     items: itemsWithIndex,
                     value: { value: 'chocolate', label: 'Chocolate', index: 0 },
-                    onchange: () => {
+                    onSelectionChange: () => {
                         itemSelectedFired = true;
                     },
                 },
@@ -494,7 +495,7 @@ describe('Select Component', () => {
                     focused: true,
                     listOpen: true,
                     items,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         selected = value;
                     },
                 },
@@ -511,7 +512,7 @@ describe('Select Component', () => {
                     searchable: true,
                     focused: true,
                     items,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         selected = value;
                     },
                 },
@@ -536,6 +537,170 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', altKey: true }));
             await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('Alt+ArrowDown opens a closed list without moving the cursor or selecting', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', altKey: true }));
+            await tick();
+
+            // APG: Alt+Down opens the popup; the cursor stays parked and nothing commits
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('Chocolate');
+            expect(selected).toBeUndefined();
+        });
+
+        it('Space on the already-selected option closes the list without re-selecting', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    searchable: false,
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    value: items[0],
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+            // Opening with a value parks the cursor on it; Space behaves like
+            // Enter's already-selected branch: close, don't re-dispatch
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: ' ' }));
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(selected).toBeUndefined();
+        });
+
+        it('Space inside a live type-ahead query refines the match instead of selecting', async () => {
+            const multiWordItems = [
+                { value: 'ny', label: 'New York' },
+                { value: 'nj', label: 'New Jersey' },
+            ];
+            let selected: any;
+            render(Select, {
+                props: {
+                    searchable: false,
+                    focused: true,
+                    listOpen: true,
+                    items: multiWordItems,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // "new y" — typed within the type-ahead window. The first char cycles
+            // hover onto "New Jersey"; only a query that keeps the Space can walk
+            // back to "New York". A Space that fell through to select would have
+            // committed "New Jersey" and closed the list.
+            for (const key of ['n', 'e', 'w', ' ', 'y']) {
+                window.dispatchEvent(new KeyboardEvent('keydown', { key }));
+            }
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(selected).toBeUndefined();
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered!.textContent.trim()).toBe('New York');
+        });
+
+        it('Tab after merely opening the list closes it without selecting', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // The cursor auto-parked on the first option; without navigation or
+            // filter text, Tab must close without committing it
+            const event = new KeyboardEvent('keydown', { key: 'Tab', cancelable: true });
+            window.dispatchEvent(event);
+            await tick();
+
+            expect(selected).toBeUndefined();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+            expect(event.defaultPrevented).toBe(false);
+        });
+
+        it('Tab commits after pointing at an option with the mouse', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // Hovering an option with the pointer is the same commit-intent as
+            // arrowing to it
+            const secondItem = document.querySelectorAll('.list-item')[1] as HTMLElement;
+            secondItem.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            await tick();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+
+            expect(selected && selected.label).toBe('Pizza');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        it('a closed list resets Tab commit-intent from the previous open', async () => {
+            let selected: any;
+            render(Select, {
+                props: {
+                    focused: true,
+                    listOpen: true,
+                    items,
+                    onSelectionChange: (value: any) => {
+                        selected = value;
+                    },
+                },
+            });
+            await tick();
+
+            // Navigate (intent), close without committing, reopen bare: the
+            // stale intent from the previous open must not make Tab commit
+            await handleKeyboard('ArrowDown');
+            await handleKeyboard('Escape');
+            await tick();
+            await querySelectorClick('.svelte-select');
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
+            await tick();
+
+            expect(selected).toBeUndefined();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
     });
@@ -586,6 +751,27 @@ describe('Select Component', () => {
             await querySelectorClick('.svelte-select');
             const listContainer = document.querySelector('.svelte-select-list');
             expect(listContainer).toBeTruthy();
+        });
+
+        // 10th audit: in real browsers a press on a non-input surface (the
+        // chevron area, a chip, multi-mode whitespace) blurred the input — blur
+        // closed the list, and the press's own bubbled pointerup re-toggled it
+        // straight back open, so those surfaces could never close the dropdown.
+        // jsdom moves no focus on mousedown, so pin the mechanism instead: the
+        // container cancels mousedown everywhere except on the input itself.
+        it('cancels mousedown on non-input surfaces so a press cannot blur-close and reopen the list', async () => {
+            render(Select, { props: { items, multiple: true, showChevron: true, listOpen: true } });
+            await tick();
+
+            const indicators = document.querySelector('.indicators') as HTMLElement;
+            const nonInputPress = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+            indicators.dispatchEvent(nonInputPress);
+            expect(nonInputPress.defaultPrevented).toBe(true);
+
+            const input = document.querySelector('input:not([type="hidden"])') as HTMLElement;
+            const inputPress = new MouseEvent('mousedown', { bubbles: true, cancelable: true });
+            input.dispatchEvent(inputPress);
+            expect(inputPress.defaultPrevented).toBe(false);
         });
 
         it('opens list populated with items', async () => {
@@ -1157,7 +1343,7 @@ describe('Select Component', () => {
             // window the handleItemClick guard has to cover
             let changed: unknown;
             render(Select, {
-                props: { items, disabled: true, listOpen: true, onchange: (v: unknown) => (changed = v) },
+                props: { items, disabled: true, listOpen: true, onSelectionChange: (v: unknown) => (changed = v) },
             });
 
             const item = document.querySelector('.list-item .item') as HTMLElement | null;
@@ -1333,7 +1519,7 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     items,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -1399,13 +1585,13 @@ describe('Select Component', () => {
             expect(mousedown.defaultPrevented).toBe(true);
         });
 
-        it('dispatches oninput(null) when a single selection is cleared', async () => {
-            const oninput = vi.fn();
+        it('dispatches onValueChange(null) when a single selection is cleared', async () => {
+            const onValueChange = vi.fn();
             render(Select, {
                 props: {
                     items,
                     value: items[0],
-                    oninput,
+                    onValueChange,
                 },
             });
             await tick();
@@ -1415,7 +1601,7 @@ describe('Select Component', () => {
 
             // An empty array is truthy, so `if (payload)` in consumers would
             // read "cleared" as "has value" — single mode must report null
-            expect(oninput).toHaveBeenCalledWith(null);
+            expect(onValueChange).toHaveBeenCalledWith(null);
         });
     });
 
@@ -1567,7 +1753,7 @@ describe('Select Component', () => {
                     groupHeaderSelectable: true,
                     groupBy,
                     createGroupHeaderItem,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -1806,7 +1992,7 @@ describe('Select Component', () => {
                     multiple: true,
                     items,
                     value: undefined,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -1884,7 +2070,7 @@ describe('Select Component', () => {
                         { value: 'chocolate', label: 'Chocolate' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                    oninput: (value: any) => {
+                    onValueChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -1976,7 +2162,7 @@ describe('Select Component', () => {
                     multiple: true,
                     items: itemsWithGroup,
                     groupBy: (item: any) => item.group,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -2116,7 +2302,7 @@ describe('Select Component', () => {
                     focused: true,
                     filterText: 'p',
                     listOpen: true,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -2171,7 +2357,7 @@ describe('Select Component', () => {
                     items,
                     multiple: true,
                     value: ['Cake', 'Chips'],
-                    oninput: () => {
+                    onValueChange: () => {
                         events.push('event fired');
                     },
                 },
@@ -2188,7 +2374,7 @@ describe('Select Component', () => {
             await user.click(clearButton);
             await tick();
 
-            // One oninput per removal (2). Mounting with a string-seeded value no
+            // One onValueChange per removal (2). Mounting with a string-seeded value no
             // longer dispatches a spurious third event.
             expect(events.length).toBe(2);
         });
@@ -2204,7 +2390,7 @@ describe('Select Component', () => {
                         { value: 'pizza', label: 'Pizza' },
                         { value: 'chips', label: 'Chips' },
                     ],
-                    oninput: () => {
+                    onValueChange: () => {
                         inputFired = true;
                     },
                 },
@@ -2221,7 +2407,7 @@ describe('Select Component', () => {
                     { value: 'pizza', label: 'Pizza' },
                     { value: 'chips', label: 'Chips' },
                 ],
-                oninput: () => {
+                onValueChange: () => {
                     inputFired = true;
                 },
             });
@@ -2232,7 +2418,7 @@ describe('Select Component', () => {
                 multiple: true,
                 items,
                 value: [{ value: 'pizza', label: 'Pizza' }],
-                oninput: () => {
+                onValueChange: () => {
                     inputFired = true;
                 },
             });
@@ -2300,7 +2486,7 @@ describe('Select Component', () => {
                         { value: 'chips', label: 'Chips' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                    oninput: (value: any) => {
+                    onValueChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -2316,8 +2502,8 @@ describe('Select Component', () => {
         it('does not remove a multiFullItemClearable tag when disabled', async () => {
             // 9th audit: only the keydown path was gated on disabled — a mouse
             // click on a chip mutated a disabled control's value and fired
-            // onclear/oninput despite aria-disabled
-            const oninput = vi.fn();
+            // onclear/onValueChange despite aria-disabled
+            const onValueChange = vi.fn();
             const onclear = vi.fn();
 
             render(Select, {
@@ -2330,18 +2516,18 @@ describe('Select Component', () => {
                         { value: 'chips', label: 'Chips' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                    oninput,
+                    onValueChange,
                     onclear,
                 },
             });
 
             await tick();
-            oninput.mockClear();
+            onValueChange.mockClear();
             await querySelectorClick('.multi-item');
             await tick();
 
             expect(onclear).not.toHaveBeenCalled();
-            expect(oninput).not.toHaveBeenCalled();
+            expect(onValueChange).not.toHaveBeenCalled();
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
         });
 
@@ -2369,6 +2555,36 @@ describe('Select Component', () => {
 
             expect(document.querySelectorAll('.multi-item').length).toBe(1);
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
+        // 10th audit: the chip click path removed the tag but never restored
+        // focus — a pointer removal left focus on the (now removed) chip, so it
+        // fell to <body>, and since both live regions gate their text on
+        // `focused`, the removal was never announced to screen readers.
+        it('pointer-removing a multiFullItemClearable tag keeps focus on the input and announces it', async () => {
+            const user = userEvent.setup();
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
+            });
+            await tick();
+
+            await user.click(document.querySelector('.multi-item') as HTMLElement);
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+            const input = document.querySelector('input:not([type="hidden"])') as HTMLInputElement;
+            expect(document.activeElement).toBe(input);
+            // The focus gate is open, so the selection region announces the remaining tag
+            const region = document.querySelector('.a11y-selection') as HTMLElement;
+            expect(region.textContent!.trim()).not.toBe('');
         });
 
         it('always shows placeholder when placeholderAlwaysShow is true', async () => {
@@ -2452,7 +2668,7 @@ describe('Select Component', () => {
                         { value: 'chips', label: 'Chips' },
                         { value: 'pizza', label: 'Pizza' },
                     ],
-                    oninput: (value: any) => {
+                    onValueChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -2572,7 +2788,7 @@ describe('Select Component', () => {
                     ],
                     value: { id: 'ONE', label: 'ONE' },
                     itemId: 'id',
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3014,7 +3230,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3120,7 +3336,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'cake', label: 'Cake' },
-                    oninput: () => {
+                    onValueChange: () => {
                         inputFired = true;
                     },
                 },
@@ -3178,7 +3394,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items,
-                    onchange(e: any) {
+                    onSelectionChange(e: any) {
                         value = JSON.stringify(e);
                     },
                 },
@@ -3199,7 +3415,7 @@ describe('Select Component', () => {
                     listOpen: true,
                     items,
                     value: { value: 'cake', label: 'Cake' },
-                    onchange: () => {
+                    onSelectionChange: () => {
                         changeFired = true;
                     },
                 },
@@ -3645,7 +3861,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithSelectable,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3666,7 +3882,7 @@ describe('Select Component', () => {
                 props: {
                     listOpen: true,
                     items: itemsWithSelectable,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3724,7 +3940,7 @@ describe('Select Component', () => {
                         { value: 'ice-cream', label: 'Ice Cream', group: 'Sweet' },
                     ],
                     filterText: 'Ca',
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3755,7 +3971,7 @@ describe('Select Component', () => {
                     listOpen: true,
                     items: itemsWithSelectable,
                     filterText: 'not',
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -3851,24 +4067,34 @@ describe('Select Component', () => {
             ).toBeTruthy();
         });
 
-        it('works correctly with custom test', async () => {
+        it('tracks the cursor through bind:hoverItemIndex in both directions', async () => {
             render(HoverItemIndexTest);
 
             await querySelectorClick('.svelte-select');
             await tick();
 
+            const boundIndex = () => document.querySelector('[data-testid="hover-index"]')?.textContent;
+
+            // Flat index 0 is the (non-selectable) group header, so the cursor
+            // opens parked on the first selectable option at flat index 1, and
+            // that exact index must be visible through the binding
+            expect(boundIndex()).toBe('1');
             let hoverItem = document.querySelector('.list-item .hover') as HTMLElement;
-            expect(hoverItem !== null).toBeTruthy();
+            expect(hoverItem.textContent).toBe('0');
 
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
-            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
-            await tick();
-
+            // Read direction: keyboard navigation updates the bound index
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
             await tick();
-
+            expect(boundIndex()).toBe('2');
             hoverItem = document.querySelector('.list-item .hover') as HTMLElement;
-            expect(hoverItem !== null).toBeTruthy();
+            expect(hoverItem.textContent).toBe('1');
+
+            // Write direction: a parent write to the binding moves the rendered cursor
+            await querySelectorClick('[data-testid="set-hover-index"]');
+            await tick();
+            expect(boundIndex()).toBe('5');
+            hoverItem = document.querySelector('.list-item .hover') as HTMLElement;
+            expect(hoverItem.textContent).toBe('4');
         });
     });
 
@@ -3880,7 +4106,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     closeListOnChange: false,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -4098,6 +4324,41 @@ describe('Select Component', () => {
     });
 
     describe('ARIA', () => {
+        // 10th audit: the listbox only carried aria-label={ariaLabel}, so on the
+        // equally-recommended `id` + external `<label for>` naming path the open
+        // listbox had no accessible name at all (ARIA 1.2 requires one).
+        describe('listbox accessible name via an external label', () => {
+            it('references a labelled <label for> via aria-labelledby', async () => {
+                render(LabelForTest, { props: { labelId: 'food-label' } });
+                await tick();
+                await tick();
+
+                const list = document.querySelector('.svelte-select-list');
+                expect(list!.getAttribute('aria-labelledby')).toBe('food-label');
+                expect(list!.getAttribute('aria-label')).toBeNull();
+            });
+
+            it('snapshots an id-less <label for> text into aria-label', async () => {
+                render(LabelForTest);
+                await tick();
+                await tick();
+
+                const list = document.querySelector('.svelte-select-list');
+                expect(list!.getAttribute('aria-label')).toBe('Favourite food');
+                expect(list!.getAttribute('aria-labelledby')).toBeNull();
+            });
+
+            it('an explicit ariaLabel still names the listbox directly', async () => {
+                render(Select, { props: { items, ariaLabel: 'Food', listOpen: true } });
+                await tick();
+                await tick();
+
+                const list = document.querySelector('.svelte-select-list');
+                expect(list!.getAttribute('aria-label')).toBe('Food');
+                expect(list!.getAttribute('aria-labelledby')).toBeNull();
+            });
+        });
+
         // The live region names the focused option and the result count when the list
         // opens, then stays quiet while arrowing: aria-activedescendant already makes
         // screen readers announce each option as the cursor lands on it (see
@@ -4689,7 +4950,7 @@ describe('Select Component', () => {
                 target: ancestor,
                 props: {
                     items,
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -4887,7 +5148,7 @@ describe('Select Component', () => {
                     focused: true,
                     filterText: 'A5',
                     items: ['A5', 'tests string', 'something else'],
-                    onchange: (value: any) => {
+                    onSelectionChange: (value: any) => {
                         capturedValue = value;
                     },
                 },
@@ -5013,7 +5274,7 @@ describe('Select Component', () => {
                 useJustValue: true,
                 justValue: 'pizza',
                 value: boundValue,
-                oninput: (v: any) => {
+                onValueChange: (v: any) => {
                     boundValue = v;
                 },
             },
@@ -5290,7 +5551,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    onchange: (val: any) => {
+                    onSelectionChange: (val: any) => {
                         selectedValue = val;
                     },
                 },
@@ -5314,7 +5575,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    onchange: (val: any) => {
+                    onSelectionChange: (val: any) => {
                         selectedValue = val;
                     },
                 },
@@ -5356,7 +5617,7 @@ describe('Select Component', () => {
                 props: {
                     items: items,
                     listOpen: true,
-                    onchange: (val: any) => {
+                    onSelectionChange: (val: any) => {
                         selectedValue = val;
                     },
                 },
@@ -5930,7 +6191,7 @@ describe('Select Component', () => {
         });
 
         it('waits for items before hydrating a multiple justValue and never dispatches an empty hydration', async () => {
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
 
             const { rerender } = render(Select, {
                 props: {
@@ -5938,15 +6199,15 @@ describe('Select Component', () => {
                     useJustValue: true,
                     justValue: ['chocolate', 'pizza'],
                     items: null,
-                    oninput,
+                    onValueChange,
                 },
             });
 
             await tick();
 
             // Regression: hydration against not-yet-loaded items used to write
-            // value = [] — a spurious oninput([]) that also blocked hydration forever
-            expect(oninput).not.toHaveBeenCalled();
+            // value = [] — a spurious onValueChange([]) that also blocked hydration forever
+            expect(onValueChange).not.toHaveBeenCalled();
             expect(document.querySelectorAll('.multi-item').length).toBe(0);
 
             await rerender({ items });
@@ -5977,13 +6238,13 @@ describe('Select Component', () => {
         });
 
         it('lets a parent clear the value externally when useJustValue is on', async () => {
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
             const { rerender } = render(Select, {
                 props: {
                     useJustValue: true,
                     items,
                     value: { value: 'pizza', label: 'Pizza' },
-                    oninput,
+                    onValueChange,
                 },
             });
             await tick();
@@ -5996,8 +6257,8 @@ describe('Select Component', () => {
             // Regression: hydration used to resurrect the cleared selection from
             // the stale justValue echo written on an earlier sync
             expect(document.querySelector('.selected-item')).toBeFalsy();
-            expect(oninput).toHaveBeenCalledWith(null);
-            expect(oninput).not.toHaveBeenCalledWith(expect.objectContaining({ value: 'pizza' }));
+            expect(onValueChange).toHaveBeenCalledWith(null);
+            expect(onValueChange).not.toHaveBeenCalledWith(expect.objectContaining({ value: 'pizza' }));
         });
 
         it('lets a parent clear a multiple value externally when useJustValue is on', async () => {
@@ -6098,7 +6359,7 @@ describe('Select Component', () => {
             expect(document.querySelector('.selected-item')).toBeFalsy();
         });
 
-        it('does not fire onchange or onclear callbacks', async () => {
+        it('does not fire onSelectionChange or onclear callbacks', async () => {
             const changeFn = vi.fn();
             const clearFn = vi.fn();
 
@@ -6106,7 +6367,7 @@ describe('Select Component', () => {
                 props: {
                     items,
                     value: { value: 'cake', label: 'Cake' },
-                    onchange: changeFn,
+                    onSelectionChange: changeFn,
                     onclear: clearFn,
                 },
             }) as { component: SelectInstance };
@@ -6143,35 +6404,35 @@ describe('Select Component', () => {
         // Mount seeding must not look like user input. prevValue is seeded with the
         // initial value so mount does not dispatch — but a raw string value
         // normalizes to an item, and dispatch sees string != item and fires anyway.
-        it('does not dispatch oninput on mount for an item-seeded value', async () => {
-            const oninput = vi.fn();
+        it('does not dispatch onValueChange on mount for an item-seeded value', async () => {
+            const onValueChange = vi.fn();
             render(Select, {
-                props: { items, value: { value: 'chocolate', label: 'Chocolate' }, oninput },
+                props: { items, value: { value: 'chocolate', label: 'Chocolate' }, onValueChange },
             });
             await tick();
             await tick();
 
-            expect(oninput).not.toHaveBeenCalled();
+            expect(onValueChange).not.toHaveBeenCalled();
         });
 
-        it('does not dispatch oninput on mount for a string-seeded single value', async () => {
-            const oninput = vi.fn();
-            render(Select, { props: { items, value: 'chocolate', oninput } });
+        it('does not dispatch onValueChange on mount for a string-seeded single value', async () => {
+            const onValueChange = vi.fn();
+            render(Select, { props: { items, value: 'chocolate', onValueChange } });
             await tick();
             await tick();
 
             // The raw string normalizes to its item, but the selection is unchanged,
             // so mount must stay silent (haveEntriesChanged compares by id)
-            expect(oninput).not.toHaveBeenCalled();
+            expect(onValueChange).not.toHaveBeenCalled();
         });
 
-        it('does not dispatch oninput on mount for a string-seeded multiple value', async () => {
-            const oninput = vi.fn();
-            render(Select, { props: { items, multiple: true, value: ['chocolate'], oninput } });
+        it('does not dispatch onValueChange on mount for a string-seeded multiple value', async () => {
+            const onValueChange = vi.fn();
+            render(Select, { props: { items, multiple: true, value: ['chocolate'], onValueChange } });
             await tick();
             await tick();
 
-            expect(oninput).not.toHaveBeenCalled();
+            expect(onValueChange).not.toHaveBeenCalled();
         });
 
         // 7th-audit addition: deps elements are compared by identity, so inline
@@ -6213,18 +6474,18 @@ describe('Select Component', () => {
         // stale selection and keeping a surviving one. The pair guards itself:
         // if rerender wiped the value prop, the survivor test would catch it.
         it('reloads on a loadOptionsDeps change and clears a selection the new results deny', async () => {
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
             const loadOptions = vi.fn((_text: string) => Promise.resolve([{ value: 'berlin', label: 'Berlin' }]));
             const { rerender } = render(Select, {
                 props: {
                     loadOptions,
                     loadOptionsDeps: ['de'],
                     value: { value: 'berlin', label: 'Berlin' },
-                    oninput,
+                    onValueChange,
                 },
             });
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount fetch
-            oninput.mockClear();
+            onValueChange.mockClear();
 
             loadOptions.mockImplementation(() => Promise.resolve([{ value: 'paris', label: 'Paris' }]));
             await rerender({ loadOptions, loadOptionsDeps: ['fr'] });
@@ -6233,7 +6494,7 @@ describe('Select Component', () => {
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
             expect(loadOptions).toHaveBeenLastCalledWith('');
             // ...and its validateValue verdict clears the now-stale selection
-            await vi.waitFor(() => expect(oninput).toHaveBeenCalledWith(null));
+            await vi.waitFor(() => expect(onValueChange).toHaveBeenCalledWith(null));
             expect(document.querySelector('.selected-item')).toBeFalsy();
         });
 
@@ -6254,24 +6515,24 @@ describe('Select Component', () => {
         });
 
         it('keeps a selection the new loadOptionsDeps results still offer', async () => {
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
             const loadOptions = vi.fn(() => Promise.resolve([{ value: 'berlin', label: 'Berlin' }]));
             const { rerender } = render(Select, {
                 props: {
                     loadOptions,
                     loadOptionsDeps: ['de'],
                     value: { value: 'berlin', label: 'Berlin' },
-                    oninput,
+                    onValueChange,
                 },
             });
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
-            oninput.mockClear();
+            onValueChange.mockClear();
 
             await rerender({ loadOptions, loadOptionsDeps: ['de-2'] });
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
             await tick();
 
-            expect(oninput).not.toHaveBeenCalledWith(null);
+            expect(onValueChange).not.toHaveBeenCalledWith(null);
             expect(document.querySelector('.selected-item')?.textContent).toContain('Berlin');
         });
 
@@ -6346,22 +6607,22 @@ describe('Select Component', () => {
         });
 
         // 7th-audit pin: a parent mutating its bound value array in place
-        // (value.push) rendered the new tag but never fired oninput and left
+        // (value.push) rendered the new tag but never fired onValueChange and left
         // justValue stale — the effects tracked only the array reference and
         // prevValue aliased the same live array.
-        it('registers a parent value.push: tag renders, oninput fires, justValue updates', async () => {
-            const oninput = vi.fn();
-            render(InPlaceValuePushTest, { props: { oninput } });
+        it('registers a parent value.push: tag renders, onValueChange fires, justValue updates', async () => {
+            const onValueChange = vi.fn();
+            render(InPlaceValuePushTest, { props: { onValueChange } });
             await tick();
-            oninput.mockClear();
+            onValueChange.mockClear();
 
             (document.querySelector('[data-testid="push-value"]') as HTMLButtonElement).click();
             await tick();
             await tick();
 
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
-            expect(oninput).toHaveBeenCalledTimes(1);
-            expect(oninput).toHaveBeenCalledWith([
+            expect(onValueChange).toHaveBeenCalledTimes(1);
+            expect(onValueChange).toHaveBeenCalledWith([
                 expect.objectContaining({ value: 'chocolate' }),
                 expect.objectContaining({ value: 'pizza' }),
             ]);
@@ -6372,11 +6633,11 @@ describe('Select Component', () => {
 
         // 9th-audit pin: index assignment (value[0] = x) changes no length, so
         // the length-only trigger reads missed it while value.push registered.
-        it('registers a parent value[0] assignment: tag updates, oninput fires, justValue updates', async () => {
-            const oninput = vi.fn();
-            render(InPlaceValuePushTest, { props: { oninput } });
+        it('registers a parent value[0] assignment: tag updates, onValueChange fires, justValue updates', async () => {
+            const onValueChange = vi.fn();
+            render(InPlaceValuePushTest, { props: { onValueChange } });
             await tick();
-            oninput.mockClear();
+            onValueChange.mockClear();
 
             (document.querySelector('[data-testid="assign-value"]') as HTMLButtonElement).click();
             await tick();
@@ -6385,19 +6646,19 @@ describe('Select Component', () => {
             const tags = document.querySelectorAll('.multi-item');
             expect(tags.length).toBe(1);
             expect(tags[0].textContent).toContain('Pizza');
-            expect(oninput).toHaveBeenCalledTimes(1);
-            expect(oninput).toHaveBeenCalledWith([expect.objectContaining({ value: 'pizza' })]);
+            expect(onValueChange).toHaveBeenCalledTimes(1);
+            expect(onValueChange).toHaveBeenCalledWith([expect.objectContaining({ value: 'pizza' })]);
             expect(document.querySelector('[data-testid="just-value"]')?.textContent).toBe(JSON.stringify(['pizza']));
         });
 
         it('collapses the value to null when multiple flips from true to false', async () => {
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
             const { rerender } = render(Select, {
-                props: { items, multiple: true, value: [{ value: 'chocolate', label: 'Chocolate' }], oninput },
+                props: { items, multiple: true, value: [{ value: 'chocolate', label: 'Chocolate' }], onValueChange },
             });
             await tick();
             expect(document.querySelectorAll('.multi-item').length).toBe(1);
-            oninput.mockClear();
+            onValueChange.mockClear();
 
             await rerender({ items, multiple: false, value: [{ value: 'chocolate', label: 'Chocolate' }] });
             await tick();
@@ -6406,13 +6667,13 @@ describe('Select Component', () => {
             // The single<->multi effect nulls a leftover array value on multi->single
             expect(document.querySelectorAll('.multi-item').length).toBe(0);
             expect(document.querySelector('.selected-item')).toBeFalsy();
-            expect(oninput).toHaveBeenCalledWith(null);
+            expect(onValueChange).toHaveBeenCalledWith(null);
         });
 
         it('treats re-selecting an already-selected item as a no-op with filterSelectedItems=false', async () => {
-            const onchange = vi.fn();
+            const onSelectionChange = vi.fn();
             const onselect = vi.fn();
-            const oninput = vi.fn();
+            const onValueChange = vi.fn();
             render(Select, {
                 props: {
                     items,
@@ -6420,9 +6681,9 @@ describe('Select Component', () => {
                     filterSelectedItems: false,
                     listOpen: true,
                     focused: true,
-                    onchange,
+                    onSelectionChange,
                     onselect,
-                    oninput,
+                    onValueChange,
                 },
             });
             await tick();
@@ -6438,12 +6699,12 @@ describe('Select Component', () => {
 
             // The re-select fires nothing new (matching single mode), so each
             // callback fired exactly once for the original selection...
-            expect(onchange).toHaveBeenCalledTimes(1);
+            expect(onSelectionChange).toHaveBeenCalledTimes(1);
             expect(onselect).toHaveBeenCalledTimes(1);
-            expect(oninput).toHaveBeenCalledTimes(1);
+            expect(onValueChange).toHaveBeenCalledTimes(1);
 
-            // ...onchange never carried a duplicate, and the tag list stays at one
-            const emittedDuplicate = onchange.mock.calls.some((call) => {
+            // ...onSelectionChange never carried a duplicate, and the tag list stays at one
+            const emittedDuplicate = onSelectionChange.mock.calls.some((call) => {
                 const v = call[0];
                 return Array.isArray(v) && new Set(v.map((i: SelectItem) => i.value)).size !== v.length;
             });

@@ -1,5 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/svelte';
+import { userEvent } from '@vitest/browser/context';
 import { tick } from 'svelte';
 import Select from '$lib/Select.svelte';
 
@@ -165,5 +166,24 @@ describe('layout in a real browser', () => {
         const after = (document.querySelector('.svelte-select') as HTMLElement).getBoundingClientRect().height;
         expect(document.querySelectorAll('.multi-item').length).toBe(2);
         expect(after).toBeGreaterThan(before);
+    });
+
+    // 10th audit: real browsers move focus on mousedown, so a press on a
+    // non-input surface (chevron area, chips, multi whitespace) blurred the
+    // input — blur closed the list, and the press's own bubbled pointerup
+    // re-toggled it straight back open, making those surfaces unable to close
+    // the dropdown. jsdom cannot reproduce the blur, so this needs real events.
+    it('clicking the chevron area closes an open list and keeps it closed', async () => {
+        render(Select, { props: { items: fewItems, showChevron: true, multiple: true } });
+        await settle();
+
+        await userEvent.click(document.querySelector('input[type="text"]') as HTMLElement);
+        await settle();
+        expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+
+        // .chevron is pointer-events: none, so the hit lands on .indicators
+        await userEvent.click(document.querySelector('.indicators') as HTMLElement);
+        await settle();
+        expect(document.querySelector('.svelte-select-list')).toBeFalsy();
     });
 });

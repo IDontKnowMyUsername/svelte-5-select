@@ -31,7 +31,7 @@
     }
 </script>
 
-<Select onchange={handleChange} multiple onfilter={handleFilter} bind:filterText bind:value {items}>
+<Select onSelectionChange={handleChange} multiple onfilter={handleFilter} bind:filterText bind:value {items}>
     {#snippet itemSnippet(item)}
         <div>
             {item.created ? 'Add new: ' : ''}

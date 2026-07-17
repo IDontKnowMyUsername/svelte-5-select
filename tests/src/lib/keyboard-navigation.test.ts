@@ -24,6 +24,7 @@ describe('useKeyboardNavigation', () => {
             focused: true,
             disabled: false,
             suppressValueHoverSnap: false,
+            userNavigatedSinceOpen: false,
             ...overrides,
         };
 
@@ -143,12 +144,13 @@ describe('useKeyboardNavigation', () => {
         expect(actions.handleSelect).not.toHaveBeenCalled();
     });
 
-    it('handles Tab key to select item when different from hover', () => {
+    it('handles Tab key to select item when different from hover (after navigation)', () => {
         const { state, actions } = createMock({
             listOpen: true,
             focused: true,
             value: { value: 'b', label: 'B' },
             hoverItemIndex: 0,
+            userNavigatedSinceOpen: true,
         });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
@@ -162,6 +164,72 @@ describe('useKeyboardNavigation', () => {
         // Commit must not swallow the keystroke: Tab closes the popup and moves
         // focus in the same press, so the default action stays intact
         expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('Tab without navigation or filter text closes without committing', () => {
+        // The cursor auto-parks on the first option the moment the list opens: a
+        // bare open-then-Tab (click the control, decide against picking, tab
+        // away) must not silently select that parked option.
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: null,
+            hoverItemIndex: 0,
+            userNavigatedSinceOpen: false,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(actions.handleSelect).not.toHaveBeenCalled();
+        expect(actions.closeList).toHaveBeenCalled();
+        expect(event.preventDefault).not.toHaveBeenCalled();
+    });
+
+    it('Tab commits on typed filter text even without cursor movement', () => {
+        // Typing narrows the list to what the user asked for; single-press
+        // Tab-commit on the top match is the documented behavior.
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: null,
+            hoverItemIndex: 0,
+            filterText: 'a',
+            userNavigatedSinceOpen: false,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+        handleKeyDown(event);
+
+        expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[0]);
+        expect(actions.closeList).toHaveBeenCalled();
+    });
+
+    it('arrow navigation marks commit-intent for Tab', () => {
+        const { state, actions } = createMock({
+            listOpen: true,
+            focused: true,
+            value: null,
+            hoverItemIndex: 0,
+            userNavigatedSinceOpen: false,
+        });
+        const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+        expect(state.userNavigatedSinceOpen).toBe(true);
+
+        const event = new KeyboardEvent('keydown', { key: 'Tab' });
+        Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+        handleKeyDown(event);
+
+        expect(actions.handleSelect).toHaveBeenCalledWith(state.filteredItems[state.hoverItemIndex]);
+        expect(actions.closeList).toHaveBeenCalled();
     });
 
     it('never commits on Shift+Tab, even when hover differs from value', () => {

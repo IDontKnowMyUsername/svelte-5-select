@@ -3,6 +3,7 @@ import { render, cleanup } from '@testing-library/svelte';
 import { tick } from 'svelte';
 import axe from 'axe-core';
 import Select from '$lib/Select.svelte';
+import LabelForTest from '../src/LabelForTest.svelte';
 import type { ItemLike } from '$lib';
 
 const items = [
@@ -99,6 +100,18 @@ describe('axe scan (WCAG A/AA)', () => {
     it('disabled select keeps its value in the accessibility tree', async () => {
         render(Select, { props: { items, ariaLabel: 'Food', value: items[0], disabled: true } });
         await settle();
+        await expectNoViolations();
+    });
+
+    // 10th audit: every scan above passes ariaLabel, which masked the other
+    // recommended naming path — with only `id` + external `<label for>`, the
+    // open listbox had no accessible name at all (the label names the input,
+    // not the floating list).
+    it('open list named via an external <label for> instead of ariaLabel', async () => {
+        render(LabelForTest, { props: { labelId: 'food-label' } });
+        await settle();
+        const list = document.querySelector('.svelte-select-list');
+        expect(list!.getAttribute('aria-labelledby')).toBe('food-label');
         await expectNoViolations();
     });
 });

@@ -215,17 +215,17 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         const hasNoValue = !value || (Array.isArray(value) && value.length === 0);
         if (hasNoValue) {
             const hadNoValue = !prevValue || (Array.isArray(prevValue) && prevValue.length === 0);
-            if (!hadNoValue) actions.oninput(multiple ? [] : null);
+            if (!hadNoValue) actions.onValueChange(multiple ? [] : null);
             state.prevValue = Array.isArray(value) ? (value.slice() as Item[] | string[]) : value;
             return;
         }
 
         if (multiple) {
             if (hasValueChanged(value, prevValue, itemId) && checkValueForDuplicates()) {
-                actions.oninput(value);
+                actions.onValueChange(value);
             }
         } else if (!prevValue || hasValueChanged(value, prevValue, itemId)) {
-            actions.oninput(value);
+            actions.onValueChange(value);
         }
 
         // Snapshot a copy of the settled (post-dedup) value: storing the live
@@ -246,7 +246,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             }
             // Wrapping is shape normalization, not a selection change: mirror it
             // on the dispatch baseline, so a mount seeded with a bare item (or a
-            // single->multi flip) does not register as a change and fire oninput
+            // single->multi flip) does not register as a change and fire onValueChange
             if (prevValue && !Array.isArray(prevValue)) {
                 state.prevValue = [prevValue] as Item[] | string[];
             }
@@ -282,9 +282,9 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
         // Re-selecting an already-selected item in multiple mode is a no-op: the
         // value is a distinct set. Without this the item was concatenated and
-        // onchange fired synchronously with a duplicate array ([a, a]) before a
-        // later effect deduped state.value — leaving onchange disagreeing with the
-        // (correctly suppressed) oninput. Single mode already no-ops the same way
+        // onSelectionChange fired synchronously with a duplicate array ([a, a]) before a
+        // later effect deduped state.value — leaving onSelectionChange disagreeing with the
+        // (correctly suppressed) onValueChange. Single mode already no-ops the same way
         // in handleItemClick / handleEnterKey. The no-op runs before the
         // filterText wipe below: with filterSelectedItems={false} a re-click
         // selects nothing and must not clear what the user typed.
@@ -309,7 +309,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
         if (closeListOnChange) actions.closeList();
         state.activeValue = undefined;
-        actions.onchange(state.value);
+        actions.onSelectionChange(state.value);
         actions.onselect(selection);
     }
 
@@ -352,7 +352,7 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         });
     });
 
-    // Dispatch oninput when value changes (selection, update, or clear)
+    // Dispatch onValueChange when value changes (selection, update, or clear)
     $effect(() => {
         const value = state.value;
         trackArrayEntries(value); // in-place growth and entry replacement both retrigger

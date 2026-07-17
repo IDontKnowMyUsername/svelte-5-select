@@ -54,8 +54,8 @@ function createHarness(overrides: Overrides = {}) {
     const state = baseState(overrides) as unknown as SelectState;
     const actions: ValueActions = {
         closeList: vi.fn(),
-        oninput: vi.fn(),
-        onchange: vi.fn(),
+        onValueChange: vi.fn(),
+        onSelectionChange: vi.fn(),
         onclear: vi.fn(),
         onselect: vi.fn(),
     };
@@ -151,14 +151,14 @@ describe('useValue', () => {
     });
 
     describe('dispatchSelectedItem effect', () => {
-        it('fires oninput when a value is set from empty', () => {
+        it('fires onValueChange when a value is set from empty', () => {
             const { state, actions } = createHarness();
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
 
             state.value = { value: 'a', label: 'Apple' };
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledWith({ value: 'a', label: 'Apple' });
+            expect(actions.onValueChange).toHaveBeenCalledWith({ value: 'a', label: 'Apple' });
         });
 
         it('reports a cleared single value as null, not an empty array', () => {
@@ -170,7 +170,7 @@ describe('useValue', () => {
             state.value = undefined;
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledWith(null);
+            expect(actions.onValueChange).toHaveBeenCalledWith(null);
         });
 
         it('reports a cleared multiple value as an empty array', () => {
@@ -184,22 +184,22 @@ describe('useValue', () => {
             state.value = undefined;
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledWith([]);
+            expect(actions.onValueChange).toHaveBeenCalledWith([]);
         });
 
         // 9th-audit pin: undefined/null and [] are the same no-selection state
-        // in multiple mode — moving between them dispatched a spurious oninput([]).
+        // in multiple mode — moving between them dispatched a spurious onValueChange([]).
         it('does not dispatch when an empty multiple value changes representation', () => {
             const { state, actions } = createHarness({ multiple: true, prevMultiple: true, value: [], prevValue: [] });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             state.value = undefined; // [] -> undefined
             flushSync();
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
 
             state.value = []; // undefined -> []
             flushSync();
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
         });
 
         it('still reports a real clear from tags to an empty array', () => {
@@ -213,25 +213,25 @@ describe('useValue', () => {
             state.value = [];
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledWith([]);
+            expect(actions.onValueChange).toHaveBeenCalledWith([]);
         });
 
         it('does not re-dispatch when the value is unchanged', () => {
             const item = { value: 'a', label: 'Apple' };
             const { state, actions } = createHarness({ value: item, prevValue: item });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
-            // Writing an equal-by-itemId item must not fire oninput again
+            // Writing an equal-by-itemId item must not fire onValueChange again
             state.value = { value: 'a', label: 'Apple' };
             flushSync();
 
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
         });
 
         // 9th-audit pin: the trigger reads tracked only value + value.length, so
         // an in-place index assignment (no length change) never dispatched while
         // push (length change) did.
-        it('dispatches oninput when a bound multi entry is replaced in place (value[0] = x)', () => {
+        it('dispatches onValueChange when a bound multi entry is replaced in place (value[0] = x)', () => {
             const { state, actions } = createHarness({
                 multiple: true,
                 prevMultiple: true,
@@ -239,19 +239,19 @@ describe('useValue', () => {
                 value: [{ value: 'a', label: 'Apple' }],
                 prevValue: [{ value: 'a', label: 'Apple' }],
             });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             (state.value as SelectItem[])[0] = { value: 'b', label: 'Banana' };
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
+            expect(actions.onValueChange).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
             expect(state.justValue).toEqual(['b']);
         });
 
         // 7th-audit pin: the dispatch/justValue effects tracked only the value
         // reference, and prevValue aliased the live array, so a consumer's
         // in-place `value.push(...)` never dispatched and left justValue stale.
-        it('dispatches oninput when a bound multi value grows in place (value.push)', () => {
+        it('dispatches onValueChange when a bound multi value grows in place (value.push)', () => {
             const items = [
                 { value: 'a', label: 'Apple' },
                 { value: 'b', label: 'Banana' },
@@ -263,13 +263,13 @@ describe('useValue', () => {
                 value: [items[0]],
                 prevValue: [items[0]],
             });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             (state.value as SelectItem[]).push(items[1]);
             flushSync();
 
-            expect(actions.oninput).toHaveBeenCalledTimes(1);
-            expect(actions.oninput).toHaveBeenCalledWith([
+            expect(actions.onValueChange).toHaveBeenCalledTimes(1);
+            expect(actions.onValueChange).toHaveBeenCalledWith([
                 expect.objectContaining({ value: 'a' }),
                 expect.objectContaining({ value: 'b' }),
             ]);
@@ -294,7 +294,7 @@ describe('useValue', () => {
             expect(state.justValue).toEqual(['a', 'b']);
         });
 
-        it('dedupes an in-place duplicate push without dispatching oninput', () => {
+        it('dedupes an in-place duplicate push without dispatching onValueChange', () => {
             const items = [
                 { value: 'a', label: 'Apple' },
                 { value: 'b', label: 'Banana' },
@@ -306,13 +306,13 @@ describe('useValue', () => {
                 value: [items[0]],
                 prevValue: [items[0]],
             });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             // Re-adding an already-selected entry is a no-op set operation
             (state.value as SelectItem[]).push({ value: 'a', label: 'Apple' });
             flushSync();
 
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
             expect(state.value).toEqual([expect.objectContaining({ value: 'a' })]);
         });
     });
@@ -378,19 +378,19 @@ describe('useValue', () => {
             flushSync();
 
             expect(state.value).toEqual({ value: 'b', label: 'Banana' });
-            expect(actions.oninput).toHaveBeenCalledWith({ value: 'b', label: 'Banana' });
+            expect(actions.onValueChange).toHaveBeenCalledWith({ value: 'b', label: 'Banana' });
         });
 
         // 9th-audit pin: mount with `multiple` and a bare (non-array) item
-        // dispatched a spurious oninput([item]) — the wrap registered as an
+        // dispatched a spurious onValueChange([item]) — the wrap registered as an
         // array-shape change against the bare-seeded prevValue.
-        it('mounting multiple with a bare item wraps it without dispatching oninput', () => {
+        it('mounting multiple with a bare item wraps it without dispatching onValueChange', () => {
             const item = { value: 'a', label: 'Apple' };
             // prevMultiple stays undefined: the mount transition runs setupMulti
             const { state, actions } = createHarness({ multiple: true, value: item, prevValue: item });
 
             expect(state.value).toEqual([item]);
-            expect(actions.oninput).not.toHaveBeenCalled();
+            expect(actions.onValueChange).not.toHaveBeenCalled();
         });
 
         // 9th-audit pin: a bare value written while multiple stayed on was never
@@ -403,13 +403,13 @@ describe('useValue', () => {
                 value: [{ value: 'a', label: 'Apple' }],
                 prevValue: [{ value: 'a', label: 'Apple' }],
             });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             state.value = { value: 'b', label: 'Banana' };
             flushSync();
 
             expect(state.value).toEqual([{ value: 'b', label: 'Banana' }]);
-            expect(actions.oninput).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
+            expect(actions.onValueChange).toHaveBeenCalledWith([{ value: 'b', label: 'Banana' }]);
         });
     });
 
@@ -518,7 +518,7 @@ describe('useValue', () => {
 
             // Hydrated to the Apple item, and justValue echoed back
             expect(state.value).toEqual({ value: 'a', label: 'Apple' });
-            (actions.oninput as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onValueChange as ReturnType<typeof vi.fn>).mockClear();
 
             // Parent clears value directly (justValue still holds our echoed 'a')
             state.value = undefined;
@@ -526,7 +526,7 @@ describe('useValue', () => {
 
             // Must behave like a clear, not re-hydrate from the stale justValue echo
             expect(state.value).toBeUndefined();
-            expect(actions.oninput).toHaveBeenCalledWith(null);
+            expect(actions.onValueChange).toHaveBeenCalledWith(null);
         });
 
         it('flushes clearState even when no value change accompanies it', () => {
@@ -561,7 +561,7 @@ describe('useValue', () => {
     });
 
     describe('itemSelected', () => {
-        it('appends to a multiple value and fires onchange + onselect, clearing filterText', () => {
+        it('appends to a multiple value and fires onSelectionChange + onselect, clearing filterText', () => {
             const { state, actions, manager } = createHarness({
                 multiple: true,
                 prevMultiple: true,
@@ -578,7 +578,7 @@ describe('useValue', () => {
                 { value: 'b', label: 'Banana' },
             ]);
             expect(state.filterText).toBe('');
-            expect(actions.onchange).toHaveBeenCalled();
+            expect(actions.onSelectionChange).toHaveBeenCalled();
             expect(actions.onselect).toHaveBeenCalledWith({ value: 'b', label: 'Banana' });
         });
 
@@ -598,13 +598,13 @@ describe('useValue', () => {
                 value: [{ value: 'a', label: 'Apple' }],
                 prevValue: [{ value: 'a', label: 'Apple' }],
             });
-            (actions.onchange as ReturnType<typeof vi.fn>).mockClear();
+            (actions.onSelectionChange as ReturnType<typeof vi.fn>).mockClear();
 
             manager.itemSelected({ value: 'a', label: 'Apple' });
             flushSync();
 
             expect(state.value).toEqual([{ value: 'a', label: 'Apple' }]);
-            expect(actions.onchange).not.toHaveBeenCalled();
+            expect(actions.onSelectionChange).not.toHaveBeenCalled();
             expect(actions.onselect).not.toHaveBeenCalled();
         });
 

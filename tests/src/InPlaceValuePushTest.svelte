@@ -3,10 +3,10 @@
     import type { JustValue, SelectItem } from '$lib';
 
     interface Props {
-        oninput?: (value: unknown) => void;
+        onValueChange?: (value: unknown) => void;
     }
 
-    let { oninput }: Props = $props();
+    let { onValueChange }: Props = $props();
 
     const items: SelectItem[] = [
         { value: 'chocolate', label: 'Chocolate' },
@@ -19,7 +19,7 @@
     let justValue = $state<JustValue>();
 </script>
 
-<Select multiple {items} bind:value bind:justValue {oninput} />
+<Select multiple {items} bind:value bind:justValue {onValueChange} />
 
 <button data-testid="push-value" onclick={() => value.push(items[1])}>push</button>
 <!-- 9th audit: index assignment changes no length, so it needs entry tracking -->

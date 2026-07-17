@@ -10,9 +10,9 @@ import type { ComputePositionConfig } from 'svelte-floating-ui/dom';
 export type ItemLike = Record<string, any>;
 
 /**
- * The payload shape of `oninput`/`onchange`: an item array in multiple mode,
- * a single item or null otherwise. `Multiple` defaults to `boolean`, which
- * distributes to the loose `Item[] | Item | null` union.
+ * The payload shape of `onValueChange`/`onSelectionChange`: an item array in
+ * multiple mode, a single item or null otherwise. `Multiple` defaults to
+ * `boolean`, which distributes to the loose `Item[] | Item | null` union.
  */
 export type SelectValue<Item extends ItemLike = SelectItem, Multiple extends boolean = boolean> = Multiple extends true
     ? Item[]
@@ -27,8 +27,8 @@ export type SelectValue<Item extends ItemLike = SelectItem, Multiple extends boo
  * tag, a `loadOptionsDeps` reload invalidating the value, a multiple→single switch).
  * `null` is accepted on the way in, so an existing `bind:value` initialized to `null`
  * keeps working; read an emptied value as falsy rather than testing `=== null`.
- * (The `oninput`/`onchange` payload is a separate contract — see {@link SelectValue} —
- * and reports `null` in single mode and `[]` in multiple mode.)
+ * (The `onValueChange`/`onSelectionChange` payload is a separate contract — see
+ * {@link SelectValue} — and reports `null` in single mode and `[]` in multiple mode.)
  */
 export type SelectValueProp<
     Item extends ItemLike = SelectItem,
@@ -177,6 +177,15 @@ export interface SelectState<Item extends ItemLike = SelectItem> {
      * non-reactive scratch, like the prev* fields.
      */
     suppressValueHoverSnap: boolean;
+    /**
+     * Whether the user has deliberately moved the option cursor (arrow/Home/End/
+     * Page keys, type-ahead, or mouse hover) since the list last opened. Tab only
+     * commits the hovered option when this is set or filter text was typed — the
+     * cursor auto-parks on an option the moment the list opens, and a bare
+     * open-then-Tab must close without selecting. Reset whenever the list closes.
+     * Deliberately non-reactive scratch, like the prev* fields.
+     */
+    userNavigatedSinceOpen: boolean;
 }
 
 /** The subset of {@link SelectState} that keyboard navigation needs; any object with these fields works. */
@@ -195,6 +204,8 @@ export interface KeyboardNavigationState<Item extends ItemLike = SelectItem> {
     readonly disabled: boolean;
     /** See {@link SelectState.suppressValueHoverSnap} — written by type-ahead when it opens the list. */
     suppressValueHoverSnap: boolean;
+    /** See {@link SelectState.userNavigatedSinceOpen} — gates Tab's commit-on-close. */
+    userNavigatedSinceOpen: boolean;
 }
 
 export interface KeyboardNavigationActions {
@@ -212,8 +223,8 @@ export interface ValueActions {
      * Optional: standalone useValue has no async loading to retire.
      */
     retireStaleValidation?: () => void;
-    oninput: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
-    onchange: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
+    onValueChange: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
+    onSelectionChange: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
     onclear: (value: SelectItem | string | (SelectItem | string)[] | null | undefined) => void;
     onselect: (selection: SelectItem) => void;
 }
@@ -326,9 +337,9 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * Let group headers be selected like options; otherwise they are presentational.
      *
      * A selected header is the synthesized {@link SelectGroupHeader} row, not one of
-     * your items — but `value` and the `onselect`/`onchange`/`oninput` payloads
-     * deliberately keep their ergonomic `Item` typing rather than forcing every
-     * consumer through a union. If you enable this, narrow those payloads with
+     * your items — but `value` and the `onselect`/`onSelectionChange`/`onValueChange`
+     * payloads deliberately keep their ergonomic `Item` typing rather than forcing
+     * every consumer through a union. If you enable this, narrow those payloads with
      * `isGroupHeader` before reading item fields off them.
      */
     groupHeaderSelectable?: boolean;
@@ -336,7 +347,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     multiFullItemClearable?: boolean;
     /**
      * Allow several selections, rendered as tags. Drives typing: with `multiple`,
-     * `value` and the `oninput`/`onchange` payloads narrow to `Item[]`.
+     * `value` and the `onValueChange`/`onSelectionChange` payloads narrow to `Item[]`.
      */
     multiple?: Multiple;
     /** Block native form submission while nothing is selected, and set `aria-required`. */
@@ -386,8 +397,16 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     loadOptionsDeps?: unknown[];
 
     // Function props
+    //
+    // `NoInfer` on the `Item` params below: these callbacks are configuration,
+    // not inference sources. TypeScript prefers contravariant (parameter)
+    // inference candidates, so a pre-annotated callback const with a looser
+    // param type (e.g. `const groupBy = (item: { group?: string }) => …`) would
+    // otherwise hijack `Item` and surface baffling weak-type errors on `items`/
+    // `loadOptions` — props the consumer never touched. Only `items`, `value`,
+    // and `loadOptions` drive `Item` inference.
     /** Builds the header row for a group; receives the group's value and its first item. */
-    createGroupHeaderItem?: (groupValue: string, item: Item) => SelectItem;
+    createGroupHeaderItem?: (groupValue: string, item: NoInfer<Item>) => SelectItem;
     /** Replace the debounce strategy used for typing-driven `loadOptions` calls. */
     debounce?: (fn: () => void, wait: number) => void;
     /**
@@ -395,16 +414,16 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * May return your own `Item`s directly, rows from `config.applyGrouping` /
      * `config.convertStringItemsToObjects`, or a mix.
      */
-    filter?: (config: FilterConfig<Item>) => (Item | SelectItem)[];
+    filter?: (config: FilterConfig<NoInfer<Item>>) => (Item | SelectItem)[];
     /**
      * Returns the group an item belongs to. Setting this makes the list interleave
      * synthesized header rows with your items — see {@link SelectRow}.
      */
-    groupBy?: ((item: Item) => string) | undefined;
+    groupBy?: ((item: NoInfer<Item>) => string) | undefined;
     /** Reorders or filters the group keys produced by `groupBy`. */
     groupFilter?: (groups: string[]) => string[];
     /** Decides whether one option survives the current `filterText`. Not applied to `loadOptions` results. */
-    itemFilter?: (label: string, filterText: string, option: Item) => boolean;
+    itemFilter?: (label: string, filterText: string, option: NoInfer<Item>) => boolean;
     /**
      * Fetches options asynchronously. Runs on mount, on typing (debounced by
      * `debounceWait`), and whenever `loadOptionsDeps` or `disabled` changes.
@@ -455,13 +474,12 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     handleClear?: (e?: MouseEvent) => void;
 
     // Event handlers
+    //
+    // Naming: `onValueChange`/`onSelectionChange` are state-change callbacks named
+    // in the headless-library convention — deliberately NOT DOM-event names. Their
+    // lowercase siblings are either literal DOM passthroughs (`onblur`/`onfocus`)
+    // or component events with no DOM namesake.
     onblur?: (e: FocusEvent) => void;
-    /**
-     * Fires only when the user picks an option from the list — never on a clear, a
-     * programmatic `bind:value` write, or a `loadOptionsDeps` invalidation. Use
-     * {@link SelectProps.oninput} to observe every value change instead.
-     */
-    onchange?: (value: SelectValue<Item, Multiple>) => void;
     /** Clear-all receives the full removed value; removing one tag receives that single entry. */
     onclear?: (value: SelectClearValue<Item, Multiple>) => void;
     /** Fires when a `loadOptions` promise rejects. */
@@ -475,14 +493,6 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     /** Fires with the index of the option under the keyboard/mouse cursor. */
     onhoveritem?: (index: number) => void;
     /**
-     * Fires on *every* value change — a user selection, a clear, a programmatic
-     * `bind:value` write, or a `loadOptionsDeps` invalidation. Contrast
-     * {@link SelectProps.onchange}, which only fires for a user selection. An emptied
-     * value arrives here as `null` (single) or `[]` (multiple), which is the one place
-     * those shapes appear — `bind:value` itself always empties to `undefined`.
-     */
-    oninput?: (value: SelectValue<Item, Multiple>) => void;
-    /**
      * Fires with the options a `loadOptions` call resolved. When the loader
      * resolves raw strings, the delivered options are the synthesized
      * `{ value, label, index }` items built from them — `SelectItem`s, not your
@@ -491,10 +501,28 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      */
     onloaded?: (options: (Item | SelectItem)[]) => void;
     /**
-     * Fires alongside {@link SelectProps.onchange} when the user picks an option, but
-     * receives just the item selected rather than the whole value.
+     * Fires alongside {@link SelectProps.onSelectionChange} when the user picks an
+     * option, but receives just the item selected rather than the whole value.
      */
     onselect?: (selection: Item) => void;
+    /**
+     * Fires only when the user picks an option from the list — never on a clear, a
+     * programmatic `bind:value` write, or a `loadOptionsDeps` invalidation. Use
+     * {@link SelectProps.onValueChange} to observe every value change instead.
+     * (Renamed from `onchange` in v2: it is a component state-change callback, not
+     * the DOM `change` event.)
+     */
+    onSelectionChange?: (value: SelectValue<Item, Multiple>) => void;
+    /**
+     * Fires on *every* value change — a user selection, a clear, a programmatic
+     * `bind:value` write, or a `loadOptionsDeps` invalidation. Contrast
+     * {@link SelectProps.onSelectionChange}, which only fires for a user selection.
+     * An emptied value arrives here as `null` (single) or `[]` (multiple), which is
+     * the one place those shapes appear — `bind:value` itself always empties to
+     * `undefined`. (Renamed from `oninput` in v2: typing is `bind:filterText`, and
+     * an `oninput` that never fired per keystroke read as the DOM event it wasn't.)
+     */
+    onValueChange?: (value: SelectValue<Item, Multiple>) => void;
 
     // Snippet props
     chevronIconSnippet?: Snippet<[boolean]>;

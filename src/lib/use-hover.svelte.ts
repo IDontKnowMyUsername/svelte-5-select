@@ -96,6 +96,9 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
     function handleHover(i: number): void {
         if (state.isScrolling) return;
         state.hoverItemIndex = i;
+        // Pointing at an option is the same commit-intent for Tab as arrowing
+        // to it (see handleTabKey)
+        state.userNavigatedSinceOpen = true;
     }
 
     let scrollEndFallback: ReturnType<typeof setTimeout> | undefined;

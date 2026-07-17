@@ -135,15 +135,15 @@
 
         // Event handlers
         onblur = () => {},
-        onchange = () => {},
         onclear = () => {},
         onerror = defaultOnError,
         onfilter = () => {},
         onfocus = () => {},
         onhoveritem = () => {},
-        oninput = () => {},
         onloaded = defaultOnLoaded,
         onselect = () => {},
+        onSelectionChange = () => {},
+        onValueChange = () => {},
 
         // Snippet props
         chevronIconSnippet,
@@ -484,8 +484,8 @@
         closeList,
         // Deferred: loadOptionsManager is created a few lines below
         retireStaleValidation: () => loadOptionsManager.retireValidationForFreshSelection(),
-        oninput: (v) => oninput?.(v as unknown as SelectValue<Item, Multiple>),
-        onchange: (v) => onchange?.(v as unknown as SelectValue<Item, Multiple>),
+        onValueChange: (v) => onValueChange?.(v as unknown as SelectValue<Item, Multiple>),
+        onSelectionChange: (v) => onSelectionChange?.(v as unknown as SelectValue<Item, Multiple>),
         onclear: (v) => onclear(v as unknown as SelectClearValue<Item, Multiple>),
         onselect: (s) => onselect?.(s as Item),
     });
@@ -636,6 +636,12 @@
     $effect(() => {
         listOpen;
         untrack(() => {
+            // A closed list retires Tab's commit-intent; the next open starts
+            // from an auto-parked cursor again (see handleTabKey). Reset on
+            // close, not open: a type-ahead press that opens the list parks
+            // the cursor in the same handler, and a reset-on-open flush would
+            // clobber that intent.
+            if (!listOpen) selectState.userNavigatedSinceOpen = false;
             listMounted(list, listOpen);
             if (listOpen && container && list) {
                 setListWidth();
@@ -691,6 +697,31 @@
                         'can announce the field. The placeholder is only a last-resort fallback and is ' +
                         'ignored by some assistive tech.',
                 );
+            }
+        });
+    });
+
+    // The listbox needs its own accessible name (ARIA 1.2): `ariaLabel` covers
+    // one recommended naming path, but the other — `id` + external `<label for>`
+    // — names only the input; label association does not cascade to the floating
+    // list. Resolve the associated label when the list opens: reference it via
+    // aria-labelledby when it has an id (live text), otherwise snapshot its text
+    // into aria-label. The consumer's label element is never mutated.
+    let listboxLabelledby = $state<string | undefined>();
+    let listboxLabelText = $state<string | undefined>();
+    $effect(() => {
+        listOpen;
+        ariaLabel;
+        untrack(() => {
+            listboxLabelledby = undefined;
+            listboxLabelText = undefined;
+            if (!listOpen || ariaLabel || !input) return;
+            const labelEl = input.labels?.[0];
+            if (!labelEl) return;
+            if (labelEl.id) {
+                listboxLabelledby = labelEl.id;
+            } else {
+                listboxLabelText = labelEl.textContent?.trim() || undefined;
             }
         });
     });
@@ -914,6 +945,16 @@
     class:error={hasError}
     style={containerStyles}
     onpointerup={handleClick}
+    onmousedown={(ev) => {
+        // Pressing a non-input surface (the chevron area, a chip, multi-mode
+        // whitespace) must not blur the input: the blur handler closes the
+        // list, and this press's own pointerup — bubbling to handleClick —
+        // would read that fresh closed state and toggle the list straight
+        // back open. The input keeps its default behavior so caret placement
+        // and text selection still work. (The list has its own guard and
+        // stops propagation before reaching this one.)
+        if (ev.target !== input) ev.preventDefault();
+    }}
     bind:this={container}
     use:floatingRef
     role="none">
@@ -936,7 +977,8 @@
             }}
             role="listbox"
             tabindex="-1"
-            aria-label={ariaLabel}
+            aria-label={ariaLabel ?? listboxLabelText}
+            aria-labelledby={listboxLabelledby}
             aria-busy={loading || undefined}
             aria-multiselectable={multiple || undefined}
             id="listbox-{_id}">
@@ -1058,7 +1100,16 @@
                             ev.preventDefault();
                             // Gated like the keydown path below: a pointer must never
                             // mutate a disabled control's value (see handleItemClick)
-                            if (multiFullItemClearable && !disabled) void valueManager.handleMultiItemClear(i);
+                            if (multiFullItemClearable && !disabled) {
+                                void valueManager.handleMultiItemClear(i);
+                                // Like the dedicated remove button below: focus returns
+                                // to the input so the removal announcement is not lost —
+                                // the live regions are gated on `focused`, and a chip
+                                // press that kept focus on the chip would otherwise
+                                // remove the chip from the DOM and drop focus to <body>
+                                // with the removal never announced.
+                                handleFocus();
+                            }
                         }}
                         onpointerup={multiFullItemClearable && !disabled
                             ? (ev) => {

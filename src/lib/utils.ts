@@ -54,7 +54,7 @@ function entryId(v: SelectItem | string | null | undefined, itemId: string): unk
 
 // Compare by id, not by reference type: a raw string and the item it resolves to
 // share an id, so mount-time string-to-item normalization is the same selection —
-// not a change — and must not dispatch oninput. Two items compare by itemId.
+// not a change — and must not dispatch onValueChange. Two items compare by itemId.
 function haveEntriesChanged(
     a: SelectItem | string | null | undefined,
     b: SelectItem | string | null | undefined,

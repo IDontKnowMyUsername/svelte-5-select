@@ -496,7 +496,7 @@ describe('useLoadOptions', () => {
     // authority. Deps reload A slow → filter load B lands with post-deps
     // results → user selects from them → the close cancels B and restored A's
     // currency — A then landed late and its verdict wiped the fresh, valid
-    // selection (oninput(null) with the user watching).
+    // selection (onValueChange(null) with the user watching).
     it('a selection from fresher results retires the pending deps verdict (9th audit)', async () => {
         const resolvers: Array<(items: SelectItem[]) => void> = [];
         const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));

@@ -86,6 +86,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
             const itemLabel = String(getItemProperty(item, label) ?? '').toLowerCase();
             if (itemLabel.startsWith(query)) {
                 state.hoverItemIndex = i;
+                state.userNavigatedSinceOpen = true;
                 // Handlers run before effects flush: when this keypress also
                 // opened the list, the open-with-value hover effect would fire
                 // next and snap hover back to the selected value, clobbering
@@ -176,6 +177,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         if (state.listOpen) {
             actions.setHoverIndex(1);
+            state.userNavigatedSinceOpen = true;
         } else {
             state.listOpen = true;
             state.activeValue = undefined;
@@ -194,6 +196,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         if (state.listOpen) {
             actions.setHoverIndex(-1);
+            state.userNavigatedSinceOpen = true;
         } else {
             state.listOpen = true;
             state.activeValue = undefined;
@@ -209,8 +212,15 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         // the same press (APG), so no preventDefault, and the event keeps bubbling
         // for focus traps and ancestor handlers. Re-entry via the window listener
         // is safe because the list is closed by then.
+        //
+        // Committing also requires expressed intent: the cursor auto-parks on an
+        // option the moment the list opens, so a bare open-then-Tab (click the
+        // control, decide against picking, tab away) must close without
+        // selecting. Moving the cursor (keys or mouse) or typing filter text is
+        // that intent.
         if (
             e.shiftKey || // Tabbing backwards leaves the field; it must never commit
+            (!state.userNavigatedSinceOpen && state.filterText.length === 0) ||
             filteredItems.length === 0 ||
             areItemsEqual(value as SelectItem | null, filteredItems[hoverItemIndex], itemId)
         ) {
@@ -273,7 +283,10 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         e.preventDefault();
         e.stopPropagation();
         const firstSelectable = filteredItems.findIndex((item) => isItemSelectableCheck(item));
-        if (firstSelectable >= 0) state.hoverItemIndex = firstSelectable;
+        if (firstSelectable >= 0) {
+            state.hoverItemIndex = firstSelectable;
+            state.userNavigatedSinceOpen = true;
+        }
     }
 
     function handleEndKey(e: KeyboardEvent): void {
@@ -286,6 +299,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         for (let i = filteredItems.length - 1; i >= 0; i--) {
             if (isItemSelectableCheck(filteredItems[i])) {
                 state.hoverItemIndex = i;
+                state.userNavigatedSinceOpen = true;
                 return;
             }
         }
@@ -314,6 +328,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         const targetPos = Math.min(selectable.length - 1, Math.max(0, pos + direction * PAGE_SIZE));
         state.hoverItemIndex = selectable[targetPos];
+        state.userNavigatedSinceOpen = true;
         return true;
     }
 

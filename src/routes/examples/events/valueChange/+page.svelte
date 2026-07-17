@@ -16,6 +16,6 @@
     }
 </script>
 
-<Select {items} oninput={handle} />
+<Select {items} onValueChange={handle} />
 <br />
-<Select {items} multiple oninput={handleMultiple} />
+<Select {items} multiple onValueChange={handleMultiple} />

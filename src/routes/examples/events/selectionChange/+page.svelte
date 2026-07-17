@@ -9,8 +9,8 @@
     ];
 
     function handle(selectedValue: SelectValue) {
-        console.log('You change the svelte select 🤯 ', $state.snapshot(selectedValue));
+        console.log('Selection changed on the svelte select 🤯 ', $state.snapshot(selectedValue));
     }
 </script>
 
-<Select {items} onchange={handle} />
+<Select {items} onSelectionChange={handle} />
