@@ -409,7 +409,7 @@ Every change below is covered in detail in the [changelog](CHANGELOG.md); this i
 - **`FilterConfig.filterGroupedItems` is renamed `applyGrouping`** (only affects custom `filter` implementations).
 - **Markup and a11y changes.** The multi-select remove control is a real `<button>` in the tab order; grouped options are wrapped in `role="group"` regions named by their headers; the input no longer defaults its `aria-label` to the placeholder (name it with `ariaLabel` or an external `<label for>`).
 - **Behavior fixes worth re-testing:** `bind:focused` writes now move real DOM focus; disabling releases focus and keyboard control; and an initial `filterText` is kept on mount (it used to be silently cleared) — it filters and drives the mount `loadOptions` fetch, without opening the list or moving focus.
-- **Node >= 22.12 is required.**
+- **Node >= 18 at runtime** (Svelte 5's own floor). Developing this repository needs Node >= 22.12.
 
 ## CSS custom properties (variables)
 

@@ -30,7 +30,7 @@
 * `onloaded` receives `(Item | SelectItem)[]` instead of `Item[]`: a string-resolving `loadOptions` delivers the synthesized `{ value, label, index }` items built from the strings, which are not your item type. Inline handlers keep compiling (the parameter is inferred); only handlers explicitly annotated `(opts: Item[]) => void` need the widened annotation. An item-resolving loader still only ever delivers `Item`s
 * `isStringArray` is no longer exported — an internal type guard with no consumer use case (`filter` and `normalizeItem` remain exported)
 * `FilterConfig.filterGroupedItems` is renamed `applyGrouping` — it was a near-homograph of the unrelated `groupFilter` prop (the transform builds the grouped list; the prop only reorders group keys). Only affects custom `filter` implementations that read the field
-* Node >= 22.12 is required (`engines.node`); Node 20 is EOL and is no longer tested — CI now runs Node 22 and 24
+* The published `engines.node` is `>=18` — Svelte 5's own floor, since the library runs wherever Svelte 5 runs. (It briefly declared `>=22.12`, which encoded this repository's vite 8 dev requirement and hard-failed consumers on Node 20 LTS with `engine-strict`.) Developing this repository still needs Node >= 22.12, enforced by CI, which tests Node 22 and 24; Node 20 is EOL and untested there
 
 ### Added
 
