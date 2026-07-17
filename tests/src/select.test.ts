@@ -2816,22 +2816,21 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
-        it('maintains loading state when response returns cancelled', async () => {
+        it('discards a load cancelled by closing the list: loading clears, late response never lands', async () => {
+            // 9th-audit rewrite: the old test ("maintains loading state when
+            // response returns cancelled") never asserted anything after
+            // resolving — the spinner and the late response were unchecked.
             const user = userEvent.setup();
 
-            let resolvePromise: any;
+            let resolvePromise: (items: SelectItem[]) => void;
+            const loadOptions = vi.fn(
+                () =>
+                    new Promise<SelectItem[]>((resolve) => {
+                        resolvePromise = resolve;
+                    }),
+            );
 
-            function getDelayedRes() {
-                return new Promise<SelectItem[]>((resolve) => {
-                    resolvePromise = resolve;
-                });
-            }
-
-            render(Select, {
-                props: {
-                    loadOptions: getDelayedRes,
-                },
-            });
+            render(Select, { props: { loadOptions } });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
             await user.type(input, 'Juniper');
@@ -2840,8 +2839,18 @@ describe('Select Component', () => {
                 expect(document.querySelector('.loading')).toBeTruthy();
             });
 
-            resolvePromise([]);
+            // Escape closes the list; the pending/in-flight load is cancelled
+            // and the spinner must drop immediately
+            await user.keyboard('{Escape}');
             await tick();
+            expect(document.querySelector('.loading')).toBeFalsy();
+
+            // The invalidated response resolves late: its items must not land
+            resolvePromise!([{ value: 'juniper', label: 'Juniper' }]);
+            await tick();
+            await querySelectorClick('.svelte-select');
+            await tick();
+            expect(document.querySelectorAll('.item').length).toBe(0);
         });
 
         it('sets initial value correctly', async () => {
@@ -6129,6 +6138,58 @@ describe('Select Component', () => {
 
             expect(warn).not.toHaveBeenCalledWith(expect.stringContaining('loadOptionsDeps changed by identity'));
             warn.mockRestore();
+        });
+
+        // 9th-audit gap: the composable's validation matrix is unit-tested, but
+        // no component test pinned the WIRING — that a loadOptionsDeps change
+        // actually makes Select.svelte reload with validateValue, clearing a
+        // stale selection and keeping a surviving one. The pair guards itself:
+        // if rerender wiped the value prop, the survivor test would catch it.
+        it('reloads on a loadOptionsDeps change and clears a selection the new results deny', async () => {
+            const oninput = vi.fn();
+            const loadOptions = vi.fn((_text: string) => Promise.resolve([{ value: 'berlin', label: 'Berlin' }]));
+            const { rerender } = render(Select, {
+                props: {
+                    loadOptions,
+                    loadOptionsDeps: ['de'],
+                    value: { value: 'berlin', label: 'Berlin' },
+                    oninput,
+                },
+            });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount fetch
+            oninput.mockClear();
+
+            loadOptions.mockImplementation(() => Promise.resolve([{ value: 'paris', label: 'Paris' }]));
+            await rerender({ loadOptions, loadOptionsDeps: ['fr'] });
+
+            // The deps change refetches immediately (no typing debounce)...
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+            expect(loadOptions).toHaveBeenLastCalledWith('');
+            // ...and its validateValue verdict clears the now-stale selection
+            await vi.waitFor(() => expect(oninput).toHaveBeenCalledWith(null));
+            expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
+
+        it('keeps a selection the new loadOptionsDeps results still offer', async () => {
+            const oninput = vi.fn();
+            const loadOptions = vi.fn(() => Promise.resolve([{ value: 'berlin', label: 'Berlin' }]));
+            const { rerender } = render(Select, {
+                props: {
+                    loadOptions,
+                    loadOptionsDeps: ['de'],
+                    value: { value: 'berlin', label: 'Berlin' },
+                    oninput,
+                },
+            });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1));
+            oninput.mockClear();
+
+            await rerender({ loadOptions, loadOptionsDeps: ['de-2'] });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+            await tick();
+
+            expect(oninput).not.toHaveBeenCalledWith(null);
+            expect(document.querySelector('.selected-item')?.textContent).toContain('Berlin');
         });
 
         // First runtime coverage for onhoveritem/onfilter (7th audit): their
