@@ -1,6 +1,7 @@
 import { defineConfig } from 'vitest/config';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
 import { playwright } from '@vitest/browser-playwright';
+import tailwindcss from '@tailwindcss/vite';
 import path from 'path';
 
 // Real-browser layout tests (pnpm run test:browser). Geometry — floating
@@ -8,6 +9,9 @@ import path from 'path';
 // happy-dom, which has no layout engine.
 export default defineConfig({
     plugins: [
+        // Compiles src/lib/tailwind.css (the shipped Tailwind theme) for the
+        // theme-parity axe scan in a11y-tailwind.test.ts
+        tailwindcss(),
         svelte({
             compilerOptions: {
                 hmr: false,

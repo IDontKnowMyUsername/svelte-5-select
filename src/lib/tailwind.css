@@ -101,8 +101,27 @@
     @apply bg-blue-600 text-white;
 }
 
-.item.not-selectable {
-    @apply text-gray-300;
+/* Disabled options are not actionable, so they must not show the hover/active
+   affordances (background or the keyboard-cursor outline). gray-400 tracks the
+   default theme's #999 (2.84:1 — allowed by WCAG 1.4.3's inactive-component
+   exemption). */
+.item.not-selectable,
+.item.hover.item.not-selectable,
+.item.active.item.not-selectable,
+.item.not-selectable:active {
+    @apply text-gray-400 bg-transparent;
+    outline: none;
+}
+
+/* Group titles are informative text, not disabled controls, so WCAG 1.4.3's
+   inactive-component exemption does not apply to them: the not-selectable
+   dimming above must not reach a header. Keep them at the group-title color,
+   including during the transient first frame where the keyboard cursor parks
+   on index 0 before the keep-hover effect moves it off a header. (Mirrors
+   styles/default.css — keep the two themes in sync.) */
+.item.list-group-title.not-selectable,
+.item.hover.item.list-group-title.not-selectable {
+    @apply text-slate-800;
 }
 
 .item.first {
@@ -137,6 +156,22 @@
     @apply hover:bg-gray-300 hover:text-gray-500;
 }
 
+/* Keyboard-focused chip (multiFullItemClearable): explicit ring in the theme
+   accent (mirrors styles/default.css). Distinct from .multi-item.active below,
+   which is the arrow-key tag cursor, not DOM focus. */
+.multi-item:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: -1px;
+}
+
+/* ArrowLeft/ArrowRight park a virtual cursor on a tag before Backspace removes
+   it; without a visible indicator a sighted keyboard user deletes a chip they
+   cannot see targeted (WCAG 1.4.11 non-text contrast: blue-600 is >=3:1 on
+   white and on the gray-100 chip). */
+.multi-item.active {
+    outline: 1px solid #2563eb;
+}
+
 .multi-item-clear {
     @apply flex items-center justify-center w-5;
 }
@@ -163,6 +198,11 @@
     .item.hover:not(.active) {
         outline: 2px solid Highlight;
         outline-offset: -2px;
+    }
+
+    /* The chip's focus ring is an author colour, which is flattened here */
+    .multi-item:focus-visible {
+        outline: 2px solid Highlight;
     }
 }
 
