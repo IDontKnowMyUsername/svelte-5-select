@@ -398,39 +398,41 @@ describe('useKeyboardNavigation', () => {
         expect(writes.activeValue).toEqual([0]);
     });
 
-    it('handles Backspace when value.length equals activeValue', () => {
+    // 9th-audit fix: a cursor left stale by a mouse removal's reindexing
+    // (index >= value.length) must never reach handleMultiItemClear — that
+    // fired onclear(undefined) and, at length 1, cleared the remaining
+    // untargeted tag. The press resets the cursor instead.
+    it('resets a stale cursor on Backspace instead of removing out of range', () => {
         const { state, writes, actions } = createMock({
             multiple: true,
             value: [{ value: 'a', label: 'A' }],
-            activeValue: 1, // After removal, value.length will be 1
+            activeValue: 1, // stale: >= value.length
             filterText: '',
         });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         handleKeyDown(new KeyboardEvent('keydown', { key: 'Backspace' }));
 
-        expect(actions.handleMultiItemClear).toHaveBeenCalledWith(1);
-        // After removal, value.length is 1, activeValue is 1
-        // Since 1 is NOT > 1, newActiveValue = undefined
+        expect(actions.handleMultiItemClear).not.toHaveBeenCalled();
         expect(writes.activeValue).toEqual([undefined]);
     });
 
-    it('handles ArrowLeft when activeValue equals value.length', () => {
+    it('re-enters from the last tag when a stale cursor presses ArrowLeft', () => {
         const { state, writes, actions } = createMock({
             multiple: true,
             value: [
                 { value: 'a', label: 'A' },
                 { value: 'b', label: 'B' },
             ],
-            activeValue: 2, // Equal to value.length
+            activeValue: 2, // stale: == value.length
             filterText: '',
         });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);
 
         handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
 
-        // value.length (2) is NOT > activeValue (2), so condition is false
-        expect(writes.activeValue).toBeUndefined();
+        // A stale cursor re-enters like an unset one: from the last tag
+        expect(writes.activeValue).toEqual([1]);
     });
 
     it('handles ArrowRight when activeValue exceeds bounds', () => {

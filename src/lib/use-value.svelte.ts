@@ -256,6 +256,10 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
     async function handleMultiItemClear(i: number): Promise<void> {
         const { value } = state;
         if (!Array.isArray(value)) return;
+        // A stale index (the arrow-key cursor can outlive a mouse removal's
+        // reindexing) must not fire onclear(undefined) — or, via the length-1
+        // branch below, clear a tag it never pointed at
+        if (i < 0 || i >= value.length) return;
 
         const itemToRemove = value[i];
 

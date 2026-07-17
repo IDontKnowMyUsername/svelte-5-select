@@ -49,6 +49,7 @@
 
 ### Fixed
 
+* A stale arrow-key tag cursor can no longer clear the wrong tag: the cursor index survives a mouse removal's reindexing, and Backspace then fired `onclear(undefined)` — or, with one tag left, removed the remaining tag the cursor never pointed at. A stale press now resets the cursor (the next press removes normally), ArrowLeft re-enters from the last tag, and out-of-range indices never reach the removal path
 * Replacing an entry of a bound `value` array in place (`value[0] = x`) now registers like `value.push` already did: the tag re-renders either way, but `oninput` never fired and `justValue` went stale because the effects tracked only the array reference and its length — they now track the entries too
 * A replacement single value supplied together with a multiple→single flip survives: the transition wipe keyed on truthiness and cleared the deliberate new selection along with the stale array shape it was meant to remove
 * Mounting with `multiple` and a bare (non-array) item no longer dispatches a spurious `oninput([item])` — the mount wrap is shape normalization, not a selection change, and the dispatch baseline now follows it

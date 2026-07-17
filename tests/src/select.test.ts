@@ -5428,6 +5428,47 @@ describe('Select Component', () => {
             const multiItems = document.querySelectorAll('.multi-item');
             expect(multiItems.length).toBe(1);
         });
+
+        // 9th-audit pin: the ArrowLeft cursor can outlive a mouse removal's
+        // reindexing; Backspace then fired onclear(undefined) and — via the
+        // length-1 branch — cleared the remaining tag it never pointed at.
+        it('a stale tag cursor never clears a tag it did not point at', async () => {
+            const onclear = vi.fn();
+            render(Select, {
+                props: {
+                    items,
+                    multiple: true,
+                    focused: true,
+                    value: [
+                        { value: 'chocolate', label: 'Chocolate' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                    onclear,
+                },
+            });
+            await tick();
+
+            // Park the cursor on the last tag (index 1)...
+            await handleKeyboard('ArrowLeft');
+            await tick();
+            // ...then remove the FIRST tag with the mouse: the cursor is stale now
+            (document.querySelector('.multi-item-clear') as HTMLButtonElement).click();
+            await tick();
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+            onclear.mockClear();
+
+            // The stale press resets the cursor and must not clear anything
+            await handleKeyboard('Backspace');
+            await tick();
+            expect(onclear).not.toHaveBeenCalled();
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+
+            // The next press removes the remaining tag normally
+            await handleKeyboard('Backspace');
+            await tick();
+            expect(onclear).toHaveBeenCalledWith(expect.objectContaining({ value: 'pizza' }));
+            expect(document.querySelectorAll('.multi-item').length).toBe(0);
+        });
     });
 
     describe('LoadOptions integration', () => {

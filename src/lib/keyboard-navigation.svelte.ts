@@ -229,6 +229,13 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         if (Array.isArray(value) && value.length > 0) {
             e.stopPropagation();
+            // A cursor left stale by a mouse removal's reindexing points at
+            // nothing: reset it and consume the press, rather than remove a tag
+            // the user never targeted
+            if (activeValue !== undefined && activeValue >= value.length) {
+                state.activeValue = undefined;
+                return;
+            }
             const indexToRemove = activeValue !== undefined ? activeValue : value.length - 1;
             actions.handleMultiItemClear(indexToRemove);
 
@@ -246,9 +253,11 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
         if (Array.isArray(value)) {
             e.stopPropagation();
-            if (activeValue === undefined) {
+            // `>= length` re-enters like undefined: a stale cursor (mouse
+            // removal reindexed the tags) restarts from the last tag
+            if (activeValue === undefined || activeValue >= value.length) {
                 state.activeValue = value.length - 1;
-            } else if (value.length > activeValue && activeValue !== 0) {
+            } else if (activeValue !== 0) {
                 state.activeValue = activeValue - 1;
             }
         }
