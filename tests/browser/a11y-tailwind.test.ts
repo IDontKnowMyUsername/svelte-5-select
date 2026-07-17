@@ -85,6 +85,27 @@ describe('tailwind theme — axe scan (WCAG A/AA)', () => {
         await expectNoViolations(container);
     });
 
+    it('placeholder text is not preflight-faded', async () => {
+        const { container } = render(Select, {
+            props: { items, ariaLabel: 'Food', placeholder: 'Please select' },
+        });
+        await settle();
+        // Direct pin for the 9th-audit bug: the theme styled only the DISABLED
+        // placeholder, so the enabled prompt fell through to Tailwind v4
+        // preflight's ::placeholder — color-mix(currentColor 50%, transparent),
+        // ~2.3:1 on white (WCAG 1.4.3). axe cannot catch this (it does not
+        // evaluate placeholder contrast), so pin the mechanism instead: the
+        // computed placeholder color must be fully opaque. (Tailwind v4
+        // computes to oklch()/oklab(), so assert on the alpha channel rather
+        // than an rgb literal.)
+        const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+        const color = getComputedStyle(input, '::placeholder').color;
+        expect(color, `placeholder color "${color}" must not carry an alpha channel`).not.toMatch(
+            /\/\s*0(\.\d+)?\)|rgba|hsla/,
+        );
+        await expectNoViolations(container);
+    });
+
     it('open list with keyboard cursor, selection, and a disabled option', async () => {
         const { container } = render(Select, {
             props: { items, ariaLabel: 'Food', value: items[0], listOpen: true, focused: true },

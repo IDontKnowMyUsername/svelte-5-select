@@ -6,8 +6,13 @@
 }
 
 .svelte-select input {
-    @apply cursor-default border-none text-gray-600 h-10 leading-10 px-4 py-0 bg-transparent text-sm absolute left-0 m-0 w-full 
-        focus:outline-none hover:border-gray-400;
+    @apply cursor-default border-none text-gray-600 h-10 leading-10 px-4 py-0 bg-transparent text-sm absolute left-0 m-0 w-full
+        focus:outline-none hover:border-gray-400
+        placeholder:text-gray-500 placeholder:opacity-100;
+    /* Without an explicit placeholder color, Tailwind v4 preflight's 50%-alpha
+       currentColor ::placeholder applies — ~2.3:1 on white, a WCAG 1.4.3
+       failure on the control's primary prompt. gray-500 mirrors the default
+       theme's #67727d (~4.9:1); the disabled rule below still overrides. */
 }
 
 .svelte-select.focused {
