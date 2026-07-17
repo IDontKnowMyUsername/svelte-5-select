@@ -500,13 +500,8 @@ describe('useLoadOptions', () => {
     it('a selection from fresher results retires the pending deps verdict (9th audit)', async () => {
         const resolvers: Array<(items: SelectItem[]) => void> = [];
         const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
-        const {
-            state,
-            writes,
-            handleLoadOptions,
-            cancelPendingFilterLoad,
-            retireValidationForFreshSelection,
-        } = createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
+        const { state, writes, handleLoadOptions, cancelPendingFilterLoad, retireValidationForFreshSelection } =
+            createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
 
         // Country changed: deps reload A is in flight
         handleLoadOptions('', { debounce: false, validateValue: true });
@@ -555,13 +550,8 @@ describe('useLoadOptions', () => {
     it('retiring also spends the restore channel a cancel handed to the reload', async () => {
         const resolvers: Array<(items: SelectItem[]) => void> = [];
         const loadOptions = vi.fn(() => new Promise<SelectItem[]>((r) => resolvers.push(r)));
-        const {
-            state,
-            writes,
-            handleLoadOptions,
-            cancelPendingFilterLoad,
-            retireValidationForFreshSelection,
-        } = createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
+        const { state, writes, handleLoadOptions, cancelPendingFilterLoad, retireValidationForFreshSelection } =
+            createHarness({ loadOptions, value: { value: 'old-city', label: 'Old City' } });
 
         handleLoadOptions('', { debounce: false, validateValue: true }); // deps reload A
         handleLoadOptions('ber', { debounce: true }); // filter load B (immediate debounce)

@@ -195,7 +195,12 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                         // dependency reload's validation verdict still applies to the deps
                         // change — unless a newer armed load validates on its own, or a
                         // fresh user selection retired the verdict.
-                        if (validateValue && wasLiveValidating && armedToken === requestSequence && !armedLoadValidates) {
+                        if (
+                            validateValue &&
+                            wasLiveValidating &&
+                            armedToken === requestSequence &&
+                            !armedLoadValidates
+                        ) {
                             validateValueAgainstLoaded(result ?? null);
                         }
                         return;

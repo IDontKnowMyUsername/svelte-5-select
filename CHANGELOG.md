@@ -116,6 +116,8 @@
 
 * All GitHub Actions in the CI and publish workflows are pinned to full commit SHAs (with version comments dependabot keeps fresh) — the publish workflow holds `id-token: write`, so a hijacked action tag must not be able to reach it
 * The CHANGELOG release convention is now enforced twice: release-it aborts before tagging when the "Unreleased" section was not retitled to the new version (`scripts/check-changelog.mjs` in the `after:bump` hook), and the publish workflow re-checks the same invariant on the tag before `npm publish`
+* The publish workflow refuses tags whose commit is not an ancestor of `origin/master`: with trusted publishing, tag-push rights are publish rights, and the gates only prove the tagged tree is internally consistent — a tag on a side-branch or stale commit would otherwise ship code that never landed on the trunk. The CI workflow's `GITHUB_TOKEN` is also dropped to read-only (`permissions: contents: read`)
+* The publish workflow is split into an unprivileged gate job and a minimal publish job: previously every gate step — vitest, playwright, the smoke app's fresh-from-registry `pnpm install` — ran inside the job holding the OIDC `id-token: write` grant, where a compromised dependency executing at publish time could mint a token and publish a poisoned tarball via trusted publishing (which binds repo+workflow, not step). The gate job now packs the exact tarball it validated and hands it over as an artifact; the privileged job only downloads and publishes those bytes — publishing a tarball file runs no package lifecycle scripts, so no build tooling executes beside the token
 
 ## 1.0.2 (2026-04-07)
 

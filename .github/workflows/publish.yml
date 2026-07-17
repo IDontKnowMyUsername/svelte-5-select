@@ -4,6 +4,14 @@
 #
 # - Tag push (v*): full gate, then real `npm publish --provenance`.
 # - Manual dispatch: same gate, but `npm publish --dry-run` (dress rehearsal).
+#
+# Two jobs on purpose: the gate job runs large amounts of third-party code
+# (vite plugins, playwright, the smoke app's fresh-from-registry install) and
+# must never see an OIDC grant — any step in a job with `id-token: write` can
+# mint a token and publish via trusted publishing, which binds repo+workflow,
+# not step. The gate job packs the exact tarball it validated; the privileged
+# job only downloads and publishes those bytes (publishing a tarball file runs
+# no package lifecycle scripts, so no build tooling executes beside the token).
 name: Publish
 
 on:
@@ -13,10 +21,9 @@ on:
 
 permissions:
     contents: read
-    id-token: write
 
 jobs:
-    publish:
+    gate:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
@@ -29,7 +36,6 @@ jobs:
               with:
                   node-version: 22
                   cache: pnpm
-                  registry-url: 'https://registry.npmjs.org'
             # With trusted publishing, tag-push rights are publish rights: the
             # gates below only prove the tagged tree is internally consistent,
             # so without this check a tag on a stale or side-branch commit would
@@ -76,23 +82,49 @@ jobs:
             - run: pnpm run package
             - run: pnpm run lint:package
             - run: pnpm run smoke
+            # The exact bytes the publish job ships: pack once here, publish the
+            # artifact there — the privileged job never runs a build.
+            - name: Pack the gated tarball
+              run: pnpm pack
+            - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+              with:
+                  name: npm-tarball
+                  path: '*.tgz'
+                  if-no-files-found: error
+                  retention-days: 7
+
+    publish:
+        needs: gate
+        runs-on: ubuntu-latest
+        permissions:
+            id-token: write
+            # download-artifact reads the artifact through the Actions API
+            actions: read
+        steps:
+            - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+              with:
+                  node-version: 22
+                  registry-url: 'https://registry.npmjs.org'
             # Trusted publishing needs npm >= 11.5.1; Node 22 bundles npm 10.
             # Pinned to major 11 so a broken npm@latest can't take down releases.
             - run: npm install -g npm@11
+            - uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+              with:
+                  name: npm-tarball
             - name: Dry-run publish (dress rehearsal)
               if: github.event_name == 'workflow_dispatch'
               # `npm publish --dry-run` rejects versions that are already on the
-              # registry, which is the normal state between releases — fall back
-              # to validating the pack only.
+              # registry, which is the normal state between releases — the gate
+              # job already validated the pack, so just report and succeed.
               run: |
-                  NAME="$(node -p "require('./package.json').name")"
-                  VERSION="$(node -p "require('./package.json').version")"
+                  TARBALL="$(ls ./*.tgz)"
+                  NAME="$(tar -xOzf "$TARBALL" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).name')"
+                  VERSION="$(tar -xOzf "$TARBALL" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
                   if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null)" ]; then
-                    echo "$NAME@$VERSION is already published - validating pack only"
-                    npm pack --dry-run
+                    echo "$NAME@$VERSION is already published - the gate job validated this pack"
                   else
-                    npm publish --dry-run
+                    npm publish "$TARBALL" --dry-run
                   fi
             - name: Publish with provenance
               if: github.event_name == 'push'
-              run: npm publish --provenance
+              run: npm publish ./*.tgz --provenance
