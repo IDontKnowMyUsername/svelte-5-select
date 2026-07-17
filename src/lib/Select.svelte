@@ -1060,6 +1060,14 @@
                             // mutate a disabled control's value (see handleItemClick)
                             if (multiFullItemClearable && !disabled) void valueManager.handleMultiItemClear(i);
                         }}
+                        onpointerup={multiFullItemClearable && !disabled
+                            ? (ev) => {
+                                  // Same containment as the dedicated remove button below:
+                                  // removing a tag must not bubble to the container's list
+                                  // toggle and pop the dropdown as a side effect
+                                  ev.stopPropagation();
+                              }
+                            : undefined}
                         onkeydown={multiFullItemClearable && !disabled
                             ? (ev) => {
                                   if (ev.key !== 'Enter' && ev.key !== ' ') return;

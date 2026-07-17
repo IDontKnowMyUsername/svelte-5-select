@@ -2345,6 +2345,32 @@ describe('Select Component', () => {
             expect(document.querySelectorAll('.multi-item').length).toBe(2);
         });
 
+        // 9th-audit pin: the full-clearable chip removed its tag on click but
+        // let pointerup bubble to the container's list toggle — removing a tag
+        // popped the dropdown open (or closed it) as a side effect.
+        it('removing a multiFullItemClearable tag does not toggle the list', async () => {
+            const user = userEvent.setup();
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    multiFullItemClearable: true,
+                    value: [
+                        { value: 'chips', label: 'Chips' },
+                        { value: 'pizza', label: 'Pizza' },
+                    ],
+                },
+            });
+            await tick();
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            await user.click(document.querySelector('.multi-item') as HTMLElement);
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(1);
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+        });
+
         it('always shows placeholder when placeholderAlwaysShow is true', async () => {
             render(Select, {
                 props: {
