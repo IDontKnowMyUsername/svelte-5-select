@@ -5,6 +5,11 @@ on:
         branches: [master]
     pull_request:
 
+# The jobs run third-party code (vite plugins, playwright install); none of
+# them needs to write to the repo, so drop the default token down to read
+permissions:
+    contents: read
+
 jobs:
     test:
         runs-on: ubuntu-latest

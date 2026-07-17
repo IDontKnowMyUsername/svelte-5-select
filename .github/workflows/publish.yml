@@ -20,12 +20,28 @@ jobs:
         runs-on: ubuntu-latest
         steps:
             - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+              with:
+                  # Full history so the ancestry gate below can walk from the tag
+                  # back to master
+                  fetch-depth: 0
             - uses: pnpm/action-setup@fc06bc1257f339d1d5d8b3a19a8cae5388b55320 # v4.4.0
             - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
               with:
                   node-version: 22
                   cache: pnpm
                   registry-url: 'https://registry.npmjs.org'
+            # With trusted publishing, tag-push rights are publish rights: the
+            # gates below only prove the tagged tree is internally consistent,
+            # so without this check a tag on a stale or side-branch commit would
+            # ship code that never landed on the trunk.
+            - name: Verify the tagged commit is on master
+              if: github.event_name == 'push'
+              run: |
+                  git fetch --no-tags origin master
+                  if ! git merge-base --is-ancestor "$GITHUB_SHA" origin/master; then
+                    echo "tag $GITHUB_REF_NAME points at $GITHUB_SHA, which is not an ancestor of origin/master - refusing to publish" >&2
+                    exit 1
+                  fi
             - name: Verify tag matches package.json version
               if: github.event_name == 'push'
               run: |
