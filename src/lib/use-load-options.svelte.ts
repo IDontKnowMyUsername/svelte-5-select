@@ -300,7 +300,12 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
         const disabled = state.disabled;
         const listOpen = state.listOpen;
 
-        if (!state.loadOptions) return;
+        if (!state.loadOptions) {
+            // A removed loader resets the run history: restoring it later must
+            // behave like mount (initial fetch), not like "nothing changed"
+            prevRun = undefined;
+            return;
+        }
 
         const prev = prevRun;
         prevRun = { filterText, deps, disabled, listOpen };

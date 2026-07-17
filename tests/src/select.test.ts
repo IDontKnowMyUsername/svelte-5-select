@@ -6211,6 +6211,22 @@ describe('Select Component', () => {
             expect(document.querySelector('.selected-item')).toBeFalsy();
         });
 
+        // 9th-audit pin: removing then restoring the loadOptions prop skipped
+        // the initial fetch — the run snapshot survived the removal, so the
+        // restore found "no changed field" and left the control empty forever.
+        it('fires the initial fetch again when a removed loadOptions prop is restored', async () => {
+            const loadOptions = vi.fn(() => Promise.resolve([{ value: 'a', label: 'A' }]));
+            const { rerender } = render(Select, { props: { loadOptions } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount fetch
+
+            await rerender({ loadOptions: undefined });
+            await tick();
+
+            await rerender({ loadOptions });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2));
+            expect(loadOptions).toHaveBeenLastCalledWith('');
+        });
+
         it('keeps a selection the new loadOptionsDeps results still offer', async () => {
             const oninput = vi.fn();
             const loadOptions = vi.fn(() => Promise.resolve([{ value: 'berlin', label: 'Berlin' }]));
