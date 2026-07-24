@@ -418,6 +418,32 @@ describe('Select Component', () => {
             expect(value).toBe(JSON.stringify({ value: 'cake', label: 'Cake', index: 2 }));
         });
 
+        it('ignores Enter fired during IME composition (no selection, filter text kept)', async () => {
+            // Enter that commits a CJK conversion carries isComposing: true; it
+            // must reach the IME, not select the hovered option and wipe the
+            // half-composed filter text (14th audit)
+            let selected;
+
+            const { container } = render(Select, {
+                props: {
+                    listOpen: true,
+                    items: itemsWithIndex,
+                    filterText: 'ca',
+                    onSelectionChange: (event: any) => {
+                        selected = event;
+                    },
+                },
+            });
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter', isComposing: true }));
+            await tick();
+
+            const input = container.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(selected).toBeUndefined();
+            expect(input.value).toBe('ca');
+            expect(container.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
         it('fires select event on tab with active item', async () => {
             let value;
 

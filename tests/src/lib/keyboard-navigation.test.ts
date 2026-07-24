@@ -106,6 +106,69 @@ describe('useKeyboardNavigation', () => {
         expect(event.stopPropagation).toHaveBeenCalled();
     });
 
+    describe('IME composition', () => {
+        // During composition the keys drive the IME (Enter commits the
+        // conversion, arrows move through candidates); the widget must not
+        // treat them as list commands (14th audit medium).
+        it('ignores Enter while composing instead of selecting the hovered option', () => {
+            const { state, actions } = createMock({ listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = new KeyboardEvent('keydown', { key: 'Enter', isComposing: true });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+            Object.defineProperty(event, 'stopPropagation', { value: vi.fn() });
+
+            handleKeyDown(event);
+
+            expect(actions.handleSelect).not.toHaveBeenCalled();
+            expect(actions.closeList).not.toHaveBeenCalled();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+            expect(event.stopPropagation).not.toHaveBeenCalled();
+        });
+
+        it('ignores ArrowDown/ArrowUp while composing (IME candidate navigation)', () => {
+            const { state, actions } = createMock({ listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            for (const key of ['ArrowDown', 'ArrowUp']) {
+                const event = new KeyboardEvent('keydown', { key, isComposing: true });
+                Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+                handleKeyDown(event);
+
+                expect(event.preventDefault).not.toHaveBeenCalled();
+            }
+            expect(actions.setHoverIndex).not.toHaveBeenCalled();
+        });
+
+        it('ignores Escape while composing (IME cancel must not close the list)', () => {
+            const { state, actions } = createMock({ listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = new KeyboardEvent('keydown', { key: 'Escape', isComposing: true });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+            handleKeyDown(event);
+
+            expect(actions.closeList).not.toHaveBeenCalled();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+
+        it('ignores keyCode 229 even when isComposing is false (WebKit quirk)', () => {
+            const { state, actions } = createMock({ listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = new KeyboardEvent('keydown', { key: 'Enter' });
+            Object.defineProperty(event, 'keyCode', { value: 229 });
+            Object.defineProperty(event, 'preventDefault', { value: vi.fn() });
+
+            handleKeyDown(event);
+
+            expect(actions.handleSelect).not.toHaveBeenCalled();
+            expect(event.preventDefault).not.toHaveBeenCalled();
+        });
+    });
+
     it('handles ArrowDown when list is closed', () => {
         const { state, writes, actions } = createMock();
         const { handleKeyDown } = useKeyboardNavigation(state, actions);

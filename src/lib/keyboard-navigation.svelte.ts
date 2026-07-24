@@ -16,6 +16,14 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
         // disabled control must never mutate its value from the keyboard.
         if (!state.focused || state.disabled) return;
 
+        // While an IME composition is active every key belongs to the IME:
+        // Enter commits the conversion, arrows move through the candidate
+        // window, Escape cancels it. Acting on those presses would select the
+        // hovered option and wipe the half-composed filter text. keyCode 229
+        // catches the WebKit/legacy path where the composition keydown
+        // reports isComposing === false.
+        if (e.isComposing || e.keyCode === 229) return;
+
         const handlers: Record<string, (e: KeyboardEvent) => void> = {
             Escape: handleEscapeKey,
             Enter: handleEnterKey,
