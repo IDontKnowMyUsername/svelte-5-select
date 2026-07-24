@@ -287,3 +287,17 @@ const _inferred23b = _inferPropsFree({
     onfilter: _wrongOnFilter23b,
 });
 type _23b = Expect<Equal<typeof _inferred23b, Country>>;
+
+// 24. v2.0 tombstones (14th audit): the removed names must error on themselves —
+//     `oninput` used to get a misleading "Did you mean 'input'?" pointing at the
+//     DOM-ref bindable, and `onchange` no suggestion at all.
+const _tombstones24: SelectProps<Country> = {
+    items: _countries17,
+    // @ts-expect-error oninput was renamed to onValueChange in v2.0
+    oninput: () => {},
+    // @ts-expect-error onchange was renamed to onSelectionChange in v2.0
+    onchange: () => {},
+    // @ts-expect-error listStyle was renamed to listStyles in v2.0
+    listStyle: 'padding: 0;',
+};
+void _tombstones24;

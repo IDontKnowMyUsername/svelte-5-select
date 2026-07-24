@@ -1,16 +1,16 @@
-<div style="text-align: center;">
+<div align="center">
   <img src="https://raw.githubusercontent.com/IDontKnowMyUsername/svelte-5-select/master/svelte-select.png" alt="Svelte 5 Select" width="150" />
   <h1>Svelte 5 Select</h1>
 </div>
-<div style="text-align: center;">
+<div align="center">
   <a href="https://npmjs.org/package/svelte-5-select">
-    <img src="https://badgen.now.sh/npm/v/svelte-5-select" alt="version" />
+    <img src="https://badgen.net/npm/v/svelte-5-select" alt="version" />
   </a>
   <a href="https://npmjs.org/package/svelte-5-select">
-    <img src="https://badgen.now.sh/npm/dm/svelte-5-select" alt="downloads" />
+    <img src="https://badgen.net/npm/dm/svelte-5-select" alt="downloads" />
   </a>
 </div>
-<div style="text-align: center;">A select/autocomplete/typeahead Svelte 5 component.</div>
+<div align="center">A select/autocomplete/typeahead Svelte 5 component.</div>
 
 ## Demos
 
@@ -341,10 +341,12 @@ Internal wiring (the shared state store, the composables, and their types) is de
 
 ## TypeScript
 
-The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed (TypeScript >= 5.4). Only `items`, `value`, and `loadOptions` drive that inference: configuration callbacks like `groupBy`/`itemFilter` receive the inferred `Item` but never widen it, so a loosely-typed callback const can't silently change what `Item` means. The `multiple` prop narrows types too: with `multiple`, `bind:value` and the `onValueChange`/`onSelectionChange` payloads are `Item[]`; without it they are `Item | null`. The `null` appears only in the dispatch payloads (`onValueChange(null)` on clear) — an emptied `bind:value` is always `undefined`, so test it with falsiness, not `=== null`.
+The component is generic over your item type: values, items, snippets, and callbacks are typed from the `items` you pass in — plain interfaces work, no index signature needed (TypeScript >= 5.4). Only `items`, `value`, and `loadOptions` drive that inference: configuration callbacks and event handlers (`groupBy`, `itemFilter`, `onselect`, …) receive the inferred `Item` but never widen it, so a loosely-typed callback const can't silently change what `Item` means. The `multiple` prop narrows types too: with `multiple`, the `onValueChange`/`onSelectionChange` payloads are `Item[]`; without it they are `Item | null`. `bind:value` is looser than the payloads — it also accepts raw string ids on input, and an emptied `bind:value` is always `undefined` — so test it with falsiness, not `=== null` (the `null` appears only in the dispatch payloads, e.g. `onValueChange(null)` on clear).
 
 ```svelte
 <script lang="ts">
+  import { Select } from 'svelte-5-select';
+
   interface Country {
     code: string;
     name: string;
@@ -395,7 +397,7 @@ The public API moved to idiomatic Svelte 5:
 - **Slots → snippets.** `<div slot="item" let:item />` becomes `{#snippet itemSnippet(item, index)}...{/snippet}` declared inside `<Select>`. See the [Snippets](#snippets) table for the full mapping (`slot="chevron-icon"` → `chevronIconSnippet`, etc.).
 - **Events → callback props.** `on:change={(e) => e.detail}` becomes `onSelectionChange={(value) => ...}` and `on:input` becomes `onValueChange={(value) => ...}` — handlers receive the value directly, with no `event.detail`.
 - **`export let` overrides → regular props.** Functions like `itemFilter`, `groupBy`, and the aria text builders are passed as props.
-- **CSS variables are kebab-case.** `--borderRadius` is now `--border-radius`; see [the full list](/docs/theming_variables.md).
+- **CSS variables are kebab-case.** As in svelte-select v5 — but if you are coming from a pre-v5 version, camelCase names like `--borderRadius` are now `--border-radius`; see [the full list](/docs/theming_variables.md).
 
 ## Migrating from 1.x to 2.0
 
@@ -428,7 +430,7 @@ You can style a component by overriding [the available CSS custom properties](/d
   import { Select } from 'svelte-5-select';
 </script>
 
-<Select --border-radius= "10px" --placeholder-color="blue" />
+<Select --border-radius="10px" --placeholder-color="blue" />
 ```
 
 You can also use the `inputStyles` prop to write in any override styles needed for the input.

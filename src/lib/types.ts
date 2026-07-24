@@ -386,7 +386,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     debounceWait?: number;
     /** Passed to floating-ui to position the list (placement, middleware, autoUpdate). */
     floatingConfig?: FloatingConfig;
-    /** Bindable. Index of the option under the keyboard cursor. */
+    /** Bindable. Index of the option under the keyboard cursor. @default 0 */
     hoverItemIndex?: number;
     /**
      * Extra attributes for the text input. Merged over the component's own ARIA
@@ -464,7 +464,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     ariaActiveTag?: (label: string) => string;
     /** Announced when the selection is cleared. */
     ariaCleared?: () => string;
-    /** `aria-label` for the clear-all button. */
+    /** `aria-label` for the clear-all button. @default 'Clear selection' */
     ariaClearSelectLabel?: string;
     /** Announced when an open list has no results. Also rendered as the list's visible empty-state copy (unless `emptySnippet` replaces it), so overriding it localizes both. */
     ariaEmpty?: () => string;
@@ -486,7 +486,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     ariaListOpen?: (label: string, count: number) => string;
     /** Announced while an open list is still fetching options. Also rendered as the list's visible loading copy (unless `emptySnippet` replaces it), so overriding it localizes both. */
     ariaLoading?: () => string;
-    /** `aria-label` for each multi-select tag's remove button; receives the item's label. */
+    /** `aria-label` for each multi-select tag's remove button; receives the item's label. @default (label) => `Remove ${label}` */
     ariaRemoveItemLabel?: (label: string) => string;
     /** Announced when the selection changes; receives the selected labels, comma-joined. */
     ariaValues?: (values: string) => string;
@@ -554,6 +554,18 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      */
     onValueChange?: (value: SelectValue<Item, Multiple>) => void;
 
+    // Tombstones for names removed in v2.0: `never`-typed so passing one errors
+    // on the prop itself with the rename in its hover docs — without these,
+    // `oninput` got a baffling "Did you mean 'input'?" (the DOM-ref bindable)
+    // and `onchange` no suggestion at all. The props surface stays closed;
+    // these admit no value.
+    /** @deprecated Removed in v2.0 — renamed to {@link SelectProps.onValueChange} (same payload and firing rules). */
+    oninput?: never;
+    /** @deprecated Removed in v2.0 — renamed to {@link SelectProps.onSelectionChange} (same payload and firing rules). */
+    onchange?: never;
+    /** @deprecated Removed in v2.0 — renamed to {@link SelectProps.listStyles}. */
+    listStyle?: never;
+
     // Snippet props
     /** Replaces the chevron icon; the boolean is `listOpen`, so the icon can flip while open. Rendered only with `showChevron`. */
     chevronIconSnippet?: Snippet<[boolean]>;
@@ -567,10 +579,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * `<input type="hidden" name={...}>` (the default submits JSON-stringified
      * items, or bare ids with `useJustValue`).
      */
-    inputHiddenSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
+    inputHiddenSnippet?: Snippet<[SelectValueProp<Item, Multiple>]>;
     /**
      * Renders one row of the list. Also renders synthesized group headers when
-     * `groupBy` is set — narrow with `isGroupHeader`.
+     * `groupBy` is set — narrow with `isGroupHeader`. The number is the row's
+     * index in the rendered (filtered, grouped) list.
      */
     itemSnippet?: Snippet<[SelectRow<Item>, number]>;
     /** Rendered inside the list after the options — e.g. a "load more" row or footer. */
@@ -597,8 +610,11 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * submission while `required` and empty; receives the current value. An
      * override owns the constraint-validation behavior.
      */
-    requiredSnippet?: Snippet<[SelectValueProp<Item, Multiple> | undefined]>;
-    /** Receives one item at a time: the value in single mode, each tag in multiple mode. */
+    requiredSnippet?: Snippet<[SelectValueProp<Item, Multiple>]>;
+    /**
+     * Receives one item at a time: the value in single mode, each tag in multiple
+     * mode. The number is the tag's index in multiple mode and absent in single mode.
+     */
     selectionSnippet?: Snippet<[NoInfer<Item>, number?]>;
 
     // DOM references (for binding)

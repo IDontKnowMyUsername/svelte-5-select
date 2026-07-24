@@ -84,23 +84,31 @@ describe('layout in a real browser', () => {
         // 14th audit: no overflow-container fixture existed — an autoUpdate
         // regression would leave the open list floating detached mid-page
         const host = document.createElement('div');
-        host.style.cssText = 'height: 200px; overflow-y: auto; position: relative;';
+        host.style.cssText = 'height: 200px; overflow-y: auto;';
         const inner = document.createElement('div');
         inner.style.cssText = 'padding-top: 60px; height: 600px;';
         host.append(inner);
         document.body.append(host);
         try {
-            render(Select, { props: { ariaLabel: 'Food', items: fewItems, listOpen: true } }, { container: inner });
+            const { container } = render(Select, { props: { ariaLabel: 'Food', items: fewItems } });
+            // Re-parent into the scrolling ancestor BEFORE opening: autoUpdate
+            // registers scroll listeners on the ancestors present at open time
+            inner.append(container);
             await settle();
+
+            const control = document.querySelector('.svelte-select') as HTMLElement;
+            control.dispatchEvent(new PointerEvent('pointerup', { bubbles: true }));
+            await settle();
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
             host.scrollTop = 40;
             await settle();
 
-            const container = document.querySelector('.svelte-select')!.getBoundingClientRect();
+            const controlRect = control.getBoundingClientRect();
             const list = document.querySelector('.svelte-select-list')!.getBoundingClientRect();
             // Default listOffset is 5; anything beyond a couple px of slack
             // means the list no longer tracks the scrolled control
-            expect(Math.abs(list.top - 5 - container.bottom)).toBeLessThanOrEqual(2);
+            expect(Math.abs(list.top - 5 - controlRect.bottom)).toBeLessThanOrEqual(2);
         } finally {
             host.remove();
         }

@@ -83,7 +83,11 @@
         "select",
         "dropdown",
         "component",
-        "select-component"
+        "select-component",
+        "combobox",
+        "autocomplete",
+        "typeahead",
+        "multiselect"
     ],
     "type": "module",
     "exports": {
