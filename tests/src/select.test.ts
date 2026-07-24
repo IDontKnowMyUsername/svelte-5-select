@@ -1951,6 +1951,39 @@ describe('Select Component', () => {
             expect(selectedItem && selectedItem.innerHTML.includes('XXX')).toBeTruthy();
         });
 
+        it('selectable group headers keep distinct identities when the builder omits the itemId field', async () => {
+            // A custom createGroupHeaderItem returning only `{ label }` left every
+            // header without the `itemId` field, so all headers compared equal:
+            // after picking one, the rest rendered selected and were silently
+            // unselectable (14th audit)
+            render(Select, {
+                props: {
+                    listOpen: true,
+                    items: itemsWithGroup,
+                    multiple: true,
+                    closeListOnChange: false,
+                    groupHeaderSelectable: true,
+                    groupBy: (item: any) => item.group,
+                    createGroupHeaderItem: (groupValue: any) => ({ label: `All ${groupValue}` }),
+                },
+            });
+
+            await tick();
+            const headerRows = () =>
+                Array.from(document.querySelectorAll('.list-item')).filter((el) =>
+                    el.textContent?.trim().startsWith('All '),
+                ) as HTMLElement[];
+
+            expect(headerRows().length).toBe(2);
+            headerRows()[0].click();
+            await tick();
+            headerRows()[1].click();
+            await tick();
+
+            // Both headers are distinct selections, not one "already selected" no-op
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+        });
+
         it('sorts groups by expression', async () => {
             render(Select, {
                 props: {
@@ -4464,6 +4497,17 @@ describe('Select Component', () => {
             // undefined) — a completely silent config error before the warning
             const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
             render(Select, { props: { ariaLabel: 'Food', items: [{ label: 'A' }, { label: 'B' }] } });
+            await tick();
+
+            expect(warn.mock.calls.some(([msg]) => String(msg).includes('itemId'))).toBe(true);
+            warn.mockRestore();
+        });
+
+        it('warns for raw string items under a custom itemId their converted rows never carry', async () => {
+            // Strings convert to `{ value, label, index }` rows, so any other
+            // itemId hits the same silent identity collapse (14th audit)
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, { props: { ariaLabel: 'Food', itemId: 'code', items: ['one', 'two'] } });
             await tick();
 
             expect(warn.mock.calls.some(([msg]) => String(msg).includes('itemId'))).toBe(true);

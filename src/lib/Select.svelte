@@ -740,8 +740,13 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         const currentItemId = itemId;
         untrack(() => {
             if (warnedAboutMissingItemId || !currentItems?.length) return;
-            const missing = (currentItems as (Item | string)[]).some(
-                (item) => typeof item !== 'string' && getItemProperty(item, currentItemId) === undefined,
+            // String items are converted to `{ value, label, index }` rows, so
+            // any other `itemId` never exists on them — the same silent
+            // identity collapse the object-item check catches.
+            const missing = (currentItems as (Item | string)[]).some((item) =>
+                typeof item === 'string'
+                    ? !['value', 'label', 'index'].includes(currentItemId)
+                    : getItemProperty(item, currentItemId) === undefined,
             );
             if (!missing) return;
             warnedAboutMissingItemId = true;
@@ -867,13 +872,21 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                 groupValues.push(groupValue);
                 groups[groupValue] = [];
                 if (groupValue) {
-                    groups[groupValue].push(
-                        Object.assign(createGroupHeaderItem(groupValue, item as Item), {
-                            id: groupValue,
-                            groupHeader: true,
-                            selectable: groupHeaderSelectable,
-                        }),
-                    );
+                    const header = Object.assign(createGroupHeaderItem(groupValue, item as Item), {
+                        id: groupValue,
+                        groupHeader: true,
+                        selectable: groupHeaderSelectable,
+                    });
+                    // Headers are compared by `itemId` like any other row
+                    // (selection, hover, dedup): one lacking that field
+                    // compares equal to every other bare header, so selecting
+                    // one marked them all selected and made the rest
+                    // unselectable. Stamp the group value when the builder
+                    // didn't provide the field.
+                    if (getItemProperty(header, itemId) === undefined) {
+                        (header as SelectItem)[itemId] = groupValue;
+                    }
+                    groups[groupValue].push(header);
                 }
             }
 
