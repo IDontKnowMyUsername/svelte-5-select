@@ -1,5 +1,6 @@
 <script lang="ts">
     import Select from '$lib/Select.svelte';
+    import { isGroupHeader } from '$lib';
 
     let items = [
         { value: 'one', label: 'One' },
@@ -8,7 +9,7 @@
     ];
 
     let checked = $state<string[]>([]);
-    let value = $derived(checked.map((c) => items.find((i) => i.value === c)));
+    let value = $derived(checked.flatMap((c) => items.find((i) => i.value === c) ?? []));
 
     function isItemChecked(itemValue: string): boolean {
         return checked.includes(itemValue);
@@ -33,16 +34,18 @@
     filterSelectedItems={false}
     closeListOnChange={false}>
     {#snippet itemSnippet(item, index)}
-        <div class="item">
-            <label for={item.value}>
-                <input
-                    type="checkbox"
-                    id={`${item.value}${index}`}
-                    checked={isItemChecked(item.value)}
-                    onchange={() => handleChange(item)} />
-                {item.label}
-            </label>
-        </div>
+        {#if !isGroupHeader(item)}
+            <div class="item">
+                <label for={item.value}>
+                    <input
+                        type="checkbox"
+                        id={`${item.value}${index}`}
+                        checked={isItemChecked(item.value)}
+                        onchange={() => handleChange(item)} />
+                    {item.label}
+                </label>
+            </div>
+        {/if}
     {/snippet}
 </Select>
 

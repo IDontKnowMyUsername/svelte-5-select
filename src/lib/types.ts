@@ -511,7 +511,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * Fires with the rendered list whenever it changes while open. Rows include any
      * synthesized group headers — narrow with `isGroupHeader`.
      */
-    onfilter?: (items: SelectRow<Item>[]) => void;
+    onfilter?: (items: SelectRow<NoInfer<Item>>[]) => void;
     /** Literal DOM `focus` passthrough from the text input. Fires after the component's own focus handling. */
     onfocus?: (e: FocusEvent) => void;
     /** Fires with the index of the option under the keyboard/mouse cursor. */
@@ -528,7 +528,7 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * Fires alongside {@link SelectProps.onSelectionChange} when the user picks an
      * option, but receives just the item selected rather than the whole value.
      */
-    onselect?: (selection: Item) => void;
+    onselect?: (selection: NoInfer<Item>) => void;
     /**
      * Fires only when the user picks an option from the list — never on a clear, a
      * programmatic `bind:value` write, or a `loadOptionsDeps` invalidation. Use

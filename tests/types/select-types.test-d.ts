@@ -240,3 +240,50 @@ const _readOwnField21 = (config: FilterConfig<Country>): string | undefined => {
     const entry = Array.isArray(config.value) ? config.value[0] : config.value;
     return entry && typeof entry.code === 'string' ? entry.code : undefined;
 };
+
+// ---------------------------------------------------------------------------
+// 14th-audit pins: onselect/onfilter NoInfer — the last two unguarded
+// inference candidates (until then the README claim "only `items`, `value`,
+// and `loadOptions` drive `Item` inference" was not actually true).
+// ---------------------------------------------------------------------------
+// This helper mirrors the component signature with BOTH generics free.
+// `_inferProps` above fixes `Multiple` at literal `false`, which eagerly
+// resolves the `SelectValue` conditionals — under it a conditional-typed
+// callback (`onValueChange` &c.) looks like an inference candidate it is not
+// on the real component, so pins involving those callbacks must use this
+// mirror instead.
+declare function _inferPropsFree<Item extends ItemLike, Multiple extends boolean = false>(
+    props: SelectProps<Item, Multiple>,
+): Item;
+
+// 22. An `onselect` handler pre-annotated with a looser item shape must not
+//     flip `Item` (pre-fix this inferred `{ name?: string }`, failing the pin)...
+const _looseOnSelect22 = (selection: { name?: string }) => void selection;
+const _inferred22 = _inferPropsFree({ items: _countries17, onselect: _looseOnSelect22 });
+type _22 = Expect<Equal<typeof _inferred22, Country>>;
+
+// ...and a handler typed with the library's own `SelectItem` — the exact shape
+// that used to hijack `Item` and surface a baffling error on the untouched
+// `items` prop — now errors on itself (an interface like `Country` has no
+// index signature, so it does not satisfy `SelectItem`), leaving `Item` unharmed.
+const _preTypedOnSelect22b = (selection: SelectItem) => void selection;
+const _inferred22b = _inferPropsFree({
+    items: _countries17,
+    // @ts-expect-error the SelectItem-annotated handler errors on itself, not `items`
+    onselect: _preTypedOnSelect22b,
+});
+type _22b = Expect<Equal<typeof _inferred22b, Country>>;
+
+// 23. Same for `onfilter`, whose rows arrive as `SelectRow<Item>`...
+const _looseOnFilter23 = (rows: SelectRow<{ name?: string }>[]) => void rows;
+const _inferred23 = _inferPropsFree({ items: _countries17, onfilter: _looseOnFilter23 });
+type _23 = Expect<Equal<typeof _inferred23, Country>>;
+
+// ...with the incompatible variant erroring on itself too.
+const _wrongOnFilter23b = (rows: SelectRow<{ population: number }>[]) => void rows;
+const _inferred23b = _inferPropsFree({
+    items: _countries17,
+    // @ts-expect-error the incompatible handler errors on itself, not `items`
+    onfilter: _wrongOnFilter23b,
+});
+type _23b = Expect<Equal<typeof _inferred23b, Country>>;
