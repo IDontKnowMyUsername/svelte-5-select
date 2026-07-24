@@ -456,6 +456,12 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     loadOptions?: (filterText: string) => Promise<Item[] | string[]>;
 
     // ARIA props
+    /**
+     * Announced when the arrow-key tag cursor lands on a multi-select tag;
+     * receives that tag's label. The default explains the Backspace-to-remove
+     * and arrow-key mechanics — override it to localize them.
+     */
+    ariaActiveTag?: (label: string) => string;
     /** Announced when the selection is cleared. */
     ariaCleared?: () => string;
     /** `aria-label` for the clear-all button. */

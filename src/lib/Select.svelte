@@ -118,6 +118,8 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         // ARIA props
         ariaLabel = undefined,
         ariaErrorMessage = undefined,
+        ariaActiveTag = (label: string) =>
+            `${label} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`,
         ariaClearSelectLabel = 'Clear selection',
         ariaRemoveItemLabel = (label: string) => `Remove ${label}`,
         ariaCleared = () => {
@@ -505,7 +507,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     );
     let ariaContext = $derived.by(() => {
         if (activeTagLabel !== undefined) {
-            return `${activeTagLabel} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`;
+            return ariaActiveTag(activeTagLabel);
         }
         // Tracked triggers: the list opening/closing, the result count changing
         // (filtering), and the loading flag. hoverItemIndex is deliberately read

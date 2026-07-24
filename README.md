@@ -82,6 +82,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | ariaFocused            | `() => string` | see below  | Announcement when the input receives focus                     |
 | ariaListOpen           | `(label: string, count: number) => string` | see below | Announcement when the list opens on a focused option           |
 | ariaValues             | `(values: string) => string` | see below | Announcement naming the current selection                      |
+| ariaActiveTag          | `(label: string) => string` | see below | Announcement when the arrow-key tag cursor lands on a multi-select tag |
 
 The `aria*` text-builder defaults are shown in the [A11y](#a11y-accessibility) section. See [Function props](#function-props) for the overridable behavior functions (`loadOptions`, `filter`, `groupBy`, and friends).
 
@@ -365,7 +366,7 @@ The component is generic over your item type: values, items, snippets, and callb
 
 The input renders as a WAI-ARIA combobox with a listbox popup, including `aria-expanded`, `aria-activedescendant`, `aria-required`, `aria-invalid`, `aria-busy` (while loading), and `aria-multiselectable` where applicable. When `groupBy` is set, each group's options are wrapped in a `role="group"` region named by its header (via `aria-labelledby`). Set `hasError` with `ariaErrorMessage` to wire the input to an external error element via `aria-errormessage`. A `disabled` Select marks the input `aria-disabled` + `readonly` (rather than natively `disabled`) so the combobox and its value stay in the accessibility tree and remain announceable, while staying non-interactive and out of the tab order. Keyboard support covers ArrowUp/ArrowDown, PageUp/PageDown, Home/End, Enter, Tab (commits the highlighted option — but only after you've navigated or typed, so tabbing straight past an opened list never selects), Escape, `Alt`+ArrowDown/ArrowUp (open/close), Space (select in select-only mode), and Backspace/ArrowLeft/ArrowRight for multi-select items; with `multiFullItemClearable`, each tag is a focusable button that Enter/Space removes. The open listbox is named by `ariaLabel`, an `aria-labelledby` supplied via `inputAttributes`, or — on the `id` + `<label for>` path — by that label (a wrapping `<label>` contributes only its own text). The focused input shows a ring (`--focused-box-shadow`) in addition to the border colour; the option under the keyboard cursor shows a >=3:1 outline (`--item-hover-outline`) on top of the hover background; the spinner and item transitions respect `prefers-reduced-motion`; and focus/selection stay visible under Windows High Contrast Mode (`forced-colors`).
 
-The textbox itself only ever contains the typed filter text — the current selection is rendered beside it and conveyed to assistive tech through two polite `role="status"` live regions (customizable via the `ariaValues`, `ariaFocused`, `ariaListOpen`, `ariaEmpty`, `ariaLoading`, and `ariaCleared` builders): focusing a valued Select announces the selection, and selecting/clearing announces the change.
+The textbox itself only ever contains the typed filter text — the current selection is rendered beside it and conveyed to assistive tech through two polite `role="status"` live regions (customizable via the `ariaValues`, `ariaFocused`, `ariaListOpen`, `ariaEmpty`, `ariaLoading`, `ariaCleared`, and `ariaActiveTag` builders): focusing a valued Select announces the selection, and selecting/clearing announces the change.
 
 Give the input an accessible name with either `ariaLabel` or an external `<label for={id}>` (set the `id` prop). In development the component logs a `console.warn` if it finds neither `ariaLabel`, an `aria-labelledby`, nor an associated `<label>` — the placeholder is only a last-resort fallback that some screen readers ignore. The warning is stripped from production builds.
 
@@ -383,6 +384,7 @@ Selection and list state (including the empty/loading state) are announced throu
   ariaCleared={() => `Selection cleared.`}
   ariaClearSelectLabel="Clear selection"
   ariaRemoveItemLabel={(label) => `Remove ${label}`}
+  ariaActiveTag={(label) => `${label} is active. Press Backspace to remove, or left and right arrow keys to move between selected options.`}
 />
 ```
 

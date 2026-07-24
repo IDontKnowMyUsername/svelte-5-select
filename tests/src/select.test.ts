@@ -4965,6 +4965,27 @@ describe('Select Component', () => {
             expect(aria!.textContent).toContain('Backspace');
         });
 
+        it('localizes the active-tag announcement via ariaActiveTag', async () => {
+            // This was the only hardcoded live-region string: every sibling
+            // announcement already had a builder prop (14th audit)
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [{ value: 'pizza', label: 'Pizza' }],
+                    focused: true,
+                    ariaActiveTag: (label: string) => `${label} ist aktiv. Entfernen mit der Rücktaste.`,
+                },
+            });
+
+            await handleKeyboard('ArrowLeft');
+            await tick();
+
+            const aria = document.querySelector('.a11y-context');
+            expect(aria!.textContent).toContain('Pizza ist aktiv');
+            expect(aria!.textContent).not.toContain('is active');
+        });
+
         it('describes value in aria-selection', () => {
             render(Select, {
                 props: {

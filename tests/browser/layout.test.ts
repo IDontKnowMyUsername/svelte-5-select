@@ -1,6 +1,6 @@
 import { describe, it, expect, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/svelte';
-import { userEvent } from '@vitest/browser/context';
+import { userEvent } from 'vitest/browser';
 import { tick } from 'svelte';
 import Select from '$lib/Select.svelte';
 
@@ -18,7 +18,7 @@ describe('layout in a real browser', () => {
     afterEach(() => cleanup());
 
     it('positions the list below the input by default', async () => {
-        render(Select, { props: { items: fewItems, listOpen: true } });
+        render(Select, { props: { ariaLabel: 'Food', items: fewItems, listOpen: true } });
         await settle();
 
         const container = document.querySelector('.svelte-select')!.getBoundingClientRect();
@@ -30,7 +30,7 @@ describe('layout in a real browser', () => {
         // 12th audit: the tag-remove buttons shrank to their 20px icon; real
         // geometry is the only honest way to measure the activation target
         render(Select, {
-            props: { items: fewItems, multiple: true, value: [fewItems[0], fewItems[1]] },
+            props: { ariaLabel: 'Food', items: fewItems, multiple: true, value: [fewItems[0], fewItems[1]] },
         });
         await settle();
 
@@ -51,7 +51,7 @@ describe('layout in a real browser', () => {
         // the open list would be permanently invisible for real users while
         // every jsdom query, getBoundingClientRect assertion, and synthetic
         // .click() in the suite still passed — nothing else pins visibility.
-        render(Select, { props: { items: fewItems, listOpen: true } });
+        render(Select, { props: { ariaLabel: 'Food', items: fewItems, listOpen: true } });
         await settle();
 
         const list = document.querySelector('.svelte-select-list') as HTMLElement;
@@ -64,6 +64,7 @@ describe('layout in a real browser', () => {
     it('positions the list above the input when placement is top', async () => {
         render(Select, {
             props: {
+                ariaLabel: 'Food',
                 items: fewItems,
                 listOpen: true,
                 containerStyles: 'margin-top: 400px;',
@@ -78,7 +79,7 @@ describe('layout in a real browser', () => {
     });
 
     it('offsets the list from the input by listOffset', async () => {
-        render(Select, { props: { items: fewItems, listOpen: true, listOffset: 20 } });
+        render(Select, { props: { ariaLabel: 'Food', items: fewItems, listOpen: true, listOffset: 20 } });
         await settle();
 
         const container = document.querySelector('.svelte-select')!.getBoundingClientRect();
@@ -88,7 +89,7 @@ describe('layout in a real browser', () => {
 
     it('keeps the list the width of the container', async () => {
         render(Select, {
-            props: { items: fewItems, listOpen: true, containerStyles: 'width: 313px;' },
+            props: { ariaLabel: 'Food', items: fewItems, listOpen: true, containerStyles: 'width: 313px;' },
         });
         await settle();
 
@@ -98,7 +99,7 @@ describe('layout in a real browser', () => {
     });
 
     it('scrolls the selected item into view when the list opens', async () => {
-        render(Select, { props: { items, value: items[15], listOpen: true } });
+        render(Select, { props: { ariaLabel: 'Food', items, value: items[15], listOpen: true } });
         await settle();
 
         const list = document.querySelector('.svelte-select-list') as HTMLElement;
@@ -113,7 +114,7 @@ describe('layout in a real browser', () => {
     });
 
     it('keeps the hovered item visible while navigating with the keyboard', async () => {
-        render(Select, { props: { items, listOpen: true, focused: true } });
+        render(Select, { props: { ariaLabel: 'Food', items, listOpen: true, focused: true } });
         await settle();
 
         const list = document.querySelector('.svelte-select-list') as HTMLElement;
@@ -138,6 +139,7 @@ describe('layout in a real browser', () => {
         const longest = `${'super '.repeat(30)}loooooonnnng name`;
         render(Select, {
             props: {
+                ariaLabel: 'Food',
                 listOpen: true,
                 containerStyles: 'width: 300px;',
                 items: [
@@ -193,7 +195,7 @@ describe('layout in a real browser', () => {
     // re-toggled it straight back open, making those surfaces unable to close
     // the dropdown. jsdom cannot reproduce the blur, so this needs real events.
     it('clicking the chevron area closes an open list and keeps it closed', async () => {
-        render(Select, { props: { items: fewItems, showChevron: true, multiple: true } });
+        render(Select, { props: { ariaLabel: 'Food', items: fewItems, showChevron: true, multiple: true } });
         await settle();
 
         await userEvent.click(document.querySelector('input[type="text"]') as HTMLElement);

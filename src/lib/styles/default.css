@@ -425,4 +425,23 @@ input:focus {
         outline: 2px dashed Highlight;
         outline-offset: -2px;
     }
+
+    /* The error state is conveyed only by an author border colour, which is
+       flattened to the standard border — border width + style survive the
+       forced palette, so a double border keeps the state visible. */
+    .svelte-select.error {
+        border: 3px double CanvasText;
+    }
+
+    /* Disabled is aria-disabled + readonly, not :disabled, so the UA never
+       applies its own GrayText treatment — do it explicitly. */
+    .disabled,
+    .disabled input,
+    .disabled input::placeholder {
+        color: GrayText;
+    }
+
+    .disabled {
+        border-color: GrayText;
+    }
 }

@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterEach } from 'vitest';
 import { render, cleanup } from '@testing-library/svelte';
-import { userEvent } from '@vitest/browser/context';
+import { userEvent } from 'vitest/browser';
 import { tick } from 'svelte';
 import axe from 'axe-core';
 import Select from '$lib/Select.svelte';
@@ -70,8 +70,10 @@ function contrastOnWhite([r, g, b]: [number, number, number]): number {
 }
 
 // Forced-colors rendering cannot be emulated here, so pin rules structurally:
-// find a selector's rule inside an @media (forced-colors: active) block.
-function findForcedColorsRule(selector: string): CSSStyleRule | undefined {
+// find a selector's rules inside @media (forced-colors: active) blocks.
+// Substring match so grouped selector lists still match.
+function findForcedColorsRules(selector: string): CSSStyleRule[] {
+    const matches: CSSStyleRule[] = [];
     for (const sheet of Array.from(document.styleSheets)) {
         if (sheet.disabled) continue;
         let rules: CSSRuleList;
@@ -83,12 +85,12 @@ function findForcedColorsRule(selector: string): CSSStyleRule | undefined {
         for (const rule of Array.from(rules)) {
             if (rule instanceof CSSMediaRule && rule.conditionText.includes('forced-colors')) {
                 for (const inner of Array.from(rule.cssRules)) {
-                    if (inner instanceof CSSStyleRule && inner.selectorText === selector) return inner;
+                    if (inner instanceof CSSStyleRule && inner.selectorText.includes(selector)) matches.push(inner);
                 }
             }
         }
     }
-    return undefined;
+    return matches;
 }
 
 // The shipped Tailwind theme (src/lib/tailwind.css) targets the no-styles
@@ -212,10 +214,25 @@ describe('tailwind theme — axe scan (WCAG A/AA)', () => {
         // Forced-colors flattens author outline colours, so the tag cursor must
         // differ from an ordinary chip by width + style, not colour alone
         // (12th audit); the normal-mode .multi-item.active rule is colour-only.
-        const rule = findForcedColorsRule('.multi-item.active');
+        const rule = findForcedColorsRules('.multi-item.active').at(-1);
         expect(rule, 'expected a forced-colors rule for .multi-item.active').toBeTruthy();
         expect(rule!.style.outlineStyle).toBe('dashed');
         expect(rule!.style.outlineWidth).toBe('2px');
+    });
+
+    it('forced-colors keeps the error and disabled states visible without colour', () => {
+        // hasError was conveyed only by border-red-500 and disabled by author
+        // greys — both flattened to the standard palette under Windows High
+        // Contrast (14th audit). Border style survives for error; GrayText is
+        // the system colour for disabled.
+        const error = findForcedColorsRules('.svelte-select.error').at(-1);
+        expect(error, 'expected a forced-colors rule for .svelte-select.error').toBeTruthy();
+        expect(error!.style.borderStyle).toBe('double');
+
+        const disabledStyles = findForcedColorsRules('.svelte-select.disabled').map((r) => r.style);
+        expect(disabledStyles.length, 'expected forced-colors rules for .svelte-select.disabled').toBeGreaterThan(0);
+        expect(disabledStyles.some((s) => s.color.toLowerCase() === 'graytext')).toBe(true);
+        expect(disabledStyles.some((s) => s.borderColor.toLowerCase() === 'graytext')).toBe(true);
     });
 
     it('activation targets meet the 24px minimum (WCAG 2.2 2.5.8)', async () => {

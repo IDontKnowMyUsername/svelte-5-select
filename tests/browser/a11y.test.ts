@@ -115,15 +115,52 @@ describe('axe scan (WCAG A/AA)', () => {
         await expectNoViolations();
     });
 
-    it('forced-colors keeps the arrow-key tag cursor distinguishable without colour', () => {
-        // Every chip carries a 1px outline and .multi-item.active differs only
-        // by outline colour, which the forced palette flattens — the Backspace
-        // target vanished under Windows High Contrast (12th audit). Forced
-        // colors cannot be emulated here, so pin the rule structurally: the
-        // theme must distinguish the cursor by width + style, not colour.
-        // Substring match: default.css is @imported into Select.svelte's style
-        // block, so Svelte appends its scoping class to every selector.
-        let rule: CSSStyleRule | undefined;
+    // 14th audit: the chip-as-button path (role="button" chips with composed
+    // remove labels, Enter/Space removal, focus ring) was never rendered under
+    // axe — only pinned in jsdom unit tests.
+    it('multiFullItemClearable chips pass the scan', async () => {
+        render(Select, {
+            props: {
+                items,
+                ariaLabel: 'Food',
+                multiple: true,
+                multiFullItemClearable: true,
+                value: [items[0], items[1]],
+                focused: true,
+            },
+        });
+        await settle();
+        await expectNoViolations();
+    });
+
+    // 14th audit: these states were never scanned either — select-only swaps
+    // the whole interaction pattern, and hasError/loading each restyle the
+    // control (error border, loading copy) in ways axe can judge.
+    it('select-only mode (searchable={false}) passes the scan', async () => {
+        render(Select, {
+            props: { items, ariaLabel: 'Food', searchable: false, value: items[0], listOpen: true, focused: true },
+        });
+        await settle();
+        await expectNoViolations();
+    });
+
+    it('hasError and loading states pass the scan', async () => {
+        const { unmount } = render(Select, { props: { items, ariaLabel: 'Food', hasError: true } });
+        await settle();
+        await expectNoViolations();
+        unmount();
+
+        render(Select, { props: { items, ariaLabel: 'Food', loading: true, listOpen: true } });
+        await settle();
+        await expectNoViolations();
+    });
+
+    // Forced-colors rendering cannot be emulated here, so pin the rules
+    // structurally. Substring match: default.css is @imported into
+    // Select.svelte's style block, so Svelte appends its scoping class to
+    // every selector.
+    function findForcedColorsRules(selector: string): CSSStyleRule[] {
+        const matches: CSSStyleRule[] = [];
         for (const sheet of Array.from(document.styleSheets)) {
             let rules: CSSRuleList;
             try {
@@ -134,14 +171,37 @@ describe('axe scan (WCAG A/AA)', () => {
             for (const outer of Array.from(rules)) {
                 if (outer instanceof CSSMediaRule && outer.conditionText.includes('forced-colors')) {
                     for (const inner of Array.from(outer.cssRules)) {
-                        if (inner instanceof CSSStyleRule && inner.selectorText.includes('.multi-item.active'))
-                            rule = inner;
+                        if (inner instanceof CSSStyleRule && inner.selectorText.includes(selector)) matches.push(inner);
                     }
                 }
             }
         }
+        return matches;
+    }
+
+    it('forced-colors keeps the arrow-key tag cursor distinguishable without colour', () => {
+        // Every chip carries a 1px outline and .multi-item.active differs only
+        // by outline colour, which the forced palette flattens — the Backspace
+        // target vanished under Windows High Contrast (12th audit). The theme
+        // must distinguish the cursor by width + style, not colour.
+        const rule = findForcedColorsRules('.multi-item.active').at(-1);
         expect(rule, 'expected a forced-colors rule for .multi-item.active').toBeTruthy();
         expect(rule!.style.outlineStyle).toBe('dashed');
         expect(rule!.style.outlineWidth).toBe('2px');
+    });
+
+    it('forced-colors keeps the error and disabled states visible without colour', () => {
+        // hasError was conveyed only by an author border colour and disabled by
+        // author greys — both flattened to the standard palette under Windows
+        // High Contrast (14th audit). Border style survives for error; GrayText
+        // is the system colour for disabled.
+        const error = findForcedColorsRules('.svelte-select.error').at(-1);
+        expect(error, 'expected a forced-colors rule for .svelte-select.error').toBeTruthy();
+        expect(error!.style.borderStyle).toBe('double');
+
+        const disabledStyles = findForcedColorsRules('.disabled').map((r) => r.style);
+        expect(disabledStyles.length, 'expected forced-colors rules for .disabled').toBeGreaterThan(0);
+        expect(disabledStyles.some((s) => s.color.toLowerCase() === 'graytext')).toBe(true);
+        expect(disabledStyles.some((s) => s.borderColor.toLowerCase() === 'graytext')).toBe(true);
     });
 });
