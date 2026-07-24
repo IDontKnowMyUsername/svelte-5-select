@@ -335,6 +335,13 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         actions.onselect(selection);
     }
 
+    // Run once synchronously at creation: effects never run during SSR, so
+    // without this pass the server HTML ships raw string entries — empty chip
+    // text, aria-label="Remove undefined", and a hidden form input carrying
+    // JSON.stringify('NY'). The effect below re-runs the same idempotent
+    // resolution on the client.
+    untrack(() => normalizeValue());
+
     // Normalize string values on every value change (not just the hasValue
     // flip — replacing one string with another must re-resolve), and again when
     // async items arrive so fallback entries upgrade to the real item

@@ -34,4 +34,42 @@ describe('SSR', () => {
         expect(body).toContain('role="option"');
         expect(body).toContain('>B');
     });
+
+    // String values are resolved to items by useValue's normalization, which
+    // historically only ran in a client effect — the server HTML shipped raw
+    // strings: empty chip text, aria-label="Remove undefined", and the hidden
+    // form input carrying JSON.stringify('NY') === '"NY"' (15th audit)
+    it('server-renders multi chips from raw string values', () => {
+        const { body } = render(Select, {
+            props: {
+                multiple: true,
+                name: 'cities',
+                items: [
+                    { value: 'NY', label: 'New York' },
+                    { value: 'LA', label: 'Los Angeles' },
+                ],
+                value: ['NY', 'LA'],
+            },
+        });
+
+        expect(body).toContain('New York');
+        expect(body).toContain('Los Angeles');
+        expect(body).toContain('Remove New York');
+        expect(body).not.toContain('undefined');
+        // The hidden form input carries item JSON, not a JSON-quoted string
+        expect(body).toContain('&quot;value&quot;');
+    });
+
+    it('server-renders a single string value under custom itemId/label keys', () => {
+        const { body } = render(Select, {
+            props: {
+                items: [{ id: 'NY', name: 'New York' }],
+                itemId: 'id',
+                label: 'name',
+                value: 'NY',
+            },
+        });
+
+        expect(body).toContain('New York');
+    });
 });
