@@ -22,3 +22,6 @@
 
 <Select bind:justValue={category} useJustValue={true} items={categoriesAsStrings} />
 <Select bind:justValue={item} useJustValue={true} loadOptions={getCategoryItems} loadOptionsDeps={[category]} />
+
+<span data-testid="category-justvalue">{category ?? ''}</span>
+<span data-testid="item-justvalue">{item ?? ''}</span>

@@ -61,6 +61,51 @@ describe('layout in a real browser', () => {
         expect(style.pointerEvents).not.toBe('none');
     });
 
+    it('auto-flips the list above when there is no room below (default flip middleware)', async () => {
+        // 14th audit: only an EXPLICIT placement:'top-start' was tested — losing
+        // flip() from the default middleware would clip the list off-viewport
+        // for every consumer near a fold while the whole suite stayed green
+        render(Select, {
+            props: {
+                ariaLabel: 'Food',
+                items,
+                listOpen: true,
+                containerStyles: `margin-top: ${window.innerHeight - 80}px;`,
+            },
+        });
+        await settle();
+
+        const container = document.querySelector('.svelte-select')!.getBoundingClientRect();
+        const list = document.querySelector('.svelte-select-list')!.getBoundingClientRect();
+        expect(list.bottom).toBeLessThanOrEqual(container.top + 1);
+    });
+
+    it('keeps the list attached to the control when a scrolling ancestor scrolls', async () => {
+        // 14th audit: no overflow-container fixture existed — an autoUpdate
+        // regression would leave the open list floating detached mid-page
+        const host = document.createElement('div');
+        host.style.cssText = 'height: 200px; overflow-y: auto; position: relative;';
+        const inner = document.createElement('div');
+        inner.style.cssText = 'padding-top: 60px; height: 600px;';
+        host.append(inner);
+        document.body.append(host);
+        try {
+            render(Select, { props: { ariaLabel: 'Food', items: fewItems, listOpen: true } }, { container: inner });
+            await settle();
+
+            host.scrollTop = 40;
+            await settle();
+
+            const container = document.querySelector('.svelte-select')!.getBoundingClientRect();
+            const list = document.querySelector('.svelte-select-list')!.getBoundingClientRect();
+            // Default listOffset is 5; anything beyond a couple px of slack
+            // means the list no longer tracks the scrolled control
+            expect(Math.abs(list.top - 5 - container.bottom)).toBeLessThanOrEqual(2);
+        } finally {
+            host.remove();
+        }
+    });
+
     it('positions the list above the input when placement is top', async () => {
         render(Select, {
             props: {

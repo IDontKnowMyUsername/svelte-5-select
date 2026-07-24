@@ -34,6 +34,7 @@ import userEvent from '@testing-library/user-event';
 // Drive props through rerender() or a bind: harness fixture instead.
 type SelectInstance = {
     reset: () => void;
+    getFilteredItems: () => unknown[];
 };
 
 async function querySelectorClick(selector: string): Promise<void> {
@@ -1800,18 +1801,6 @@ describe('Select Component', () => {
             expect(selectInput.hasAttribute('readonly')).toBeTruthy();
         });
 
-        it('makes input readonly when searchable is false (duplicate test)', () => {
-            render(Select, {
-                props: {
-                    items,
-                    searchable: false,
-                },
-            });
-
-            const elem = document.querySelector('.svelte-select input') as HTMLElement;
-            expect(elem.hasAttribute('readonly')).toBeTruthy();
-        });
-
         it('moves hover by type-ahead when searchable is false', async () => {
             render(Select, {
                 props: {
@@ -3333,14 +3322,19 @@ describe('Select Component', () => {
 
             input.value = 'cre';
             input.dispatchEvent(new Event('input', { bubbles: true }));
-            await tick();
-            await new Promise((resolve) => setTimeout(resolve, 50));
 
-            expect(document.querySelectorAll('.list-group-title').length).toBe(1);
+            // Presence wait: the debounced load landing takes the titles 0 -> 1
+            await vi.waitFor(() => {
+                expect(document.querySelectorAll('.list-group-title').length).toBe(1);
+            });
 
             input.value = 'cr';
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await tick();
+            // Absence proof: titles are already 1 before the re-load lands, so a
+            // waitFor would pass without waiting — the duplicate-title bug only
+            // shows AFTER the landing. Give it time to land, then assert it did
+            // not duplicate.
             await new Promise((resolve) => setTimeout(resolve, 50));
 
             expect(document.querySelectorAll('.list-group-title').length).toBe(1);
@@ -6846,6 +6840,42 @@ describe('Select Component', () => {
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
             expect(document.querySelector('.selected-item')).toBeFalsy();
+        });
+    });
+
+    describe('getFilteredItems', () => {
+        // The only public instance method besides reset() had zero tests — its
+        // wrapper body never executed in the suite (14th audit)
+        it('returns the currently rendered rows, narrowed by the filter', async () => {
+            const { component, rerender } = render(Select, {
+                props: { items, listOpen: true },
+            }) as unknown as { component: SelectInstance; rerender: (props: object) => Promise<void> };
+
+            expect((component.getFilteredItems() as SelectItem[]).map((i) => i.label)).toEqual([
+                'Chocolate',
+                'Pizza',
+                'Cake',
+                'Chips',
+                'Ice Cream',
+            ]);
+
+            await rerender({ filterText: 'Ca' });
+            expect((component.getFilteredItems() as SelectItem[]).map((i) => i.label)).toEqual(['Cake']);
+        });
+
+        it('includes synthesized group headers as SelectRow entries', async () => {
+            const { component } = render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    listOpen: true,
+                    groupBy: (item: any) => item.group,
+                },
+            }) as unknown as { component: SelectInstance };
+            await tick();
+
+            const rows = component.getFilteredItems() as SelectItem[];
+            expect(rows.some((row) => row.groupHeader === true)).toBe(true);
+            expect(rows.filter((row) => !row.groupHeader).length).toBe(itemsWithGroup.length);
         });
     });
 
