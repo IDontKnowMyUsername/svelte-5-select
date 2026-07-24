@@ -1,3 +1,9 @@
+<script lang="ts">
+    // Required even though empty: script-less components make svelte2tsx emit a
+    // legacy d.ts referencing `SvelteComponent` without importing it, which breaks
+    // consumers that type-check with skipLibCheck: false.
+</script>
+
 <svg width="100%" height="100%" viewBox="-2 -2 50 50" focusable="false" aria-hidden="true" role="presentation">
     <path
         fill="currentColor"

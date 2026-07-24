@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # Packs the library and builds a minimal consumer app against the tarball,
 # exercising the main export, the no-styles subpath, and export resolution
-# of the css subpaths. Catches broken exports/dist before publish.
+# of the css subpaths. Also type-checks the shipped d.ts with
+# skipLibCheck: false, since our own CI (and SvelteKit templates) run with
+# skipLibCheck: true and would never see a self-broken declaration file.
+# Catches broken exports/dist before publish.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
@@ -31,6 +34,7 @@ cat > "$APP/package.json" <<EOF
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
         "svelte": "^5.55.2",
+        "typescript": "^5.9.3",
         "vite": "^8.0.7"
     }
 }
@@ -73,9 +77,43 @@ cat > "$APP/src/App.svelte" <<'EOF'
 <NoStylesSelect {items} />
 EOF
 
+cat > "$APP/src/probe.ts" <<'EOF'
+// Pulls every shipped d.ts into a program checked with skipLibCheck: false.
+import { Select, ChevronIcon, ClearIcon, LoadingIcon, filter, normalizeItem } from 'svelte-5-select';
+import type { SelectProps } from 'svelte-5-select';
+
+const props: SelectProps<{ id: number; label: string }> = {
+    items: [{ id: 1, label: 'one' }],
+};
+void props;
+void Select;
+void ChevronIcon;
+void ClearIcon;
+void LoadingIcon;
+void filter;
+void normalizeItem;
+EOF
+
+cat > "$APP/tsconfig.json" <<'EOF'
+{
+    "compilerOptions": {
+        "module": "esnext",
+        "moduleResolution": "bundler",
+        "target": "esnext",
+        "strict": true,
+        "skipLibCheck": false,
+        "noEmit": true,
+        "types": []
+    },
+    "include": ["src/probe.ts"]
+}
+EOF
+
 cd "$APP"
 pnpm install --silent
 pnpm exec vite build
+pnpm exec tsc -p .
+echo "d.ts self-check passed (skipLibCheck: false)"
 
 node --conditions=svelte --input-type=module -e "
 import.meta.resolve('svelte-5-select/tailwind.css');
