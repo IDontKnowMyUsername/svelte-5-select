@@ -1,4 +1,4 @@
-import type { ItemLike, SelectGroupHeader, SelectItem } from '$lib/types';
+import type { ItemLike, SelectGroupHeader, SelectItem } from './types.js';
 
 /**
  * Narrows a rendered list row to a synthesized group header (see the `groupBy` prop).

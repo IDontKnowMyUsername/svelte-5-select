@@ -1,6 +1,6 @@
 import { untrack } from 'svelte';
-import type { ItemLike, SelectItem, SelectState } from './types';
-import { areItemsEqual, getItemProperty, isItemSelectableCheck, normalizeItem } from './utils';
+import type { ItemLike, SelectItem, SelectState } from './types.js';
+import { areItemsEqual, getItemProperty, isItemSelectableCheck, normalizeItem } from './utils.js';
 
 export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<Item>) {
     function computeNextIndex(filteredItems: SelectItem[], fromIndex: number, increment: number): number {

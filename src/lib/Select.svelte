@@ -20,16 +20,16 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         SelectValue,
         SelectClearValue,
         SelectErrorEvent,
-    } from './types';
+    } from './types.js';
     import { createFloatingActions } from 'svelte-floating-ui';
     import { useAriaHandlers } from '$lib/aria-handlers.svelte';
 
-    import _filter from './filter';
+    import _filter from './filter.js';
 
     import ChevronIcon from './ChevronIcon.svelte';
     import ClearIcon from './ClearIcon.svelte';
     import LoadingIcon from './LoadingIcon.svelte';
-    import type { SelectItem } from '$lib/types';
+    import type { SelectItem } from './types.js';
     import type { HTMLInputAttributes } from 'svelte/elements';
     import { createSelectState } from '$lib/select-state.svelte';
     import { useKeyboardNavigation } from '$lib/keyboard-navigation.svelte';
@@ -43,7 +43,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         isItemSelectableCheck,
         normalizeItem,
         createGroupHeaderItem as _createGroupHeaderItem,
-    } from '$lib/utils';
+    } from './utils.js';
 
     const defaultItemFilter = (label: string, filterText: string, _option: SelectItem): boolean =>
         `${label}`.toLowerCase().includes(filterText?.toLowerCase());

@@ -1,4 +1,4 @@
-import type { SelectItem } from './types';
+import type { SelectItem } from './types.js';
 
 interface AriaHandlersConfig {
     ariaValues: (values: string) => string;

@@ -1,4 +1,4 @@
-import type { ItemLike, SelectItem, SelectState } from './types';
+import type { ItemLike, SelectItem, SelectState } from './types.js';
 
 /**
  * The prop-backed part of the store: Select.svelte supplies live getter/setter

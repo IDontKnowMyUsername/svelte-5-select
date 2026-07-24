@@ -1,5 +1,5 @@
-import type { ItemLike, KeyboardNavigationActions, KeyboardNavigationState, SelectItem } from './types';
-import { areItemsEqual, getItemProperty, isItemSelectableCheck } from '$lib/utils';
+import type { ItemLike, KeyboardNavigationActions, KeyboardNavigationState, SelectItem } from './types.js';
+import { areItemsEqual, getItemProperty, isItemSelectableCheck } from './utils.js';
 
 export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
     state: KeyboardNavigationState<Item>,

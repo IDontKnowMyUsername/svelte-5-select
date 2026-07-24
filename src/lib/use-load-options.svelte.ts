@@ -1,7 +1,7 @@
 import { untrack } from 'svelte';
 import { DEV } from 'esm-env';
-import type { ItemLike, LoadOptionsActions, SelectItem, SelectState } from './types';
-import { convertStringItemsToObjects, getItemProperty } from './utils';
+import type { ItemLike, LoadOptionsActions, SelectItem, SelectState } from './types.js';
+import { convertStringItemsToObjects, getItemProperty } from './utils.js';
 
 export interface HandleLoadOptionsOptions {
     /**

@@ -1,6 +1,6 @@
 import { untrack } from 'svelte';
-import type { ItemLike, JustValue, SelectItem, SelectState, ValueActions } from './types';
-import { getItemProperty, hasValueChanged } from './utils';
+import type { ItemLike, JustValue, SelectItem, SelectState, ValueActions } from './types.js';
+import { getItemProperty, hasValueChanged } from './utils.js';
 
 export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<Item>, actions: ValueActions) {
     // Tracked-read helper for the effects' trigger sections: reading length AND

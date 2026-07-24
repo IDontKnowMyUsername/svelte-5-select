@@ -7,8 +7,8 @@ export { default as ClearIcon } from './ClearIcon.svelte';
 export { default as LoadingIcon } from './LoadingIcon.svelte';
 
 // Utility functions
-export { default as filter } from './filter';
-export { areItemsEqual, isGroupHeader, normalizeItem } from './utils';
+export { default as filter } from './filter.js';
+export { areItemsEqual, isGroupHeader, normalizeItem } from './utils.js';
 
 // Type exports for TypeScript users.
 // Note: SelectState, KeyboardNavigationState/Actions and the useKeyboardNavigation
@@ -27,4 +27,4 @@ export type {
     FloatingConfig,
     FilterConfig,
     SelectErrorEvent,
-} from './types';
+} from './types.js';

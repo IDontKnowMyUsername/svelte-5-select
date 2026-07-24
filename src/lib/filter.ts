@@ -1,5 +1,5 @@
-import type { FilterConfig, ItemLike, SelectItem } from './types';
-import { areItemsEqual, isStringArray } from '$lib/utils';
+import type { FilterConfig, ItemLike, SelectItem } from './types.js';
+import { areItemsEqual, isStringArray } from './utils.js';
 
 /**
  * The built-in filtering pipeline: converts raw string items, applies
