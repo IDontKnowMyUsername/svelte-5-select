@@ -674,6 +674,62 @@ describe('useLoadOptions', () => {
         expect(writes.items).toEqual([[{ value: 'munich', label: 'Munich' }]]);
     });
 
+    it('a settled filter load is no longer cancellable: closing must not restore a superseded deps reload', async () => {
+        // 14th audit: the filter-driven flag survived the load's own settle, so a
+        // later close "cancelled" the already-landed load and handed currency
+        // back to the deps reload it superseded — whose late response then
+        // overwrote the fresher items and re-fired onloaded
+        let resolveDeps!: (items: SelectItem[]) => void;
+        let resolveTyping!: (items: SelectItem[]) => void;
+        const loadOptions = vi
+            .fn()
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)))
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveTyping = r)));
+        const { writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({ loadOptions });
+
+        handleLoadOptions('', { validateValue: true, debounce: false }); // deps reload A in flight
+        handleLoadOptions('mu', { debounce: true }); // typing load B supersedes it
+
+        resolveTyping([{ value: 'munich', label: 'Munich' }]); // B lands
+        await flush();
+        expect(writes.items).toEqual([[{ value: 'munich', label: 'Munich' }]]);
+
+        cancelPendingFilterLoad(); // list closes; B already settled, so this must no-op
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]); // A's late response stays superseded
+        await flush();
+
+        expect(writes.items).toEqual([[{ value: 'munich', label: 'Munich' }]]);
+        expect(actions.onloaded).toHaveBeenCalledTimes(1);
+    });
+
+    it('an errored filter load is no longer cancellable either', async () => {
+        let rejectTyping!: (err: unknown) => void;
+        let resolveDeps!: (items: SelectItem[]) => void;
+        const loadOptions = vi
+            .fn()
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((r) => (resolveDeps = r)))
+            .mockImplementationOnce(() => new Promise<SelectItem[]>((_r, rej) => (rejectTyping = rej)));
+        vi.spyOn(console, 'error').mockImplementation(() => {});
+        const { writes, actions, handleLoadOptions, cancelPendingFilterLoad } = createHarness({ loadOptions });
+
+        handleLoadOptions('', { validateValue: true, debounce: false }); // deps reload A in flight
+        handleLoadOptions('mu', { debounce: true }); // typing load B supersedes it
+
+        rejectTyping(new Error('boom')); // B settles with an error
+        await flush();
+        expect(writes.items).toEqual([null]);
+
+        cancelPendingFilterLoad(); // must no-op: B settled, nothing to cancel
+
+        resolveDeps([{ value: 'berlin', label: 'Berlin' }]);
+        await flush();
+
+        // A's response must stay superseded, not land through a bogus restore
+        expect(writes.items).toEqual([null]);
+        expect(actions.onloaded).not.toHaveBeenCalled();
+    });
+
     it('a newer dependency reload owns the validation verdict', async () => {
         let resolveFirst!: (items: SelectItem[]) => void;
         let resolveSecond!: (items: SelectItem[]) => void;

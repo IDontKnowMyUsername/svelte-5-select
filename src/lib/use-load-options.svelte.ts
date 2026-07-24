@@ -207,6 +207,12 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     }
                     // A restored load has settled; the channel is spent
                     if (token === restoredToken) restoredToken = 0;
+                    // The newest load has settled: nothing filter-driven is
+                    // pending anymore, so a later close must not "cancel" it —
+                    // pre-fix the stale flag let cancelPendingFilterLoad hand
+                    // currency back to a deps reload this load superseded,
+                    // whose late response then overwrote these fresher items
+                    if (token === requestSequence) latestLoadIsFilterDriven = false;
 
                     if (result && result.length > 0 && typeof result[0] === 'string') {
                         state.items = convertStringItemsToObjects(result as string[]) as Item[];
@@ -229,6 +235,9 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
                     if (token === liveValidatingToken) liveValidatingToken = 0;
                     if (token !== requestSequence && token !== restoredToken) return; // superseded; the newer request manages state
                     if (token === restoredToken) restoredToken = 0;
+                    // Settled (with an error) — same as the success path: the flag
+                    // must not outlive the load it describes
+                    if (token === requestSequence) latestLoadIsFilterDriven = false;
                     // Settled (with an error), so no longer live — a reopen may retry it
                     liveLoadFilterText = undefined;
                     console.error('loadOptions error:', err);
