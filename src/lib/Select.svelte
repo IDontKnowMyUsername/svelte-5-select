@@ -572,6 +572,10 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     // triggers scrolling.
     function handleKeyDown(e: KeyboardEvent): void {
         keyboardNav.handleKeyDown(e);
+        // Mirror keyboardNav's IME gate: during composition the arrows move
+        // through the IME candidate window, not the list — the keyboard cursor
+        // stays put, so the list must not scroll either.
+        if (e.isComposing || e.keyCode === 229) return;
         const isTypeAhead = !searchable && e.key.length === 1;
         if (
             e.key === 'ArrowDown' ||

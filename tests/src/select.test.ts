@@ -445,6 +445,38 @@ describe('Select Component', () => {
             expect(container.querySelector('.svelte-select-list')).toBeTruthy();
         });
 
+        it('does not scroll the list during IME candidate navigation', async () => {
+            // Composition arrows move through the IME candidate window; the
+            // keyboard cursor stays put, so the list must not scroll (15th audit)
+            const scrollSpy = vi.spyOn(Element.prototype, 'scrollIntoView').mockImplementation(() => {});
+
+            render(Select, {
+                props: {
+                    listOpen: true,
+                    items: itemsWithIndex,
+                },
+            });
+
+            // The list-mounted effect schedules its own bring-into-view on open;
+            // let it settle so the spy only observes the keydown path
+            await tick();
+            await tick();
+            scrollSpy.mockClear();
+
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', isComposing: true }));
+            await tick();
+            await tick();
+            expect(scrollSpy).not.toHaveBeenCalled();
+
+            // Positive control: the same key outside composition does scroll,
+            // proving the spy observes the real path
+            window.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown' }));
+            await tick();
+            await tick();
+            expect(scrollSpy).toHaveBeenCalled();
+            scrollSpy.mockRestore();
+        });
+
         it('fires select event on tab with active item', async () => {
             let value;
 
@@ -4847,6 +4879,29 @@ describe('Select Component', () => {
             const input = document.querySelector('input[type="text"]');
             expect(input!.getAttribute('aria-activedescendant')).toBe('listbox-test-item-1');
             expect(aria!.textContent).not.toContain('Pizza');
+        });
+
+        // The region text renders before use-hover's keep-hover-selectable
+        // correction moves the cursor off row 0, so a grouped list used to
+        // announce the aria-hidden, keyboard-unreachable header as the
+        // "focused option" on first open — conflicting with what
+        // aria-activedescendant reports (15th audit, reproduced live)
+        it('announces the first selectable option, not the group header, when a grouped list opens', async () => {
+            const user = userEvent.setup();
+            render(Select, {
+                props: {
+                    items: itemsWithGroup,
+                    groupBy: (item: SelectItem) => item.group as string,
+                },
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            await user.click(input);
+            await tick();
+
+            const aria = document.querySelector('.a11y-context');
+            expect(aria!.textContent).toContain('focused on option Chocolate');
+            expect(aria!.textContent).not.toContain('focused on option Sweet');
         });
 
         // Filtering changes the count, which is information the cursor move does not

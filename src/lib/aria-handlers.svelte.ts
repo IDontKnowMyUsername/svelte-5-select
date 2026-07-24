@@ -1,4 +1,5 @@
 import type { SelectItem } from './types.js';
+import { isItemSelectableCheck } from './utils.js';
 
 interface AriaHandlersConfig {
     ariaValues: (values: string) => string;
@@ -59,7 +60,15 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
             // screen-reader user can ever reach. Selectable headers
             // (groupHeaderSelectable) are real options and do count.
             const count = filteredItems.filter((item) => !(item.groupHeader && !item.selectable)).length;
-            return config.ariaListOpen(_item[label] as string, count);
+            // This text renders before use-hover's keep-hover-selectable
+            // correction runs, so on the first open of a grouped list the cursor
+            // is still parked on a non-selectable header. Announce the option the
+            // correction is about to land on (the first selectable row — the same
+            // index checkHoverSelectable computes) instead of a row the cursor can
+            // never reach; the region won't recompute after the correction because
+            // hoverItemIndex is deliberately untracked (see Select.svelte).
+            const announced = isItemSelectableCheck(_item) ? _item : (filteredItems.find(isItemSelectableCheck) ?? _item);
+            return config.ariaListOpen(announced[label] as string, count);
         } else {
             return config.ariaFocused();
         }
