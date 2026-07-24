@@ -706,10 +706,12 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
-        it('a synthetic mouseover without pointer movement is not Tab commit-intent', async () => {
+        it('a synthetic mouseover without pointer movement moves nothing', async () => {
             // Browsers fire mouseover when the list renders under a stationary
-            // cursor — zero user action. The hover highlight may move, but Tab
-            // must not commit off it.
+            // cursor — zero user action. 14th audit: it used to yank the hover
+            // highlight (and aria-activedescendant) off the keyboard cursor
+            // right after open; now only real mousemove drives hover, and Tab
+            // must not commit either.
             let selected: any;
             render(Select, {
                 props: {
@@ -726,13 +728,13 @@ describe('Select Component', () => {
             const secondItem = document.querySelectorAll('.list-item')[1] as HTMLElement;
             secondItem.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
             await tick();
-            // The visual cursor followed the synthetic hover...
-            expect(document.querySelector('.list-item .hover')!.textContent!.trim()).toBe('Pizza');
+            // The visual cursor stayed on the keyboard cursor's row...
+            expect(document.querySelector('.list-item .hover')!.textContent!.trim()).toBe('Chocolate');
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Tab' }));
             await tick();
 
-            // ...but Tab closed without selecting
+            // ...and Tab closed without selecting
             expect(selected).toBeUndefined();
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
@@ -4413,6 +4415,49 @@ describe('Select Component', () => {
             expect(onkeydown).toHaveBeenCalledTimes(1);
             expect(sawDefaultPrevented).toBe(true);
         });
+
+        it('composes a consumer aria-describedby with the selection description', async () => {
+            // aria-describedby takes a space-separated id list; later-spread-wins
+            // used to silently drop the selected-{id} description (14th audit)
+            render(Select, {
+                props: {
+                    items,
+                    value: { value: 'cake', label: 'Cake' },
+                    inputAttributes: { 'aria-describedby': 'external-help' },
+                },
+            });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            const selectionId = document.querySelector('[id^="selected-"]')!.id;
+            expect(input.getAttribute('aria-describedby')).toBe(`${selectionId} external-help`);
+        });
+
+        it('a consumer aria-describedby alone still applies when there is no selection', async () => {
+            render(Select, {
+                props: { items, inputAttributes: { 'aria-describedby': 'external-help' } },
+            });
+            await tick();
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            expect(input.getAttribute('aria-describedby')).toBe('external-help');
+        });
+
+        it('an aria-label supplied via inputAttributes names the listbox and quiets the dev warning', async () => {
+            // 14th audit: the accessible-name warning and the listbox-naming
+            // effect only looked at the ariaLabel prop, aria-labelledby, and
+            // associated labels — a consumer naming the input this way got a
+            // spurious warning and an unnamed listbox
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, {
+                props: { items, listOpen: true, inputAttributes: { 'aria-label': 'Custom name' } },
+            });
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')!.getAttribute('aria-label')).toBe('Custom name');
+            expect(warn.mock.calls.some(([msg]) => String(msg).includes('accessible name'))).toBe(false);
+            warn.mockRestore();
+        });
     });
 
     describe('Select-only mode (searchable={false}) a11y', () => {
@@ -5752,13 +5797,13 @@ describe('Select Component', () => {
         // marker until scrolling settles (prevents the list jumping under the cursor)
         list.dispatchEvent(new Event('scroll', { bubbles: true }));
         await tick();
-        target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+        target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
         await tick();
         expect(target.querySelector('.item')?.classList.contains('hover')).toBe(false);
 
         // The scroll-end fallback flips isScrolling back off, so hover resumes
         await vi.waitFor(() => {
-            target.dispatchEvent(new MouseEvent('mouseover', { bubbles: true }));
+            target.dispatchEvent(new MouseEvent('mousemove', { bubbles: true }));
             expect(target.querySelector('.item')?.classList.contains('hover')).toBe(true);
         });
     });

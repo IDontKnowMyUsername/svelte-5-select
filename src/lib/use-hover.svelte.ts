@@ -96,10 +96,13 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
     function handleHover(i: number): void {
         if (state.isScrolling) return;
         state.hoverItemIndex = i;
-        // Deliberately NOT commit-intent for Tab: browsers synthesize mouseover
-        // when the list renders under a stationary cursor, so hover alone can
-        // happen with zero user action. Intent comes from real pointer movement
-        // over the open list (the list's mousemove handler in Select.svelte).
+        // Driven by row mousemove (never mouseover): browsers synthesize
+        // mouseover when the list renders — or scrolls rows — under a
+        // stationary cursor, which is zero user action and used to yank both
+        // hover and aria-activedescendant off the keyboard cursor right after
+        // open. mousemove only fires for real pointer movement. Deliberately
+        // NOT commit-intent for Tab either; that is the list-level mousemove
+        // handler in Select.svelte.
     }
 
     let scrollEndFallback: ReturnType<typeof setTimeout> | undefined;

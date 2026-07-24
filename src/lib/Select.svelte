@@ -337,6 +337,15 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                 (consumer as (e: Event) => unknown)(e);
             };
         }
+        // aria-describedby composes the same way: the attribute takes a
+        // space-separated id list, so a consumer description must extend the
+        // selection description, not silently replace it (later-spread-wins
+        // dropped the selection from browse-mode reading).
+        const consumerDescribedby = inputAttributes?.['aria-describedby'];
+        const ownDescribedby = !multiple && value ? `selected-${_id}` : undefined;
+        if (consumerDescribedby && ownDescribedby) {
+            attrs['aria-describedby'] = `${ownDescribedby} ${consumerDescribedby}`;
+        }
         return attrs;
     });
     let prefloat = $state(true);
@@ -774,7 +783,13 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         ariaLabel;
         untrack(() => {
             if (!input) return;
-            const named = !!ariaLabel || !!input.getAttribute('aria-labelledby') || (input.labels?.length ?? 0) > 0;
+            // getAttribute over the props: an aria-label supplied through
+            // inputAttributes names the input just as well as the ariaLabel prop
+            const named =
+                !!ariaLabel ||
+                !!input.getAttribute('aria-label') ||
+                !!input.getAttribute('aria-labelledby') ||
+                (input.labels?.length ?? 0) > 0;
             if (!named) {
                 console.warn(
                     '[svelte-select] The Select input has no accessible name. Pass `ariaLabel`, ' +
@@ -806,6 +821,14 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
             const inputLabelledby = input.getAttribute('aria-labelledby');
             if (inputLabelledby) {
                 listboxLabelledby = inputLabelledby;
+                return;
+            }
+            // An aria-label supplied through inputAttributes names only the
+            // input; forward it so the listbox is named the same way the
+            // ariaLabel prop's is (accname precedence: labelledby above wins).
+            const inputAriaLabel = input.getAttribute('aria-label');
+            if (inputAriaLabel) {
+                listboxLabelText = inputAriaLabel;
                 return;
             }
             const labelEl = input.labels?.[0];
@@ -1138,7 +1161,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                          The group's accessible name still resolves via aria-labelledby,
                          which follows hidden targets. Selectable headers are real options. -->
                     <div
-                        onmouseover={() => hoverManager.handleHover(i)}
+                        onmousemove={() => hoverManager.handleHover(i)}
                         onfocus={() => hoverManager.handleHover(i)}
                         onclick={(ev) => {
                             ev.stopPropagation();
