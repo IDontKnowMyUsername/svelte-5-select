@@ -28,5 +28,10 @@ describe('SSR', () => {
         });
 
         expect(body).toContain('selected-item');
+        // The open listbox itself must be in the server HTML — asserting only
+        // the selection would pass even if the list silently failed to SSR
+        expect(body).toContain('role="listbox"');
+        expect(body).toContain('role="option"');
+        expect(body).toContain('>B');
     });
 });

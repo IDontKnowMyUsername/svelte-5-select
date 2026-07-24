@@ -534,24 +534,8 @@ describe('useKeyboardNavigation', () => {
         expect(writes.activeValue).toBeUndefined();
     });
 
-    it('handles ArrowLeft decrementing when conditions met', () => {
-        const { state, writes, actions } = createMock({
-            multiple: true,
-            value: [
-                { value: 'a', label: 'A' },
-                { value: 'b', label: 'B' },
-                { value: 'c', label: 'C' },
-            ],
-            activeValue: 1, // Middle item, not 0
-            filterText: '',
-        });
-        const { handleKeyDown } = useKeyboardNavigation(state, actions);
-
-        handleKeyDown(new KeyboardEvent('keydown', { key: 'ArrowLeft' }));
-
-        // value.length (3) > activeValue (1) && activeValue !== 0
-        expect(writes.activeValue).toEqual([0]);
-    });
+    // ArrowLeft's decrement branch is pinned above in
+    // 'handles ArrowLeft in multiple mode when activeValue is defined and not 0'
 
     // 9th-audit fix: a cursor left stale by a mouse removal's reindexing
     // (index >= value.length) must never reach handleMultiItemClear — that

@@ -25,8 +25,11 @@ const liquor: string = 'Liquor';
 describe('Load dependency behavior with strings/JSON', () => {
     afterEach(() => cleanup());
 
-    it('Both lists as strings', async () => {
-        const { container } = render(BothListsAsStringsTest);
+    // The four fixtures differ only in which side of the chain uses raw strings
+    // vs JSON items; the flow is identical, so it lives here once (mirroring
+    // runJustValueFlow below)
+    async function runDependencyFlow(fixture: unknown) {
+        const { container } = render(fixture as Parameters<typeof render>[0]);
 
         const selects = container.querySelectorAll('.svelte-select');
         const categorySelect = selects[0] as HTMLElement;
@@ -57,108 +60,22 @@ describe('Load dependency behavior with strings/JSON', () => {
             expect(items).toContain(juice);
             expect(items).toContain(liquor);
         });
+    }
+
+    it('Both lists as strings', async () => {
+        await runDependencyFlow(BothListsAsStringsTest);
     });
 
     it('First list as strings', async () => {
-        const { container } = render(FirstListAsStringsTest);
-
-        const selects = container.querySelectorAll('.svelte-select');
-        const categorySelect = selects[0] as HTMLElement;
-        const itemsSelect = selects[1] as HTMLElement;
-
-        await elementClick(categorySelect, true);
-
-        await waitFor(() => {
-            expect(container.querySelectorAll('.list-item').length).toBeGreaterThan(0);
-        });
-
-        const drinksOption = Array.from(container.querySelectorAll('.list-item')).find((el) =>
-            el.textContent?.includes(drinks),
-        ) as HTMLElement;
-
-        await elementClick(drinksOption);
-
-        await waitFor(() => {
-            expect(categorySelect.textContent).toContain(drinks);
-        });
-
-        // Open second select and verify items loaded
-        await elementClick(itemsSelect, true);
-
-        await waitFor(() => {
-            const items = Array.from(itemsSelect.querySelectorAll('.list-item')).map((el) => el.textContent);
-            expect(items).toContain(beer);
-            expect(items).toContain(juice);
-            expect(items).toContain(liquor);
-        });
+        await runDependencyFlow(FirstListAsStringsTest);
     });
 
     it('Second list as strings', async () => {
-        const { container } = render(SecondListAsStringsTest);
-
-        const selects = container.querySelectorAll('.svelte-select');
-        const categorySelect = selects[0] as HTMLElement;
-        const itemsSelect = selects[1] as HTMLElement;
-
-        await elementClick(categorySelect, true);
-
-        await waitFor(() => {
-            expect(container.querySelectorAll('.list-item').length).toBeGreaterThan(0);
-        });
-
-        const drinksOption = Array.from(container.querySelectorAll('.list-item')).find((el) =>
-            el.textContent?.includes(drinks),
-        ) as HTMLElement;
-
-        await elementClick(drinksOption);
-
-        await waitFor(() => {
-            expect(categorySelect.textContent).toContain(drinks);
-        });
-
-        // Open second select and verify items loaded
-        await elementClick(itemsSelect, true);
-
-        await waitFor(() => {
-            const items = Array.from(itemsSelect.querySelectorAll('.list-item')).map((el) => el.textContent);
-            expect(items).toContain(beer);
-            expect(items).toContain(juice);
-            expect(items).toContain(liquor);
-        });
+        await runDependencyFlow(SecondListAsStringsTest);
     });
 
     it('Both lists as JSON', async () => {
-        const { container } = render(BothListsAsJsonTest);
-
-        const selects = container.querySelectorAll('.svelte-select');
-        const categorySelect = selects[0] as HTMLElement;
-        const itemsSelect = selects[1] as HTMLElement;
-
-        await elementClick(categorySelect, true);
-
-        await waitFor(() => {
-            expect(container.querySelectorAll('.list-item').length).toBeGreaterThan(0);
-        });
-
-        const drinksOption = Array.from(container.querySelectorAll('.list-item')).find((el) =>
-            el.textContent?.includes(drinks),
-        ) as HTMLElement;
-
-        await elementClick(drinksOption);
-
-        await waitFor(() => {
-            expect(categorySelect.textContent).toContain(drinks);
-        });
-
-        // Open second select and verify items loaded
-        await elementClick(itemsSelect, true);
-
-        await waitFor(() => {
-            const items = Array.from(itemsSelect.querySelectorAll('.list-item')).map((el) => el.textContent);
-            expect(items).toContain(beer);
-            expect(items).toContain(juice);
-            expect(items).toContain(liquor);
-        });
+        await runDependencyFlow(BothListsAsJsonTest);
     });
 });
 

@@ -25,6 +25,10 @@ import BindRefsTest from './BindRefsTest.svelte';
 import LabelForSelectTest from './LabelForSelectTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
 import FormTest from './FormTest.svelte';
+import EmptySnippetTest from './EmptySnippetTest.svelte';
+import LoadingIconSnippetTest from './LoadingIconSnippetTest.svelte';
+import MultiClearIconSnippetTest from './MultiClearIconSnippetTest.svelte';
+import RequiredSnippetTest from './RequiredSnippetTest.svelte';
 import type { SelectItem, SelectValue } from '$lib/types';
 import { tick } from 'svelte';
 import userEvent from '@testing-library/user-event';
@@ -283,7 +287,7 @@ describe('Select Component', () => {
                     items: itemsWithIndex,
                 },
             });
-            expect(document.getElementsByClassName('list-item').length).toBeGreaterThan(0);
+            expect(document.getElementsByClassName('list-item').length).toBe(5);
         });
 
         it('highlights active list item', () => {
@@ -512,6 +516,12 @@ describe('Select Component', () => {
             });
 
             window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }));
+
+            // Flush as far as the positive twin above needs for its callback to
+            // land — a synchronous read would pass even if the event fired one
+            // flush later
+            await tick();
+            await tick();
 
             expect(itemSelectedFired).toBe(false);
         });
@@ -1177,7 +1187,7 @@ describe('Select Component', () => {
             expect(input).toBe(document.activeElement);
         });
 
-        it('opens list when key up or down is pressed while focused', async () => {
+        it('opens list when ArrowDown is pressed while the input has real focus', async () => {
             render(Select, { props: { items } });
 
             const input = document.querySelector('.svelte-select input') as HTMLInputElement;
@@ -1672,6 +1682,7 @@ describe('Select Component', () => {
         });
 
         it('closes when clicking external textarea', async () => {
+            const user = userEvent.setup();
             const textarea = document.createElement('textarea');
             document.body.appendChild(textarea);
 
@@ -1684,8 +1695,11 @@ describe('Select Component', () => {
 
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
 
+            // A real click (pointer events + focus), not a bare .focus():
+            // this is the outside-pointer path, the sibling test above covers
+            // programmatic focus moves
             const textareaElement = document.querySelector('textarea') as HTMLTextAreaElement;
-            textareaElement.focus();
+            await user.click(textareaElement);
 
             await tick();
 
@@ -2071,7 +2085,7 @@ describe('Select Component', () => {
             await tick();
 
             const empty = document.querySelector('.svelte-select-list .empty');
-            expect(empty).toBeTruthy();
+            expect(empty?.textContent).toBe('No options');
         });
 
         it('renders correctly with itemId and label', () => {
@@ -2188,6 +2202,35 @@ describe('Select Component', () => {
             const header = document.querySelector('.svelte-select-list .list-group-title') as HTMLElement;
 
             expect(header && header.textContent === 'Sweet').toBeTruthy();
+        });
+
+        it('routes typing-driven loads through an injected debounce', async () => {
+            const waits: number[] = [];
+            const loadOptions = vi.fn(async () => ['one', 'two']);
+
+            render(Select, {
+                props: {
+                    loadOptions,
+                    // High enough that the built-in timer could never fire within
+                    // this test: the load below only happens if the injected
+                    // scheduler really replaced it
+                    debounceWait: 60000,
+                    debounce: (fn: () => void, wait: number) => {
+                        waits.push(wait);
+                        fn();
+                    },
+                },
+            });
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'on';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await tick();
+
+            await vi.waitFor(() => {
+                expect(loadOptions).toHaveBeenCalledWith('on');
+            });
+            expect(waits).toEqual([60000]);
         });
     });
 
@@ -2469,7 +2512,7 @@ describe('Select Component', () => {
             expect(allItems[1].classList.contains('active')).toBeTruthy();
         });
 
-        it('first item in list is active when list opens with value', async () => {
+        it('reopening after a multi selection starts hover on the first remaining item', async () => {
             render(Select, {
                 props: {
                     multiple: true,
@@ -2481,7 +2524,13 @@ describe('Select Component', () => {
             await querySelectorClick('.list-item');
             await tick();
             await handleKeyboard('ArrowDown');
-            expect(document.querySelector('.list-item .hover')).toBeTruthy();
+
+            // The selected item leaves the list in multi mode, so the cursor
+            // must land on the first item still on offer — not linger on the
+            // stale index of the removed one
+            const listItems = document.querySelectorAll('.svelte-select-list .list-item .item');
+            expect(listItems[0].classList.contains('hover')).toBe(true);
+            expect(listItems[0].textContent?.trim()).toBe('Pizza');
         });
 
         it('items are locked when disabled', () => {
@@ -3157,19 +3206,6 @@ describe('Select Component', () => {
             render(Select, {
                 props: {
                     loadOptions: resolvePromise,
-                    onloaded: (options: any) => {
-                        loadedEventData = { detail: { items: options } };
-                    },
-                    onerror: () => {},
-                },
-            });
-
-            await tick();
-            cleanup();
-
-            render(Select, {
-                props: {
-                    loadOptions: resolvePromise,
                     listOpen: true,
                     onloaded: (options: any) => {
                         loadedEventData = { detail: { items: options } };
@@ -3448,6 +3484,41 @@ describe('Select Component', () => {
             const beforeElement = document.querySelector('.before') as HTMLElement;
             expect(beforeElement && beforeElement.innerHTML).toBe('Before it all');
         });
+
+        it('renders empty snippet in place of the default empty state', async () => {
+            render(EmptySnippetTest);
+            await tick();
+
+            const element = document.querySelector('.svelte-select-list .custom-empty') as HTMLElement;
+            expect(element && element.textContent).toBe('Nothing to see');
+            expect(document.querySelector('.empty')).toBeFalsy();
+        });
+
+        it('renders loading icon snippet in place of the default spinner', async () => {
+            render(LoadingIconSnippetTest);
+            await tick();
+
+            const element = document.querySelector('.icon.loading .custom-loading') as HTMLElement;
+            expect(element && element.textContent).toBe('wait');
+            expect(document.querySelector('.icon.loading svg')).toBeFalsy();
+        });
+
+        it('renders multi clear icon snippet inside each tag remove button', async () => {
+            render(MultiClearIconSnippetTest);
+            await tick();
+
+            const element = document.querySelector('.multi-item-clear .custom-multi-clear') as HTMLElement;
+            expect(element && element.textContent).toBe('✕');
+            expect(document.querySelector('.multi-item-clear svg')).toBeFalsy();
+        });
+
+        it('renders required snippet in place of the fallback validation select', async () => {
+            render(RequiredSnippetTest);
+            await tick();
+
+            expect(document.querySelector('input.custom-required')).toBeTruthy();
+            expect(document.querySelector('select.required')).toBeFalsy();
+        });
     });
 
     describe('Hide empty state', () => {
@@ -3484,7 +3555,7 @@ describe('Select Component', () => {
             await handleKeyboard('ArrowDown');
             await handleKeyboard('Enter');
 
-            expect(capturedValue).toBeTruthy();
+            expect(capturedValue).toEqual({ value: 'pizza', label: 'Pizza' });
         });
 
         it('fires clear event when value is cleared', async () => {
@@ -5023,6 +5094,23 @@ describe('Select Component', () => {
             expect(document.querySelector('.a11y-selection')?.textContent).toContain('Selection cleared.');
         });
 
+        it('uses custom ariaCleared', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    value: items[0],
+                    focused: true,
+                    ariaCleared: () => 'Auswahl entfernt.',
+                },
+            });
+            await tick();
+
+            (document.querySelector('.clear-select') as HTMLElement).click();
+            await tick();
+
+            expect(document.querySelector('.a11y-selection')?.textContent).toContain('Auswahl entfernt.');
+        });
+
         it('announces nothing for an empty multiple value', async () => {
             render(Select, {
                 props: {
@@ -5999,23 +6087,8 @@ describe('Select Component', () => {
     });
 
     describe('Keyboard navigation integration', () => {
-        it('opens list when ArrowDown pressed while focused', async () => {
-            render(Select, {
-                props: {
-                    items: items,
-                    focused: true,
-                },
-            });
-
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
-
-            await handleKeyboard('ArrowDown');
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
-        });
+        // ArrowDown-opens is pinned by 'opens list when ArrowDown is pressed
+        // while the input has real focus', which drives actual DOM focus
 
         it('opens list when ArrowUp pressed while focused', async () => {
             render(Select, {
@@ -6033,22 +6106,8 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeTruthy();
         });
 
-        it('closes list on Escape key', async () => {
-            render(Select, {
-                props: {
-                    items: items,
-                    listOpen: true,
-                },
-            });
-
-            await tick();
-            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
-
-            await handleKeyboard('Escape');
-            await tick();
-
-            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
-        });
+        // Escape closing the list (plus claiming the keystroke) is pinned by
+        // 'claims Escape while the list is open' in the dialog-interop block
 
         it('navigates through items with ArrowDown and wraps around', async () => {
             render(Select, {
@@ -6111,27 +6170,8 @@ describe('Select Component', () => {
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
         });
 
-        it('selects item with Tab', async () => {
-            let selectedValue: any;
-
-            render(Select, {
-                props: {
-                    items: items,
-                    listOpen: true,
-                    onSelectionChange: (val: any) => {
-                        selectedValue = val;
-                    },
-                },
-            });
-
-            await tick();
-
-            await handleKeyboard('ArrowDown');
-            await handleKeyboard('Tab');
-            await tick();
-
-            expect(selectedValue).toEqual({ value: 'pizza', label: 'Pizza' });
-        });
+        // Tab-selects-the-active-item is pinned with an exact payload by
+        // 'fires select event on tab with active item'
 
         it('commits with Tab in a single press: the keystroke keeps its default action', async () => {
             render(Select, {

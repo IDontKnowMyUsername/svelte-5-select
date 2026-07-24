@@ -208,7 +208,9 @@ describe('layout in a real browser', () => {
 
         // The long label overflows its box while the short one fits...
         expect(first.scrollWidth).toBeGreaterThan(first.clientWidth);
-        expect(last.scrollWidth).toBe(last.clientWidth);
+        // ...within a 1px tolerance: scrollWidth/clientWidth round differently
+        // at subpixel widths, and exact equality flaked on CI scrollbars
+        expect(Math.abs(last.scrollWidth - last.clientWidth)).toBeLessThanOrEqual(1);
         // ...and the overflow renders as an ellipsis, not clipped or wrapped text
         const style = getComputedStyle(first);
         expect(style.textOverflow).toBe('ellipsis');

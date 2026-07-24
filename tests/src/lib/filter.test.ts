@@ -239,7 +239,7 @@ describe('filter', () => {
         expect(result).toHaveLength(2);
     });
 
-    it('handles multiple selected items filtering', () => {
+    it('filters out every selected item, not just the first', () => {
         const items: SelectItem[] = [
             { value: 'a', label: 'Apple' },
             { value: 'b', label: 'Banana' },
