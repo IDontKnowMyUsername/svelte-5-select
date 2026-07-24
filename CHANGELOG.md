@@ -5,6 +5,29 @@
      computes the version bump and the GitHub release notes; it does not write
      to this file. -->
 
+## Unreleased
+
+### Added
+
+* `ariaActiveTag` prop: the announcement made when the arrow-key tag cursor lands on a multi-select tag is now a localizable builder like every other live-region string (it was the one hardcoded English announcement); receives the tag's label
+
+### Fixed
+
+* Keydown events belonging to an active IME composition are ignored (`isComposing`, plus the WebKit `keyCode` 229 path): Enter committing a CJK conversion used to select the hovered option and wipe the half-composed filter text, and IME-candidate arrow keys moved the list cursor
+* Selectable group headers keep distinct identities: synthesized headers now carry the configured `itemId` (stamped with the group value when the `createGroupHeaderItem` builder omits the field). Previously, with a custom `itemId` — or a custom builder returning only a label — every header compared equal, so after selecting one, the rest rendered selected and were silently unselectable. The missing-`itemId` dev warning also fires for raw string items under a custom `itemId` their converted `{ value, label, index }` rows can never carry
+* Closing the list after a typed `loadOptions` fetch had already settled no longer "cancels" that settled fetch and resurrects a dependency reload it superseded — the stale response could overwrite the fresher items, re-fire `onloaded`, and deliver a validation verdict judged against old-text results
+* The `mouseover` browsers synthesize when the list renders (or scrolls rows) under a stationary cursor no longer moves hover and `aria-activedescendant` off the keyboard cursor: row hover is driven by real `mousemove`
+* An `aria-describedby` supplied via `inputAttributes` composes with the component's selection description (space-separated id list) instead of silently replacing it
+* An `aria-label` supplied via `inputAttributes` now names the open listbox and satisfies the accessible-name dev warning (both previously recognized only the `ariaLabel` prop, `aria-labelledby`, and associated `<label>`s)
+* Windows High Contrast (`forced-colors`) keeps the `hasError` state visible (double border — border style survives the forced palette) and renders the disabled control in `GrayText` in both themes; author colours alone flattened both states away
+* The shipped `dist/` uses extensioned relative specifiers (`./filter.js` instead of `./filter`): importing the package from plain Node ESM threw `ERR_MODULE_NOT_FOUND`, and a `moduleResolution: nodenext` TypeScript consumer silently saw the whole surface as `any` under `skipLibCheck` (hard errors without it). Bundler consumers were unaffected
+
+### Types
+
+* `onselect` and `onfilter` use `NoInfer`, completing the documented contract that only `items`, `value`, and `loadOptions` drive `Item` inference — a handler pre-annotated with a looser type (e.g. the library's own `SelectItem`) used to hijack `Item` and surface baffling errors on the untouched `items` prop. One corner changes: if such a handler was your *only* `Item` source, `Item` now falls back to `SelectItem`; type `items` (or the component) instead
+* The names removed in v2.0 — `oninput`, `onchange`, `listStyle` — are declared as `never`-typed `@deprecated` tombstones, so passing one errors on that prop with the rename in its hover docs (`oninput` used to get a misleading "Did you mean 'input'?" pointing at the DOM-ref bindable)
+* `inputHiddenSnippet`/`requiredSnippet` payloads drop a redundant `| undefined` (`SelectValueProp` already includes it); no runtime or inference change
+
 ## 2.0.0 (2026-07-17)
 
 ### ⚠ Breaking changes
