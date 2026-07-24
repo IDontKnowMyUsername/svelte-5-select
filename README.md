@@ -54,7 +54,7 @@ List position and floating is powered by `floating-ui`, see their [package-entry
 | focused                | `boolean` | `false`         | Input focus; set `true` to focus the input, `false` to blur it and close the list |
 | listAutoWidth          | `boolean` | `true`          | If `false` will ignore width of select                         |
 | showChevron            | `boolean` | `false`         | Show chevron                                                   |
-| inputAttributes        | `object`  | `{}`            | Pass in HTML attributes to Select's input; `on*` handlers run after the component's own, not instead of them |
+| inputAttributes        | `object`  | `{}`            | Pass in HTML attributes to Select's input; `on*` handlers run after the component's own, not instead of them. `value`, `placeholder`, and `style` are ignored — use `bind:filterText`, `placeholder`, and `inputStyles` |
 | placeholderAlwaysShow  | `boolean` | `false`         | When `multiple` placeholder text will always show              |
 | loading                | `boolean` | `false`         | Shows `loading-icon`. `loadOptions` will override this         |
 | listOffset             | `number`  | `5`             | `px` space between select and list                             |
@@ -220,7 +220,7 @@ You can also use custom collections.
 
 ### Async Items
 
-To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` fires once on mount, on typing non-empty `filterText` (debounced), and whenever `loadOptionsDeps` or `disabled` change. Emptying the filter text or closing the list cancels a pending typing-driven load instead of re-fetching. One open/close-related exception: reopening the list with retained filter text whose load was cancelled on close (e.g. with `clearFilterTextOnBlur={false}`) refetches immediately, so the list never shows results that are stale for the visible text.
+To load items asynchronously then `loadOptions` is the simplest solution. Supply a function that returns a `Promise` that resolves with a list of items. `loadOptions` fires once on mount, on typing non-empty `filterText` (debounced), and whenever `loadOptionsDeps` or `disabled` change. Closing the list cancels a pending typing-driven load instead of re-fetching. Beyond those triggers, one rule: the open list never shows results that are stale for the visible text. Reopening it refetches when the shown results don't match the retained filter text (`clearFilterTextOnBlur={false}`), when Escape wiped the text over query-narrowed results, or after a failed load; and emptying the text while the list stays open — deleting the query, or a selection wiping it with `closeListOnChange={false}` — refetches the baseline (empty-query) set in place.
 
 ```html
 <script>
@@ -363,6 +363,12 @@ The component is generic over your item type: values, items, snippets, and callb
 ```
 
 `SelectProps`, `SelectItem`, `SelectValue`, and `SelectValueProp` (the bindable `value` shape, which also accepts raw string ids) are exported for annotating your own wrappers.
+
+One resolution caveat: the full generic typing requires Svelte-aware tooling (svelte-check, the Svelte VS Code extension) or `"moduleResolution": "bundler"` — which SvelteKit and Vite templates use. Plain `tsc` under `"moduleResolution": "nodenext"` cannot resolve `.svelte` type declarations, so the `Select` component import silently falls back to Svelte's untyped ambient component type there (the exported types like `SelectProps` still resolve fully).
+
+## SSR (SvelteKit)
+
+The component server-renders: no browser globals are touched at module scope or during init, and the selection — including raw string `value` entries, which are resolved against `items` before the first render — the multi-select tags, the hidden form inputs, and an open list are all in the server HTML. Floating list positioning is applied client-side after hydration. Server rendering is exercised by its own test suite (`tests/src/ssr.test.ts`).
 
 ## A11y (Accessibility)
 

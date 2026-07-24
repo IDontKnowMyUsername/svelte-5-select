@@ -372,7 +372,13 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             !disabled &&
             filterText !== loadedFilterText;
 
-        if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0) || emptiedWhileOpen) {
+        if (
+            isFirstRun ||
+            depsChanged ||
+            disabledChanged ||
+            (filterTextChanged && filterText.length > 0) ||
+            emptiedWhileOpen
+        ) {
             untrack(() =>
                 handleLoadOptions(filterText, {
                     validateValue: depsChanged,

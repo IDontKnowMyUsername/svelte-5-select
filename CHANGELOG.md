@@ -13,6 +13,13 @@
 
 ### Fixed
 
+* The three icon components ship self-contained declaration files: script-less components made svelte2tsx emit a bare, unimported `SvelteComponent` reference, so consumers type-checking with `skipLibCheck: false` (TypeScript's default when unset; SvelteKit templates set it `true`) got three hard `TS2304` errors from inside the package in every resolution mode. The packaged-consumer smoke gate now type-checks the tarball with `skipLibCheck: false` so a self-broken declaration file can never pass the publish gate again
+* Opening a grouped list announces the first selectable option: on the first interactive open the live region used to name the aria-hidden group header row ("You are currently focused on option Sweet…") — a row the keyboard cursor can never reach — while `aria-activedescendant` correctly pointed at the real option
+* Server rendering resolves raw string `value` entries against `items` before the first render. SSR HTML used to ship multi-select chips with empty text, remove buttons labelled "Remove undefined", and hidden form inputs carrying `JSON.stringify('NY')` until hydration healed them; single mode with custom `itemId`/`label` keys server-rendered an empty selection display
+* Emptying the filter text while the list stays open refetches the baseline `loadOptions` set: a selection with `closeListOnChange={false}` — or deleting the query — used to leave the open list showing results narrowed by text no longer in the input. This is the same staleness rule the reopen refetch already enforces, now applied without the close/open edge; a selection that closes the list still fetches nothing
+* An out-of-range `bind:hoverItemIndex` write is corrected while the list is open: Enter/Space/Tab silently no-oped (the cursor pointed past the list) until the next arrow key. Pointer hover resting on a non-selectable row is a valid cursor position and stays untouched
+* `value` entries missing the `itemId` field are never deduplicated away — they all compared equal (`undefined === undefined`), so a multi value seeded with partial objects silently collapsed to its first entry. undefined ids are treated as no evidence of duplication, and a dev-only warning surfaces the config error, mirroring the items-side check
+* Arrow/Home/End/Page keys during an IME composition no longer scroll the list — candidate-window navigation already (correctly) left the cursor in place, but the scroll scheduler ran anyway; it now respects the same composition gate as the key handling
 * Keydown events belonging to an active IME composition are ignored (`isComposing`, plus the WebKit `keyCode` 229 path): Enter committing a CJK conversion used to select the hovered option and wipe the half-composed filter text, and IME-candidate arrow keys moved the list cursor
 * Selectable group headers keep distinct identities: synthesized headers now carry the configured `itemId` (stamped with the group value when the `createGroupHeaderItem` builder omits the field). Previously, with a custom `itemId` — or a custom builder returning only a label — every header compared equal, so after selecting one, the rest rendered selected and were silently unselectable. The missing-`itemId` dev warning also fires for raw string items under a custom `itemId` their converted `{ value, label, index }` rows can never carry
 * Closing the list after a typed `loadOptions` fetch had already settled no longer "cancels" that settled fetch and resurrects a dependency reload it superseded — the stale response could overwrite the fresher items, re-fire `onloaded`, and deliver a validation verdict judged against old-text results
@@ -204,6 +211,15 @@
 ## 1.0.0-beta
 * Forked from [kodaicoder/svelte-5-select](https://github.com/kodaicoder/svelte-5-select), which was forked from [rob-balfre/svelte-select](https://github.com/rob-balfre/svelte-select)
 * Updated dependencies and associated code to Typescript
+
+---
+
+# Inherited svelte-select changelog (upstream, Svelte 3/4 era)
+
+<!-- Fork boundary: everything below is history inherited from
+     rob-balfre/svelte-select. Version numbers restart here and do NOT
+     correspond to the svelte-5-select releases above (both lines contain a
+     "2.0.0" and a "1.0.0"). -->
 
 ## 5.8.3
 

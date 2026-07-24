@@ -394,6 +394,9 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * `oninput`/`onblur`/`onfocus`/`onkeydown` here composes with (runs after)
      * the component's own handler instead of replacing it, so filtering, focus
      * handling, and keyboard navigation keep working alongside yours.
+     * `value`, `placeholder`, and `style` are ignored — the input's value IS the
+     * filter text; use `bind:filterText`, the `placeholder` prop, and
+     * `inputStyles` instead.
      */
     inputAttributes?: HTMLInputAttributes;
     /** Size the list to the container's width. @default true */
@@ -447,9 +450,13 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     /**
      * Fetches options asynchronously. Runs on mount, on typing (debounced by
      * `debounceWait`), and whenever `loadOptionsDeps` or `disabled` changes.
-     * Opening or closing the list never fetches, with one exception: reopening
-     * with retained filter text whose load was cancelled on close (e.g. with
-     * `clearFilterTextOnBlur={false}`) refreshes the stale results immediately.
+     * Opening or closing the list never fetches by itself; beyond that, one rule
+     * holds: the open list never shows results stale for the visible text.
+     * Reopening refetches when the shown results don't match the retained filter
+     * text (`clearFilterTextOnBlur={false}`), when the text was wiped at close
+     * (Escape) over query-narrowed results, or after a failed load; emptying the
+     * text while the list stays open (deleting the query, or a selection with
+     * `closeListOnChange={false}`) refetches the baseline set in place.
      * Whatever it returns is what the list shows: results are not re-filtered by
      * `filterText`. Set `items` or this, not both.
      */
@@ -520,7 +527,13 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     onfilter?: (items: SelectRow<NoInfer<Item>>[]) => void;
     /** Literal DOM `focus` passthrough from the text input. Fires after the component's own focus handling. */
     onfocus?: (e: FocusEvent) => void;
-    /** Fires with the index of the option under the keyboard/mouse cursor. */
+    /**
+     * Fires with the index of the option under the keyboard/mouse cursor.
+     * Naming note: by the camelCase-for-state-changes rule above this would be
+     * `onHoverItem` (it tracks the bindable `hoverItemIndex`), but it shipped
+     * lowercase in 2.0 and renaming is a breaking change — treat it as the one
+     * grandfathered exception, not a pattern to extend.
+     */
     onhoveritem?: (index: number) => void;
     /**
      * Fires with the options a `loadOptions` call resolved. When the loader

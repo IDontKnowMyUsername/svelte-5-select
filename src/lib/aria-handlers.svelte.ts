@@ -67,7 +67,9 @@ export function useAriaHandlers(config: AriaHandlersConfig) {
             // index checkHoverSelectable computes) instead of a row the cursor can
             // never reach; the region won't recompute after the correction because
             // hoverItemIndex is deliberately untracked (see Select.svelte).
-            const announced = isItemSelectableCheck(_item) ? _item : (filteredItems.find(isItemSelectableCheck) ?? _item);
+            const announced = isItemSelectableCheck(_item)
+                ? _item
+                : (filteredItems.find(isItemSelectableCheck) ?? _item);
             return config.ariaListOpen(announced[label] as string, count);
         } else {
             return config.ariaFocused();

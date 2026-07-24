@@ -7260,9 +7260,7 @@ describe('Select Component', () => {
             input.value = 'ab';
             input.dispatchEvent(new Event('input', { bubbles: true }));
             await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2)); // typed 'ab'
-            await vi.waitFor(() =>
-                expect(document.querySelector('.svelte-select-list')!.textContent).toContain('AB'),
-            );
+            await vi.waitFor(() => expect(document.querySelector('.svelte-select-list')!.textContent).toContain('AB'));
 
             await querySelectorClick('.list-item');
 
