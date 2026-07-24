@@ -4674,6 +4674,42 @@ describe('Select Component', () => {
             expect(warn.mock.calls.some(([msg]) => String(msg).includes('itemId'))).toBe(false);
             warn.mockRestore();
         });
+
+        it('warns when value entries are missing the itemId field', async () => {
+            // The items-side check passes here — the config error enters through
+            // `value` (e.g. partial objects seeded from a form payload), where it
+            // used to silently collapse the selection (15th audit)
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, {
+                props: {
+                    ariaLabel: 'Food',
+                    multiple: true,
+                    items,
+                    value: [{ name: 'a' }, { name: 'b' }] as any,
+                },
+            });
+            await tick();
+
+            expect(warn.mock.calls.some(([msg]) => String(msg).includes('`value` entries'))).toBe(true);
+            warn.mockRestore();
+        });
+
+        it('never collapses value entries whose itemId is missing', async () => {
+            // undefined ids are no evidence of duplication: the old dedup keyed
+            // them all on `undefined` and silently rewrote value to one entry
+            const warn = vi.spyOn(console, 'warn').mockImplementation(() => {});
+            render(Select, {
+                props: {
+                    multiple: true,
+                    items,
+                    value: [{ name: 'a' }, { name: 'b' }] as any,
+                },
+            });
+            await tick();
+
+            expect(document.querySelectorAll('.multi-item').length).toBe(2);
+            warn.mockRestore();
+        });
     });
 
     describe('Localized empty and loading copy', () => {
@@ -7204,6 +7240,83 @@ describe('Select Component', () => {
             await vi.waitFor(() =>
                 expect(document.querySelector('.svelte-select-list')!.textContent).toContain('Base'),
             );
+        });
+
+        // The same staleness rule as the reopen exception above, without the
+        // close/open edge: an in-place wipe leaves the open list showing
+        // results narrowed by text that is no longer in the input (15th audit)
+        it('refetches the baseline set when a selection wipes the filter text but the list stays open', async () => {
+            const loadOptions = vi.fn((text: string) =>
+                Promise.resolve(
+                    text ? [{ value: text, label: text.toUpperCase() }] : [{ value: 'base', label: 'Base' }],
+                ),
+            );
+            render(Select, {
+                props: { loadOptions, debounceWait: 0, focused: true, multiple: true, closeListOnChange: false },
+            });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount ''
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2)); // typed 'ab'
+            await vi.waitFor(() =>
+                expect(document.querySelector('.svelte-select-list')!.textContent).toContain('AB'),
+            );
+
+            await querySelectorClick('.list-item');
+
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(3));
+            expect(loadOptions).toHaveBeenLastCalledWith('');
+            await vi.waitFor(() =>
+                expect(document.querySelector('.svelte-select-list')!.textContent).toContain('Base'),
+            );
+        });
+
+        it('refetches the baseline set when the query is deleted while the list is open', async () => {
+            const loadOptions = vi.fn((text: string) =>
+                Promise.resolve(
+                    text ? [{ value: text, label: text.toUpperCase() }] : [{ value: 'base', label: 'Base' }],
+                ),
+            );
+            render(Select, { props: { loadOptions, debounceWait: 0, focused: true } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount ''
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2)); // typed 'ab'
+            await tick();
+
+            input.value = '';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(3));
+            expect(loadOptions).toHaveBeenLastCalledWith('');
+        });
+
+        it('a selection that closes the list still fires no baseline load', async () => {
+            const loadOptions = vi.fn((text: string) =>
+                Promise.resolve(
+                    text ? [{ value: text, label: text.toUpperCase() }] : [{ value: 'base', label: 'Base' }],
+                ),
+            );
+            render(Select, { props: { loadOptions, debounceWait: 0, focused: true } });
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(1)); // mount ''
+
+            const input = document.querySelector('.svelte-select input') as HTMLInputElement;
+            input.value = 'ab';
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            await vi.waitFor(() => expect(loadOptions).toHaveBeenCalledTimes(2)); // typed 'ab'
+            await tick();
+
+            await querySelectorClick('.list-item');
+            expect(document.querySelector('.svelte-select-list')).toBeFalsy();
+
+            // Deterministic absence window: with debounceWait 0 a wrongly-armed
+            // '' load would have fired well inside this sleep
+            await wait(30);
+            expect(loadOptions).toHaveBeenCalledTimes(2);
         });
 
         it('typing clears an armed tag cursor when loadOptions is set', async () => {

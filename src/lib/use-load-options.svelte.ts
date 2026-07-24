@@ -356,7 +356,23 @@ export function useLoadOptions<Item extends ItemLike = SelectItem>(
             filterText !== loadedFilterText &&
             !loadIsLiveForText;
 
-        if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0)) {
+        // Filter text emptied in place while the list stays open — a selection
+        // wiped it (closeListOnChange={false}) or the user deleted the query —
+        // over results still narrowed by the old text. The same staleness rule
+        // as reopenedStale applies (results must reflect the current text; the
+        // '' re-fetch restores the baseline set), it just never crosses a
+        // close/open edge here. loadedFilterText distinguishes this from an
+        // armed-but-never-landed load, which the cancel branch below moots.
+        const emptiedWhileOpen =
+            !isFirstRun &&
+            filterTextChanged &&
+            filterText.length === 0 &&
+            listOpen &&
+            prev.listOpen &&
+            !disabled &&
+            filterText !== loadedFilterText;
+
+        if (isFirstRun || depsChanged || disabledChanged || (filterTextChanged && filterText.length > 0) || emptiedWhileOpen) {
             untrack(() =>
                 handleLoadOptions(filterText, {
                     validateValue: depsChanged,

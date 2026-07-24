@@ -161,6 +161,33 @@ describe('useHover', () => {
     });
 
     describe('effects', () => {
+        it('corrects an out-of-range bind:hoverItemIndex write while the list is open', () => {
+            // 15th audit: internal writers are range-safe, but a parent write
+            // through the bindable left Enter/Space/Tab silently no-oping
+            // (filteredItems[50] → undefined) until the next arrow key
+            const { state } = createHarness({ filteredItems: abc, listOpen: true });
+
+            state.hoverItemIndex = 50;
+            flushSync();
+            expect(state.hoverItemIndex).toBe(0);
+
+            state.hoverItemIndex = -5;
+            flushSync();
+            expect(state.hoverItemIndex).toBe(0);
+        });
+
+        it('leaves a pointer hover on a non-selectable row alone', () => {
+            // Guard for the clamp above: resting on a disabled row is a valid
+            // cursor position — only out-of-range values are corrected
+            const withDisabled: SelectItem[] = [abc[0], { value: 'x', label: 'X', selectable: false }, abc[2]];
+            const { state, manager } = createHarness({ filteredItems: withDisabled, listOpen: true });
+
+            manager.handleHover(1);
+            flushSync();
+
+            expect(state.hoverItemIndex).toBe(1);
+        });
+
         it('hovers the selected value when the list opens in single mode', () => {
             const { state } = createHarness({
                 filteredItems: abc,

@@ -208,6 +208,11 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
             // Raw string entries key on the string itself: getItemProperty returns
             // undefined for non-objects, which would collapse all strings into one
             const id = typeof val === 'string' ? val : getItemProperty(val, itemId);
+            // An entry with no itemId field yields no evidence of duplication —
+            // collapsing every such entry into the first silently loses data on
+            // a config error (the dev warning in Select.svelte surfaces it).
+            // Only matching real ids may dedup.
+            if (id === undefined) return true;
             if (seen.has(id)) return false;
             seen.add(id);
             return true;

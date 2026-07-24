@@ -774,6 +774,33 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         });
     });
 
+    // Dev-only: the same identity collapse can enter through `value` — partial
+    // objects that lack the itemId field (e.g. seeded from a form payload) all
+    // compare equal to each other and to nothing in `items`, so selection
+    // display and dedup misbehave while `items` itself passes the check above.
+    let warnedAboutValueMissingItemId = false;
+    $effect(() => {
+        if (!DEV) return;
+        const currentValue = value;
+        const currentItemId = itemId;
+        untrack(() => {
+            if (warnedAboutValueMissingItemId || currentValue == null) return;
+            const entries = Array.isArray(currentValue) ? currentValue : [currentValue];
+            // Raw strings are their own id, so only object entries can be missing it
+            const missing = (entries as (Item | string)[]).some(
+                (entry) => typeof entry !== 'string' && getItemProperty(entry, currentItemId) === undefined,
+            );
+            if (!missing) return;
+            warnedAboutValueMissingItemId = true;
+            console.warn(
+                `[svelte-select] Some \`value\` entries have no "${currentItemId}" field (the current ` +
+                    '`itemId`). Value entries are matched against items by that field, so entries ' +
+                    'without it cannot be recognized as selected, deduplicated, or validated. Pass ' +
+                    'value entries that carry the `itemId` field.',
+            );
+        });
+    });
+
     // Dev-only: warn once the input is mounted if it has no robust accessible
     // name. The placeholder is only a last-resort fallback that some screen
     // readers ignore, so an unnamed combobox is a real gap worth surfacing.

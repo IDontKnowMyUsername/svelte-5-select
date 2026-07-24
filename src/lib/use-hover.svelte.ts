@@ -156,6 +156,22 @@ export function useHover<Item extends ItemLike = SelectItem>(state: SelectState<
         });
     });
 
+    // A parent can write any number through bind:hoverItemIndex; internal
+    // writers are all range-safe. An out-of-range cursor silently kills
+    // Enter/Space/Tab (they read filteredItems[hoverItemIndex] → undefined)
+    // until the next arrow key, so correct it as soon as it lands. Only
+    // genuinely out-of-range values are touched: a pointer resting on a
+    // non-selectable row is a valid cursor position, which is why the
+    // keep-hover effect above reads the index untracked and must stay that way.
+    $effect(() => {
+        const idx = state.hoverItemIndex;
+        const inRange = idx >= 0 && idx < state.filteredItems.length;
+        untrack(() => {
+            if (!state.listOpen || state.filteredItems.length === 0 || inRange) return;
+            checkHoverSelectable();
+        });
+    });
+
     // Reset hover to the first selectable item on filterText change
     $effect(() => {
         if (state.filterText) {
