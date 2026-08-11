@@ -7,12 +7,13 @@
         "publish": false
     },
     "github": {
-        "release": true
+        "release": false
     },
     "hooks": {
         "before:init": ["pnpm run check", "pnpm run test:run"],
         "after:bump": ["node scripts/check-changelog.mjs ${version}", "pnpm run package"],
-        "before:git:release": "pnpm run lint:package && pnpm run smoke"
+        "before:git:release": "pnpm run lint:package && pnpm run smoke",
+        "after:release": "node scripts/gh-release.mjs ${version}"
     },
     "plugins": {
         "@release-it/conventional-changelog": {
