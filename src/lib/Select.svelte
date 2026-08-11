@@ -575,7 +575,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         // Mirror keyboardNav's IME gate: during composition the arrows move
         // through the IME candidate window, not the list — the keyboard cursor
         // stays put, so the list must not scroll either.
-        if (e.isComposing || e.keyCode === 229) return;
+        if (e.isComposing || e.keyCode === 229 || typeof e.key !== 'string') return;
         const isTypeAhead = !searchable && e.key.length === 1;
         if (
             e.key === 'ArrowDown' ||

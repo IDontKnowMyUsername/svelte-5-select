@@ -59,7 +59,7 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
 
     function handleTypeAheadKey(e: KeyboardEvent): void {
         if (state.searchable) return;
-        if (e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
+        if (typeof e.key !== 'string' || e.key.length !== 1 || e.ctrlKey || e.metaKey || e.altKey) return;
         if (e.key === ' ' && typeAheadQuery === '') return; // a bare Space is not a query
 
         e.preventDefault();

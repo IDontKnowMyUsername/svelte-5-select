@@ -481,6 +481,43 @@ describe('Select Component', () => {
             scrollSpy.mockRestore();
         });
 
+        it('ignores synthetic keydown events without a key while unfocused', () => {
+            // Password managers and autofill extensions dispatch keydown events
+            // built as new Event('keydown'), so e.key is undefined; the window
+            // listener runs for every page keydown while a select is mounted
+            render(Select, {
+                props: {
+                    items,
+                    searchable: false,
+                },
+            });
+
+            expect(() => window.dispatchEvent(new Event('keydown'))).not.toThrow();
+        });
+
+        it('ignores synthetic keydown events without a key on the focused type-ahead path', async () => {
+            render(Select, {
+                props: {
+                    items,
+                    searchable: false,
+                    focused: true,
+                    listOpen: true,
+                },
+            });
+
+            const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
+            selectInput.focus();
+
+            expect(() => window.dispatchEvent(new Event('keydown'))).not.toThrow();
+            await tick();
+
+            // The event must be a no-op: list still open, hover still parked
+            // on the first option
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            const hovered = document.querySelector('.list-item .hover');
+            expect(hovered?.textContent?.trim()).toBe('Chocolate');
+        });
+
         it('fires select event on tab with active item', async () => {
             let value;
 
