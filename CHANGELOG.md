@@ -5,7 +5,7 @@
      computes the version bump and the GitHub release notes; it does not write
      to this file. -->
 
-## Unreleased
+## 2.1.1 (2026-08-11)
 
 ### Fixed
 
