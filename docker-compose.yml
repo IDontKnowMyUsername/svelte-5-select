@@ -1,0 +1,27 @@
+# Claude Code sandbox: the repo is bind-mounted at /workspace; node_modules,
+# the Playwright/pnpm caches, and the container's own ~/.claude live in named
+# volumes so nothing leaks back to the host except edits to the repo itself.
+#
+#   docker compose build                                # once, and after Dockerfile changes
+#   docker compose run --rm sandbox sh docker/setup.sh  # once: deps + Chromium
+#   docker compose run --rm sandbox                     # interactive shell; run `claude` inside
+#
+# Inside the container, .claude/settings.json's SessionStart hook injects the
+# i-have-adhd ruleset (the container's ~/.claude has no plugin or always-on flag).
+services:
+    sandbox:
+        build: ./docker
+        init: true
+        stdin_open: true
+        tty: true
+        working_dir: /workspace
+        volumes:
+            - .:/workspace
+            - sandbox_node_modules:/workspace/node_modules
+            - sandbox_home_cache:/home/node/.cache
+            - sandbox_claude_config:/home/node/.claude
+
+volumes:
+    sandbox_node_modules:
+    sandbox_home_cache:
+    sandbox_claude_config:
