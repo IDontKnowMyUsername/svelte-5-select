@@ -5,6 +5,12 @@
      computes the version bump and the GitHub release notes; it does not write
      to this file. -->
 
+## Unreleased
+
+### Fixed
+
+* Synthetic keydown events without a `key` property (dispatched by password managers, autofill extensions, and some test tools as `new Event('keydown')`) no longer throw `TypeError: Cannot read properties of undefined (reading 'length')`. With a non-searchable select mounted, the window-level handler read `e.key.length` for every keydown on the page, so any such event anywhere crashed in the listener; the focused type-ahead path had the same unguarded read. Both now bail like the existing IME guard when `e.key` is not a string
+
 ## 2.1.0 (2026-07-24)
 
 ### Added
