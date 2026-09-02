@@ -32,7 +32,7 @@
 
 * List positioning is now an in-house floating-ui attachment (`src/lib/floating.ts`) over `@floating-ui/dom` directly; the `svelte-floating-ui` dependency is gone. The three config effects collapsed into one `$derived` config the attachment reads live, and `autoUpdate` listeners are torn down synchronously with the list element (the previous action armed them one tick late, so a list that closed within that tick leaked them). `floatingConfig` accepts the same shape as before
 * `release-it --dry-run` no longer leaves `package.json` bumped. release-it's npm plugin ran `npm version` as a non-writing command, so a dry run mutated the manifest while skipping every hook; the plugin is now disabled (`"npm": false` — publishing already happens in CI) and the bump is an `after:bump` hook, ordered after the changelog gate and the package build so a failure in either leaves the tree clean. New `pnpm run release:dry-run` script
-* Prerelease versions (`v2.2.0-beta.1`) now publish to the `next` npm dist-tag instead of `latest`, and their GitHub release is created with `--prerelease`. New `scripts/dist-tag.sh` derives the tag for both the dry-run and the real publish step
+* Prerelease versions (`v2.2.0-beta.1`) now publish to the `next` npm dist-tag instead of `latest`, and their GitHub release is created with `--prerelease`. The tag is derived inline in both the dry-run and the real publish step (the publish job has no checkout, only the tarball artifact)
 * The GitHub release is created from `scripts/gh-release.mjs` (a release-it `after:release` hook) using the version's CHANGELOG section as the body, via the `gh` CLI rather than a token in the environment
 
 ## 2.1.1 (2026-08-11)

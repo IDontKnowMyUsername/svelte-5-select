@@ -126,15 +126,17 @@ jobs:
                   if [ -n "$(npm view "$NAME@$VERSION" version 2>/dev/null)" ]; then
                     echo "$NAME@$VERSION is already published - the gate job validated this pack"
                   else
-                    npm publish "$TARBALL" --dry-run --tag "$(scripts/dist-tag.sh "$VERSION")"
+                    case "$VERSION" in *-*) TAG=next ;; *) TAG=latest ;; esac
+                    npm publish "$TARBALL" --dry-run --tag "$TAG"
                   fi
             - name: Publish with provenance
               if: github.event_name == 'push'
               # A prerelease version (2.2.0-beta.1) goes to the `next` dist-tag;
-              # without --tag, npm would point `latest` at it.
+              # without --tag, npm would point `latest` at it. Derived inline: this
+              # job has no checkout (only the tarball artifact), so no repo scripts.
               run: |
                   TARBALL="$(ls ./*.tgz)"
                   VERSION="$(tar -xOzf "$TARBALL" package/package.json | node -p 'JSON.parse(require("fs").readFileSync(0, "utf8")).version')"
-                  TAG="$(scripts/dist-tag.sh "$VERSION")"
+                  case "$VERSION" in *-*) TAG=next ;; *) TAG=latest ;; esac
                   echo "Publishing $VERSION to dist-tag $TAG"
                   npm publish "$TARBALL" --provenance --tag "$TAG"
