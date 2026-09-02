@@ -58,6 +58,7 @@
         "prettier-plugin-svelte": "^3.5.1",
         "publint": "^0.3.21",
         "release-it": "^19.2.4",
+        "svelte": "5.57.0",
         "svelte-check": "^4.7.2",
         "svelte-highlight": "^7.15.0",
         "svelte-virtual-list": "^3.0.1",
