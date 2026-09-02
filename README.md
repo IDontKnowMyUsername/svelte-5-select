@@ -400,6 +400,7 @@ Selection and list state (including the empty/loading state) are announced throu
 
 The public API moved to idiomatic Svelte 5:
 
+- **Default import → named import.** `import Select from 'svelte-select'` becomes `import { Select } from 'svelte-5-select'`; there is no default export.
 - **Slots → snippets.** `<div slot="item" let:item />` becomes `{#snippet itemSnippet(item, index)}...{/snippet}` declared inside `<Select>`. See the [Snippets](#snippets) table for the full mapping (`slot="chevron-icon"` → `chevronIconSnippet`, etc.).
 - **Events → callback props.** `on:change={(e) => e.detail}` becomes `onSelectionChange={(value) => ...}` and `on:input` becomes `onValueChange={(value) => ...}` — handlers receive the value directly, with no `event.detail`.
 - **`export let` overrides → regular props.** Functions like `itemFilter`, `groupBy`, and the aria text builders are passed as props.

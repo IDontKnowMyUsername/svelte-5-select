@@ -17,6 +17,10 @@
 * A `required` select that is also `disabled` no longer blocks `form.checkValidity()`: the constraint-validation fallback `<select required>` now carries `disabled` too, so a field disabled while its form submits (or gated on another field) does not leave the form permanently invalid with no operable control
 * Synthetic keydown events whose `key` names an `Object.prototype` member (`'__proto__'`, `'hasOwnProperty'`, `'valueOf'`) no longer throw from the keyboard handler; the handler table is looked up by own property only. Same class of input as the 2.1.1 undefined-key guard
 
+### Docs
+
+* The examples app showed `import Select from 'svelte-5-select'` in every source panel — a default export the package does not have. All examples now import the named `Select` (plus their types) from the root barrel, and the source viewer rewrites every `$lib` specifier to the package name. The svelte-select migration section now lists the default→named import change first
+
 ### Internal
 
 * List positioning is now an in-house floating-ui attachment (`src/lib/floating.ts`) over `@floating-ui/dom` directly; the `svelte-floating-ui` dependency is gone. The three config effects collapsed into one `$derived` config the attachment reads live, and `autoUpdate` listeners are torn down synchronously with the list element (the previous action armed them one tick late, so a list that closed within that tick leaked them). `floatingConfig` accepts the same shape as before

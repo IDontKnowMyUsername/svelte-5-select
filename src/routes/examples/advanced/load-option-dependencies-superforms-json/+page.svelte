@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { SelectItem } from '$lib';
+    import { Select, type SelectItem } from '$lib';
     import { orderSchema } from '../../../../lib-example/order';
     import { zodClient } from 'sveltekit-superforms/adapters';
     import { superForm } from 'sveltekit-superforms';

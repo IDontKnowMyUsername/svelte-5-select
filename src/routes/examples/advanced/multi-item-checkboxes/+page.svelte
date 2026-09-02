@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import { isGroupHeader } from '$lib';
+    import { Select, isGroupHeader } from '$lib';
 
     let items = [
         { value: 'one', label: 'One' },

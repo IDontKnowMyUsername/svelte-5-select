@@ -60,7 +60,9 @@
 
             const file = categorySetup.find((/** @type {any} */ i) => i.href.split('/').pop() === s[3]);
             const raw = await file.source();
-            source = raw.replace('$lib/Select.svelte', 'svelte-5-select');
+            // Show the source as a consumer would write it: every `$lib` import
+            // (the root barrel or a subpath) is the published package name
+            source = raw.replace(/from '\$lib(?:\/[^']*)?'/g, "from 'svelte-5-select'");
         }
     }
 

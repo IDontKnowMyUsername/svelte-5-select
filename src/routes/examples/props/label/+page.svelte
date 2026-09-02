@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { SelectItem } from '$lib';
+    import { Select, type SelectItem } from '$lib';
 
     let collection = [
         { value: 'one', foo: 'label of One with label key foo' },

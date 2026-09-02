@@ -1,7 +1,6 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
+    import { Select, type SelectItem } from '$lib';
     import Fuse from 'fuse.js';
-    import type { SelectItem } from '$lib';
 
     let items = ['one', 'two', 'three', 'four', 'five'];
 

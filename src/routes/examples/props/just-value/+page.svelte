@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { JustValue } from '$lib/types';
+    import { Select, type JustValue } from '$lib';
 
     let items = [
         { value: 'value-of-one', label: 'One' },

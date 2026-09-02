@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { SelectItem, SelectErrorEvent } from '$lib';
+    import { Select, type SelectItem, type SelectErrorEvent } from '$lib';
 
     function loadOptions(): Promise<SelectItem[]> {
         return new Promise((resolve, reject) => {

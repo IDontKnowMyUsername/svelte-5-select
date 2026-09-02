@@ -1,5 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
+    import { Select } from '$lib';
 
     let items = [
         { value: 1, label: 'One' },

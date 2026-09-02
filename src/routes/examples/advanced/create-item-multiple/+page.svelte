@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { SelectItem, SelectValue } from '$lib/types';
+    import { Select, type SelectItem, type SelectValue } from '$lib';
 
     let filterText = $state('');
 

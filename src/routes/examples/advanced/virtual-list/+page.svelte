@@ -1,7 +1,7 @@
 <script lang="ts">
     import VirtualList from 'svelte-virtual-list';
     import { tick } from 'svelte';
-    import Select from '$lib/Select.svelte';
+    import { Select, type JustValue } from '$lib';
 
     let items = $state<string[]>([]);
     for (let i = 0; i < 1000; i++) {
@@ -11,7 +11,6 @@
     let value = $state<string | undefined>(undefined);
     let listOpen = $state(false);
     let activeIndex = $state<number | null>(null);
-    import type { JustValue } from '$lib/types';
 
     let justValue = $state<JustValue>(null);
     let hoverItemIndex = $state(0);

@@ -1,6 +1,5 @@
 <script lang="ts">
-    import Select from '$lib/Select.svelte';
-    import type { SelectValue } from '$lib/types';
+    import { Select, type SelectValue } from '$lib';
 
     let items = [
         { value: 'one', label: 'One' },
