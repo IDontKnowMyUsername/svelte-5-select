@@ -586,7 +586,12 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
     chevronIconSnippet?: Snippet<[boolean]>;
     /** Replaces the icon inside the clear-all button (the button itself, its `ariaClearSelectLabel`, and its behavior stay). */
     clearIconSnippet?: Snippet;
-    /** Replaces the "No options" row of an open, empty list. Suppressed entirely by `hideEmptyState`. */
+    /**
+     * Replaces the "No options" row of an open, empty list. Suppressed entirely by
+     * `hideEmptyState`. Rendered as a sibling of the (empty) listbox; a focusable
+     * control in it (a "Create …" button) is reached with ArrowDown, and Escape/Tab
+     * return to the input.
+     */
     emptySnippet?: Snippet;
     /**
      * Replaces the hidden input(s) used for native form submission; receives the
@@ -601,9 +606,20 @@ export interface SelectProps<Item extends ItemLike = SelectItem, Multiple extend
      * index in the rendered (filtered, grouped) list.
      */
     itemSnippet?: Snippet<[SelectRow<Item>, number]>;
-    /** Rendered inside the list after the options — e.g. a "load more" row or footer. */
+    /**
+     * Rendered in the popup after the options (a sibling of the listbox, not a
+     * child) — e.g. a "load more" row or a "Create …" button. Focusable controls
+     * here are keyboard-reachable: ArrowDown past the last option moves focus to
+     * the first of them, ArrowUp from the first hands back to the input, and
+     * Escape/Tab return to the input (Tab also closes the list).
+     */
     listAppendSnippet?: Snippet;
-    /** Rendered inside the list before the options — e.g. a sticky header. */
+    /**
+     * Rendered in the popup before the options (a sibling of the listbox, not a
+     * child) — e.g. a pinned action or a sticky header. Focusable controls here
+     * are keyboard-reachable: ArrowUp before the first option moves focus to the
+     * last of them, ArrowDown from the last hands back to the input.
+     */
     listPrependSnippet?: Snippet;
     /**
      * Replaces the entire list body. Rows include any synthesized group headers —

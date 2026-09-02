@@ -262,12 +262,17 @@ input:focus {
 .svelte-select-list {
     box-shadow: var(--list-shadow, 0 2px 3px 0 rgba(44, 62, 80, 0.24));
     border-radius: var(--list-border-radius, 4px);
-    max-height: var(--list-max-height, 252px);
-    overflow-y: auto;
     background: var(--list-background, #fff);
     position: var(--list-position, absolute);
     z-index: var(--list-z-index, 2);
     border: var(--list-border);
+}
+
+/* The listbox — not the popup around it — is the scroll container, so
+   listPrependSnippet / listAppendSnippet content stays put as a header/footer */
+.svelte-select-list .listbox {
+    max-height: var(--list-max-height, 252px);
+    overflow-y: auto;
 }
 
 .prefloat {

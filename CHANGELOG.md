@@ -7,7 +7,13 @@
 
 ## Unreleased
 
+### Added
+
+* Interactive content in `listPrependSnippet`, `listAppendSnippet`, and `emptySnippet` is keyboard-reachable. ArrowDown past the last option (or on an empty list) moves focus to the first focusable control after the options, ArrowUp before the first option to the last control before them; arrows walk the controls and hand back to the input at the boundary, Escape and Tab return to the input (Tab also closes the list), and a control that closes the list itself hands focus back to the input. Enter/Space on such a control are left to the control. Previously such content was pointer-only: Tab never left the input while the list was open and the list's mousedown guard blocked click-focus
+
 ### Changed
+
+* The three list snippets render as siblings of `role="listbox"` instead of children (a listbox may only own options and groups), and **the listbox is now the popup's scroll container**: `--list-max-height` and the `overflow-y` moved from `.svelte-select-list` to its inner `.listbox` element in both themes, so prepend/append content stays put as a header/footer while the options scroll. If you constrained the list's height through `listStyles` or your own `.svelte-select-list` rule, target `.svelte-select-list .listbox` (or set `--list-max-height`) instead. `aria-controls` still targets the listbox
 
 * **Requires Svelte `^5.57.0`** (was `^5.55.2`). The component now uses current Svelte APIs throughout: `{@attach}` attachments for list positioning, the `class` attribute's object/array form instead of `class:` directives, and template declaration tags. Consumers on an older Svelte 5 must upgrade Svelte first
 

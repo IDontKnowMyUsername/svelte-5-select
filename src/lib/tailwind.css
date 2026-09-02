@@ -81,7 +81,12 @@
 }
 
 .svelte-select-list {
-    @apply shadow-md rounded-sm max-h-64 overflow-y-auto bg-white border-none absolute z-10 w-full left-0 right-0;
+    @apply shadow-md rounded-sm bg-white border-none absolute z-10 w-full left-0 right-0;
+}
+
+/* The listbox — not the popup around it — is the scroll container */
+.svelte-select-list .listbox {
+    @apply max-h-64 overflow-y-auto;
 }
 
 .svelte-select-list.prefloat {

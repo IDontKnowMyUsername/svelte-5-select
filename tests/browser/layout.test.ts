@@ -155,7 +155,7 @@ describe('layout in a real browser', () => {
         render(Select, { props: { ariaLabel: 'Food', items, value: items[15], listOpen: true } });
         await settle();
 
-        const list = document.querySelector('.svelte-select-list') as HTMLElement;
+        const list = document.querySelector('.svelte-select-list .listbox') as HTMLElement;
         expect(list.scrollHeight).toBeGreaterThan(list.clientHeight); // sanity: the list overflows
 
         const active = list.querySelector('.list-item .active') as HTMLElement;
@@ -170,7 +170,7 @@ describe('layout in a real browser', () => {
         render(Select, { props: { ariaLabel: 'Food', items, listOpen: true, focused: true } });
         await settle();
 
-        const list = document.querySelector('.svelte-select-list') as HTMLElement;
+        const list = document.querySelector('.svelte-select-list .listbox') as HTMLElement;
         const count = document.querySelectorAll('.list-item').length;
         expect(list.scrollHeight).toBeGreaterThan(list.clientHeight); // sanity: the list overflows
 

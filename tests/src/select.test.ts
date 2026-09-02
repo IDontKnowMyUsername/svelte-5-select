@@ -26,6 +26,7 @@ import LabelForSelectTest from './LabelForSelectTest.svelte';
 import LoadOptionsGroup from './LoadOptionsGroup.svelte';
 import FormTest from './FormTest.svelte';
 import EmptySnippetTest from './EmptySnippetTest.svelte';
+import ListSnippetActionsTest from './ListSnippetActionsTest.svelte';
 import LoadingIconSnippetTest from './LoadingIconSnippetTest.svelte';
 import MultiClearIconSnippetTest from './MultiClearIconSnippetTest.svelte';
 import RequiredSnippetTest from './RequiredSnippetTest.svelte';
@@ -1142,7 +1143,7 @@ describe('Select Component', () => {
             });
             await tick();
 
-            const list = document.querySelector('.svelte-select-list') as HTMLElement;
+            const list = document.querySelector('[role="listbox"]') as HTMLElement;
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
 
             list.dispatchEvent(new Event('scroll'));
@@ -1171,7 +1172,7 @@ describe('Select Component', () => {
             });
             await tick();
 
-            const list = document.querySelector('.svelte-select-list') as HTMLElement;
+            const list = document.querySelector('[role="listbox"]') as HTMLElement;
             const selectInput = document.querySelector('.svelte-select input') as HTMLInputElement;
 
             list.dispatchEvent(new Event('scroll'));
@@ -4093,7 +4094,7 @@ describe('Select Component', () => {
             });
 
             await tick();
-            await querySelectorClick('.svelte-select-list > .list-item > .item.active');
+            await querySelectorClick('[role="listbox"] > .list-item > .item.active');
             await tick();
 
             expect(document.querySelector('.svelte-select-list')).toBeFalsy();
@@ -4594,7 +4595,7 @@ describe('Select Component', () => {
             });
             await tick();
 
-            expect(document.querySelector('.svelte-select-list')!.getAttribute('aria-label')).toBe('Custom name');
+            expect(document.querySelector('[role="listbox"]')!.getAttribute('aria-label')).toBe('Custom name');
             expect(warn.mock.calls.some(([msg]) => String(msg).includes('accessible name'))).toBe(false);
             warn.mockRestore();
         });
@@ -4985,6 +4986,179 @@ describe('Select Component', () => {
         });
     });
 
+    // 16th audit: listPrependSnippet / listAppendSnippet / emptySnippet rendered
+    // INSIDE role="listbox" (an invalid listbox child) and any control a consumer
+    // put there — the classic "Create 'x'" button — was pointer-only: Tab never
+    // leaves the input while the list is open and the list's mousedown guard
+    // blocks click-focus. The popup now owns an inner listbox, the snippets are
+    // its siblings, and ArrowDown past the last option / ArrowUp before the
+    // first move focus into that content; arrows and Escape bring it back.
+    describe('Interactive list snippets', () => {
+        const query = () => ({
+            list: document.querySelector('.svelte-select-list') as HTMLElement,
+            listbox: document.querySelector('[role="listbox"]') as HTMLElement,
+            input: document.querySelector('.svelte-select input') as HTMLInputElement,
+            pin: document.querySelector('.pin-action') as HTMLButtonElement,
+            create: document.querySelector('.create-action') as HTMLButtonElement,
+        });
+
+        async function openFocused(props: Record<string, unknown> = {}) {
+            const rendered = render(ListSnippetActionsTest, {
+                props: { items, listOpen: true, focused: true, ...props },
+            });
+            await tick();
+            query().input.focus();
+            await tick();
+            return rendered;
+        }
+
+        it('renders snippet content outside the listbox but inside the popup', async () => {
+            await openFocused();
+            const { list, listbox, pin, create } = query();
+
+            expect(listbox.id).toMatch(/^listbox-/);
+            expect(listbox.querySelectorAll('[role="option"]').length).toBe(items.length);
+            expect(listbox.contains(pin)).toBe(false);
+            expect(listbox.contains(create)).toBe(false);
+            expect(list.contains(pin)).toBe(true);
+            expect(list.contains(create)).toBe(true);
+            expect(pin.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
+            expect(create.compareDocumentPosition(listbox) & Node.DOCUMENT_POSITION_PRECEDING).toBeTruthy();
+        });
+
+        it('ArrowDown past the last option focuses the append content and keeps the list open', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+
+            await handleKeyboard('ArrowDown');
+
+            const { create, list } = query();
+            expect(document.activeElement).toBe(create);
+            expect(list).toBeTruthy();
+            expect(document.querySelector('.svelte-select')?.classList.contains('focused')).toBe(true);
+        });
+
+        it('ArrowUp from the append content returns to the input on the last option', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().create);
+
+            await handleKeyboard('ArrowUp');
+
+            expect(document.activeElement).toBe(query().input);
+            expect(document.querySelector('.list-item .hover')?.textContent?.trim()).toBe(
+                items[items.length - 1].label,
+            );
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+        });
+
+        it('ArrowUp before the first option focuses the prepend content; ArrowDown returns to the first option', async () => {
+            await openFocused({ hoverItemIndex: 0 });
+
+            await handleKeyboard('ArrowUp');
+            expect(document.activeElement).toBe(query().pin);
+
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().input);
+            expect(document.querySelector('.list-item .hover')?.textContent?.trim()).toBe(items[0].label);
+        });
+
+        it('ArrowDown on an empty list focuses the empty-state action', async () => {
+            await openFocused({ items: [] });
+
+            await handleKeyboard('ArrowDown');
+
+            const create = document.querySelector('.custom-empty .create-action') as HTMLButtonElement;
+            expect(create).toBeTruthy();
+            expect(document.activeElement).toBe(create);
+        });
+
+        it('Enter on focused snippet content is left to the control, not treated as option selection', async () => {
+            const onCreate = vi.fn();
+            await openFocused({ hoverItemIndex: items.length - 1, onCreate });
+            await handleKeyboard('ArrowDown');
+            const { create } = query();
+            expect(document.activeElement).toBe(create);
+
+            const enter = new KeyboardEvent('keydown', { key: 'Enter', bubbles: true, cancelable: true });
+            create.dispatchEvent(enter);
+            await tick();
+
+            expect(enter.defaultPrevented).toBe(false);
+            // The list is still open — the keyboard navigation did not select the hovered option
+            expect(document.querySelector('.svelte-select-list')).toBeTruthy();
+            expect(document.querySelector('.selected-item')).toBeNull();
+        });
+
+        it('Escape from snippet content returns focus to the input and closes the list', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().create);
+
+            await handleKeyboard('Escape');
+
+            expect(document.activeElement).toBe(query().input);
+            expect(document.querySelector('.svelte-select-list')).toBeNull();
+        });
+
+        it('Tab from snippet content returns focus to the input and closes the list', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().create);
+
+            await handleKeyboard('Tab');
+
+            expect(document.activeElement).toBe(query().input);
+            expect(document.querySelector('.svelte-select-list')).toBeNull();
+        });
+
+        it('arrows walk between controls on the same side and stop at the far end', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            const { create } = query();
+            const importAction = document.querySelector('.import-action') as HTMLButtonElement;
+            expect(document.activeElement).toBe(create);
+
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(importAction);
+
+            // Nothing after the last control: the cursor stays put
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(importAction);
+
+            await handleKeyboard('ArrowUp');
+            expect(document.activeElement).toBe(create);
+        });
+
+        it('focus leaving the popup for an outside element closes the list', async () => {
+            await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().create);
+
+            const outside = document.createElement('button');
+            document.body.appendChild(outside);
+            outside.focus();
+            await tick();
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeNull();
+            expect(document.querySelector('.svelte-select')?.classList.contains('focused')).toBe(false);
+            outside.remove();
+        });
+
+        it('a snippet control that closes the list hands focus back to the input', async () => {
+            const rendered = await openFocused({ hoverItemIndex: items.length - 1 });
+            await handleKeyboard('ArrowDown');
+            expect(document.activeElement).toBe(query().create);
+
+            // A consumer's "create" handler typically closes the list itself
+            await rendered.rerender({ listOpen: false });
+            await tick();
+
+            expect(document.querySelector('.svelte-select-list')).toBeNull();
+            expect(document.activeElement).toBe(query().input);
+        });
+    });
+
     // 16th audit: the constraint-validation fallback <select required> never
     // received `disabled`, so a required Select that is disabled (while a form
     // submits, or gated on another field) blocked form.checkValidity() with no
@@ -5021,7 +5195,7 @@ describe('Select Component', () => {
                 await tick();
                 await tick();
 
-                const list = document.querySelector('.svelte-select-list');
+                const list = document.querySelector('[role="listbox"]');
                 expect(list!.getAttribute('aria-labelledby')).toBe('food-label');
                 expect(list!.getAttribute('aria-label')).toBeNull();
             });
@@ -5031,7 +5205,7 @@ describe('Select Component', () => {
                 await tick();
                 await tick();
 
-                const list = document.querySelector('.svelte-select-list');
+                const list = document.querySelector('[role="listbox"]');
                 expect(list!.getAttribute('aria-label')).toBe('Favourite food');
                 expect(list!.getAttribute('aria-labelledby')).toBeNull();
             });
@@ -5041,7 +5215,7 @@ describe('Select Component', () => {
                 await tick();
                 await tick();
 
-                const list = document.querySelector('.svelte-select-list');
+                const list = document.querySelector('[role="listbox"]');
                 expect(list!.getAttribute('aria-label')).toBe('Food');
                 expect(list!.getAttribute('aria-labelledby')).toBeNull();
             });
@@ -5059,7 +5233,7 @@ describe('Select Component', () => {
                 await tick();
                 await tick();
 
-                const list = document.querySelector('.svelte-select-list');
+                const list = document.querySelector('[role="listbox"]');
                 expect(list!.getAttribute('aria-labelledby')).toBe('external-name');
                 expect(list!.getAttribute('aria-label')).toBeNull();
             });
@@ -5072,7 +5246,7 @@ describe('Select Component', () => {
                 await tick();
                 await tick();
 
-                const list = document.querySelector('.svelte-select-list');
+                const list = document.querySelector('[role="listbox"]');
                 expect(list!.getAttribute('aria-label')).toBe('Favourite food');
                 expect(list!.getAttribute('aria-labelledby')).toBeNull();
             });
@@ -6084,7 +6258,7 @@ describe('Select Component', () => {
 
         await tick();
 
-        const list = container.querySelector('.svelte-select-list') as HTMLElement;
+        const list = container.querySelector('[role="listbox"]') as HTMLElement;
         const target = container.querySelectorAll('.list-item')[3] as HTMLElement;
 
         // Scrolling latches isScrolling; hovering an item must not move the hover

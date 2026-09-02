@@ -227,6 +227,12 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     }
 
     let list = $state<HTMLDivElement | undefined>();
+    // The inner role="listbox" element: the popup (`list`) also hosts the
+    // prepend/append/empty snippets as its siblings
+    let listbox = $state<HTMLDivElement | undefined>();
+    // True while DOM focus sits on interactive snippet content inside the open
+    // popup (reached via ArrowDown/ArrowUp); the combobox stays `focused`
+    let popupFocus = false;
     let filteredItems = $derived.by<SelectItem[]>(() =>
         filter({
             loadOptions,
@@ -574,7 +580,133 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     // Keyboard navigation must keep the hovered option visible. This hooks the
     // key handler rather than an effect on hoverItemIndex so mouse hover never
     // triggers scrolling.
+    // Focusable controls a consumer rendered in listPrependSnippet /
+    // emptySnippet / listAppendSnippet, in DOM order, split around the
+    // options. Anything inside the listbox itself (a listSnippet's own rows)
+    // belongs to option navigation, not this path.
+    function popupFocusables(): { before: HTMLElement[]; after: HTMLElement[] } {
+        if (!list || !listbox) return { before: [], after: [] };
+        const box = listbox;
+        const all = Array.from(
+            list.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]'),
+        ).filter((el) => !box.contains(el) && el.tabIndex >= 0 && !el.hasAttribute('disabled'));
+        return {
+            before: all.filter((el) => el.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_FOLLOWING),
+            after: all.filter((el) => el.compareDocumentPosition(box) & Node.DOCUMENT_POSITION_PRECEDING),
+        };
+    }
+
+    function selectableBounds(): { first: number; last: number } {
+        let first = -1;
+        let last = -1;
+        filteredItems.forEach((item, i) => {
+            if (!isItemSelectableCheck(item)) return;
+            if (first === -1) first = i;
+            last = i;
+        });
+        return { first, last };
+    }
+
+    function focusPopupContent(el: HTMLElement): void {
+        popupFocus = true;
+        el.focus();
+    }
+
+    function returnFocusToInput(): void {
+        popupFocus = false;
+        input?.focus();
+    }
+
+    // Keys while focus is on snippet content: arrows walk that content and
+    // hand back to the input at the boundary with the options, Escape and Tab
+    // return to the input (Tab also closes), everything else — Enter, Space,
+    // typing — is the control's own business.
+    function handlePopupKeyDown(e: KeyboardEvent): void {
+        const active = document.activeElement as HTMLElement | null;
+        if (!active) return;
+        const { before, after } = popupFocusables();
+        const { first, last } = selectableBounds();
+
+        switch (e.key) {
+            case 'ArrowDown': {
+                e.preventDefault();
+                e.stopPropagation();
+                const beforeIdx = before.indexOf(active);
+                if (beforeIdx !== -1) {
+                    if (beforeIdx < before.length - 1) return focusPopupContent(before[beforeIdx + 1]);
+                    returnFocusToInput();
+                    if (first !== -1) hoverItemIndex = first;
+                    else if (after.length) focusPopupContent(after[0]);
+                    return;
+                }
+                const afterIdx = after.indexOf(active);
+                if (afterIdx !== -1 && afterIdx < after.length - 1) focusPopupContent(after[afterIdx + 1]);
+                return;
+            }
+            case 'ArrowUp': {
+                e.preventDefault();
+                e.stopPropagation();
+                const afterIdx = after.indexOf(active);
+                if (afterIdx !== -1) {
+                    if (afterIdx > 0) return focusPopupContent(after[afterIdx - 1]);
+                    returnFocusToInput();
+                    if (last !== -1) hoverItemIndex = last;
+                    else if (before.length) focusPopupContent(before[before.length - 1]);
+                    return;
+                }
+                const beforeIdx = before.indexOf(active);
+                if (beforeIdx > 0) focusPopupContent(before[beforeIdx - 1]);
+                return;
+            }
+            case 'Escape':
+                e.preventDefault();
+                e.stopPropagation();
+                returnFocusToInput();
+                closeList();
+                return;
+            case 'Tab':
+                e.preventDefault();
+                e.stopPropagation();
+                returnFocusToInput();
+                closeList();
+                return;
+        }
+    }
+
     function handleKeyDown(e: KeyboardEvent): void {
+        if (popupFocus && listOpen && list?.contains(document.activeElement) && document.activeElement !== input) {
+            handlePopupKeyDown(e);
+            return;
+        }
+        popupFocus = false;
+
+        // ArrowDown past the last option / ArrowUp before the first hands focus
+        // to interactive snippet content on that side of the options
+        if (
+            listOpen &&
+            focused &&
+            !disabled &&
+            !e.altKey &&
+            !e.isComposing &&
+            (e.key === 'ArrowDown' || e.key === 'ArrowUp')
+        ) {
+            const { before, after } = popupFocusables();
+            if (before.length || after.length) {
+                const { first, last } = selectableBounds();
+                const target =
+                    e.key === 'ArrowDown'
+                        ? (last === -1 || hoverItemIndex === last) && after[0]
+                        : (first === -1 || hoverItemIndex === first) && before[before.length - 1];
+                if (target) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    selectState.userNavigatedSinceOpen = true;
+                    focusPopupContent(target);
+                    return;
+                }
+            }
+        }
+
         keyboardNav.handleKeyDown(e);
         // Mirror keyboardNav's IME gate: during composition the arrows move
         // through the IME candidate window, not the list — the keyboard cursor
@@ -693,6 +825,12 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
             // the cursor in the same handler, and a reset-on-open flush would
             // clobber that intent.
             if (!listOpen) selectState.userNavigatedSinceOpen = false;
+            // A consumer control that closed the list (a "create" button's own
+            // handler) took focus down with the popup; hand it back to the input
+            if (!listOpen && popupFocus) {
+                popupFocus = false;
+                if (focused && input && document.activeElement !== input) input.focus();
+            }
             listMounted(list, listOpen);
             if (listOpen && container && list) {
                 setListWidth();
@@ -976,6 +1114,10 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     let pendingBlur: FocusEvent | boolean = false;
 
     async function handleBlur(e?: FocusEvent): Promise<void> {
+        // Focus handed to snippet content inside the open popup keeps the
+        // combobox focused — see handlePopupKeyDown for the way back
+        const to = e?.relatedTarget;
+        if (popupFocus && to instanceof Node && list?.contains(to)) return;
         if (selectState.isScrolling) {
             pendingBlur = e ?? true;
             return;
@@ -1124,13 +1266,15 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
     {@attach floating.reference}
     role="none">
     {#if listOpen}
+        <!-- svelte-ignore a11y_no_static_element_interactions -->
+        <!-- The popup's handlers are pointer plumbing (the focus-keeping mousedown
+             guard, scroll tracking, Tab-intent), not interaction semantics: the
+             interactive role lives on the listbox inside it. -->
         <div
             {@attach floating.content}
             bind:this={list}
             class={['svelte-select-list', { prefloat }]}
             style={listStyles}
-            onscroll={hoverManager.handleListScroll}
-            onscrollend={hoverManager.handleListScrollEnd}
             onmousemove={() => {
                 // Real pointer movement over the open list is commit-intent for
                 // Tab (see handleTabKey). mousemove — not mouseover — because
@@ -1146,81 +1290,105 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                 ev.preventDefault();
                 ev.stopPropagation();
             }}
-            role="listbox"
             tabindex="-1"
-            aria-label={ariaLabel ?? listboxLabelText}
-            aria-labelledby={listboxLabelledby}
-            aria-busy={loading || undefined}
-            aria-multiselectable={multiple || undefined}
-            id="listbox-{_id}">
+            onfocusout={(ev) => {
+                // Focus leaving snippet content for somewhere outside the
+                // combobox is a blur of the whole control. Ignore a null
+                // relatedTarget while the list is closing — that is the popup
+                // being torn down under focus, handled by the listOpen effect.
+                if (!popupFocus) return;
+                const to = ev.relatedTarget;
+                if (to instanceof Node && (to === input || list?.contains(to))) return;
+                if (!listOpen) return;
+                popupFocus = false;
+                void handleBlur();
+            }}>
             {#if listPrependSnippet}
                 {@render listPrependSnippet()}
             {/if}
-            {#if listSnippet}
-                {@render listSnippet(filteredItems as SelectRow<Item>[])}
-            {:else if filteredItems?.length > 0}
-                {#snippet optionEntry(item: SelectItem, i: number)}
-                    {const presentational = isPresentationalHeader(item)}
-                    <!-- Non-selectable group headers are aria-hidden rather than
+            <!-- The listbox is the scroll container and owns only options (and group
+                 wrappers); the snippets above and below are its siblings — never
+                 invalid listbox children, they stay put as header/footer, and their
+                 controls are reachable with ArrowUp/ArrowDown. -->
+            <div
+                bind:this={listbox}
+                class="listbox"
+                role="listbox"
+                tabindex="-1"
+                onscroll={hoverManager.handleListScroll}
+                onscrollend={hoverManager.handleListScrollEnd}
+                aria-label={ariaLabel ?? listboxLabelText}
+                aria-labelledby={listboxLabelledby}
+                aria-busy={loading || undefined}
+                aria-multiselectable={multiple || undefined}
+                id="listbox-{_id}">
+                {#if listSnippet}
+                    {@render listSnippet(filteredItems as SelectRow<Item>[])}
+                {:else if filteredItems?.length > 0}
+                    {#snippet optionEntry(item: SelectItem, i: number)}
+                        {const presentational = isPresentationalHeader(item)}
+                        <!-- Non-selectable group headers are aria-hidden rather than
                          role="presentation": a listbox may only own option/group children,
                          and groups are transparent for that check, so a presentational row
                          inside one is an invalid listbox child (axe aria-required-children).
                          The group's accessible name still resolves via aria-labelledby,
                          which follows hidden targets. Selectable headers are real options. -->
-                    <div
-                        onmousemove={() => hoverManager.handleHover(i)}
-                        onfocus={() => hoverManager.handleHover(i)}
-                        onclick={(ev) => {
-                            ev.stopPropagation();
-                            handleItemClick(item, i);
-                        }}
-                        onkeydown={(ev) => {
-                            ev.preventDefault();
-                            ev.stopPropagation();
-                        }}
-                        class="list-item"
-                        tabindex="-1"
-                        role={presentational ? undefined : 'option'}
-                        id="listbox-{_id}-item-{i}"
-                        aria-hidden={presentational ? true : undefined}
-                        aria-selected={presentational ? undefined : hoverManager.isItemActive(item)}
-                        aria-disabled={presentational || isItemSelectableCheck(item) ? undefined : true}>
                         <div
-                            class={[
-                                'item',
-                                {
-                                    'list-group-title': item.groupHeader,
-                                    active: hoverManager.isItemActive(item),
-                                    first: i === 0,
-                                    last: i === filteredItems.length - 1,
-                                    hover: hoverItemIndex === i,
-                                    'group-item': item.groupItem,
-                                    'not-selectable': item?.selectable === false,
-                                },
-                            ]}>
-                            {#if itemSnippet}
-                                {@render itemSnippet(item as SelectRow<Item>, i)}
-                            {:else}
-                                {item?.[label]}
-                            {/if}
+                            onmousemove={() => hoverManager.handleHover(i)}
+                            onfocus={() => hoverManager.handleHover(i)}
+                            onclick={(ev) => {
+                                ev.stopPropagation();
+                                handleItemClick(item, i);
+                            }}
+                            onkeydown={(ev) => {
+                                ev.preventDefault();
+                                ev.stopPropagation();
+                            }}
+                            class="list-item"
+                            tabindex="-1"
+                            role={presentational ? undefined : 'option'}
+                            id="listbox-{_id}-item-{i}"
+                            aria-hidden={presentational ? true : undefined}
+                            aria-selected={presentational ? undefined : hoverManager.isItemActive(item)}
+                            aria-disabled={presentational || isItemSelectableCheck(item) ? undefined : true}>
+                            <div
+                                class={[
+                                    'item',
+                                    {
+                                        'list-group-title': item.groupHeader,
+                                        active: hoverManager.isItemActive(item),
+                                        first: i === 0,
+                                        last: i === filteredItems.length - 1,
+                                        hover: hoverItemIndex === i,
+                                        'group-item': item.groupItem,
+                                        'not-selectable': item?.selectable === false,
+                                    },
+                                ]}>
+                                {#if itemSnippet}
+                                    {@render itemSnippet(item as SelectRow<Item>, i)}
+                                {:else}
+                                    {item?.[label]}
+                                {/if}
+                            </div>
                         </div>
-                    </div>
-                {/snippet}
-                {#each groupedRows as row}
-                    {#if row.type === 'group'}
-                        <!-- A real listbox group named by its header (presentational or
+                    {/snippet}
+                    {#each groupedRows as row}
+                        {#if row.type === 'group'}
+                            <!-- A real listbox group named by its header (presentational or
                              selectable) via aria-labelledby, wrapping that group's options -->
-                        <div role="group" aria-labelledby="listbox-{_id}-item-{row.headerIndex}">
-                            {@render optionEntry(row.header, row.headerIndex)}
-                            {#each row.options as opt}
-                                {@render optionEntry(opt.item, opt.index)}
-                            {/each}
-                        </div>
-                    {:else}
-                        {@render optionEntry(row.item, row.index)}
-                    {/if}
-                {/each}
-            {:else if !hideEmptyState}
+                            <div role="group" aria-labelledby="listbox-{_id}-item-{row.headerIndex}">
+                                {@render optionEntry(row.header, row.headerIndex)}
+                                {#each row.options as opt}
+                                    {@render optionEntry(opt.item, opt.index)}
+                                {/each}
+                            </div>
+                        {:else}
+                            {@render optionEntry(row.item, row.index)}
+                        {/if}
+                    {/each}
+                {/if}
+            </div>
+            {#if !listSnippet && !(filteredItems?.length > 0) && !hideEmptyState}
                 {#if emptySnippet}
                     {@render emptySnippet()}
                 {:else if !loading}

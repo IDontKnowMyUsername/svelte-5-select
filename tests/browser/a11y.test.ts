@@ -110,7 +110,7 @@ describe('axe scan (WCAG A/AA)', () => {
     it('open list named via an external <label for> instead of ariaLabel', async () => {
         render(LabelForTest, { props: { labelId: 'food-label' } });
         await settle();
-        const list = document.querySelector('.svelte-select-list');
+        const list = document.querySelector('[role="listbox"]');
         expect(list!.getAttribute('aria-labelledby')).toBe('food-label');
         await expectNoViolations();
     });
