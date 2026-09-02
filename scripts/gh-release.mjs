@@ -22,6 +22,9 @@ if (!version) {
 }
 
 const tag = `v${version}`;
+// A prerelease (2.2.0-beta.1) must not become the repo's "Latest" release —
+// mirrors the `next` dist-tag the publish workflow gives the same version on npm.
+const prereleaseFlag = version.includes('-') ? ['--prerelease'] : [];
 const lines = readFileSync(new URL('../CHANGELOG.md', import.meta.url), 'utf8').split('\n');
 const escaped = version.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
@@ -38,8 +41,20 @@ const body = lines
 
 const notes = [body, compareLink()].filter(Boolean).join('\n\n');
 
+const createArgs = [
+    'release',
+    'create',
+    tag,
+    '--title',
+    `Release ${version}`,
+    ...prereleaseFlag,
+    '--verify-tag',
+    '--notes-file',
+    '-',
+];
+
 if (dryRun) {
-    console.log(`gh release create ${tag} --title "Release ${version}" --verify-tag --notes-file -`);
+    console.log(`gh ${createArgs.map((arg) => (arg.includes(' ') ? `"${arg}"` : arg)).join(' ')}`);
     console.log('--- notes ---');
     console.log(notes);
     process.exit(0);
@@ -50,11 +65,7 @@ if (spawnSync('gh', ['release', 'view', tag], { stdio: 'ignore' }).status === 0)
     process.exit(0);
 }
 
-const created = spawnSync(
-    'gh',
-    ['release', 'create', tag, '--title', `Release ${version}`, '--verify-tag', '--notes-file', '-'],
-    { input: notes, encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] },
-);
+const created = spawnSync('gh', createArgs, { input: notes, encoding: 'utf8', stdio: ['pipe', 'inherit', 'inherit'] });
 
 if (created.error || created.status !== 0) {
     console.error(
