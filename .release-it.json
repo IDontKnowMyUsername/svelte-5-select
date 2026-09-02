@@ -3,15 +3,17 @@
         "commitMessage": "chore: release v${version}",
         "tagName": "v${version}"
     },
-    "npm": {
-        "publish": false
-    },
+    "npm": false,
     "github": {
         "release": false
     },
     "hooks": {
         "before:init": ["pnpm run check", "pnpm run test:run"],
-        "after:bump": ["node scripts/check-changelog.mjs ${version}", "pnpm run package"],
+        "after:bump": [
+            "node scripts/check-changelog.mjs ${version}",
+            "pnpm run package",
+            "npm version ${version} --no-git-tag-version"
+        ],
         "before:git:release": "pnpm run lint:package && pnpm run smoke",
         "after:release": "node scripts/gh-release.mjs ${version}"
     },

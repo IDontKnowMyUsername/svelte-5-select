@@ -27,7 +27,8 @@
         "prepare": "svelte-kit sync",
         "lint:package": "publint",
         "smoke": "bash scripts/smoke-test.sh",
-        "release": "release-it"
+        "release": "release-it",
+        "release:dry-run": "release-it --dry-run --ci"
     },
     "devDependencies": {
         "@eslint/js": "^10.0.1",
