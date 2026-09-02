@@ -14,9 +14,6 @@ importers:
       esm-env:
         specifier: ^1.2.2
         version: 1.2.2
-      svelte-floating-ui:
-        specifier: 1.6.2
-        version: 1.6.2
     devDependencies:
       '@eslint/js':
         specifier: ^10.0.1
@@ -2479,9 +2476,6 @@ packages:
     peerDependenciesMeta:
       svelte:
         optional: true
-
-  svelte-floating-ui@1.6.2:
-    resolution: {integrity: sha512-EC+DZtBey50P6l3NSzNQWon3cip8a1bzwdpmCdc45kymqEWL4BKhPemAq7SQ9QLebDPaMECW6YodxFbs2d+O/w==}
 
   svelte-highlight@7.15.0:
     resolution: {integrity: sha512-jeEe/cnmaH+33mTlb2yO/3gRcKfXdHuDmMDLnsqU9wEQO7mHbEffNCCuEHb6kJQLqXHuz23vPp1vRb2jfaPNSw==}
@@ -5078,10 +5072,6 @@ snapshots:
       semver: 7.8.5
     optionalDependencies:
       svelte: 5.57.0(@typescript-eslint/types@8.64.0)
-
-  svelte-floating-ui@1.6.2:
-    dependencies:
-      '@floating-ui/dom': 1.8.0
 
   svelte-highlight@7.15.0:
     dependencies:

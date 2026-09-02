@@ -1,6 +1,6 @@
 import type { Snippet } from 'svelte';
 import type { HTMLInputAttributes } from 'svelte/elements';
-import type { ComputePositionConfig } from 'svelte-floating-ui/dom';
+import type { ComputePositionConfig } from '@floating-ui/dom';
 
 /**
  * The bound for user item types. Deliberately `Record<string, any>` rather than

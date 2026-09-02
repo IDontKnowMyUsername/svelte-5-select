@@ -11,7 +11,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
 <script lang="ts" generics="Item extends ItemLike = SelectItem, Multiple extends boolean = false">
     import { onDestroy, onMount, tick, untrack } from 'svelte';
     import { DEV } from 'esm-env';
-    import { offset, flip, shift } from 'svelte-floating-ui/dom';
+    import { offset, flip, shift } from '@floating-ui/dom';
     import type {
         FloatingConfig,
         ItemLike,
@@ -21,7 +21,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         SelectClearValue,
         SelectErrorEvent,
     } from './types.js';
-    import { createFloatingActions } from 'svelte-floating-ui';
+    import { createFloating } from './floating.js';
     import { useAriaHandlers } from '$lib/aria-handlers.svelte';
 
     import _filter from './filter.js';
@@ -404,11 +404,15 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
               : '',
     );
 
-    // svelte-floating-ui keeps a reference to this object; effects below mutate it in place
-    let _floatingConfig = $state<FloatingConfig>({
+    // The effective floating-ui config: defaults (incl. the listOffset middleware)
+    // under the consumer's `floatingConfig` overrides. The attachment reads it
+    // live, so every recompute — including autoUpdate's own — sees the latest.
+    const _floatingConfig = $derived<FloatingConfig>({
         strategy: 'absolute',
         placement: 'bottom-start',
-        autoUpdate: false,
+        autoUpdate: true,
+        middleware: [offset(listOffset), flip(), shift()],
+        ...floatingConfig,
     });
 
     // The shared reactive state object: live accessors over the props and derived
@@ -596,7 +600,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         el?.scrollIntoView?.({ block: 'nearest' });
     }
 
-    const [floatingRef, floatingContent, floatingUpdate] = createFloatingActions(_floatingConfig);
+    const floating = createFloating(() => _floatingConfig);
 
     onMount(() => {
         // A disabled Select never grabs focus on mount; the disabled effect
@@ -606,20 +610,11 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         if (focused && input) input.focus();
     });
 
-    // Keep the floating middleware in sync with listOffset. User overrides are
-    // merged INTO _floatingConfig: svelte-floating-ui re-reads that object on its
-    // own deferred/autoUpdate recomputes, so a merge into a throwaway copy would
-    // be reverted one tick later.
-    $effect.pre(() => {
-        const middleware = [offset(listOffset), flip(), shift()];
-        floatingConfig;
-        untrack(() => {
-            _floatingConfig.middleware = middleware;
-            if (floatingConfig) Object.assign(_floatingConfig, floatingConfig);
-            if (container && list) {
-                floatingUpdate(_floatingConfig);
-            }
-        });
+    // Reposition whenever the effective config changes (listOffset, consumer
+    // overrides); a no-op until both the control and the list are mounted.
+    $effect(() => {
+        _floatingConfig;
+        untrack(() => floating.update());
     });
 
     // Sync the focused prop with real DOM focus, and close the list on unfocus.
@@ -686,16 +681,6 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         untrack(() => {
             if (filteredItems && listOpen) onfilter?.(filteredItems as SelectRow<Item>[]);
         });
-    });
-
-    // Floating UI config
-    $effect(() => {
-        if (container && floatingConfig) {
-            untrack(() => {
-                Object.assign(_floatingConfig, floatingConfig);
-                floatingUpdate(_floatingConfig);
-            });
-        }
     });
 
     // List mounted
@@ -884,13 +869,6 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                 listboxLabelText = text.trim() || undefined;
             }
         });
-    });
-
-    // Auto update floating config
-    $effect(() => {
-        if (container && floatingConfig?.autoUpdate === undefined) {
-            _floatingConfig.autoUpdate = true;
-        }
     });
 
     // Disabled state
@@ -1125,13 +1103,11 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
 <svelte:window onkeydown={handleKeyDown} />
 
 <div
-    class="svelte-select {rest.class}"
-    class:multi={multiple}
-    class:disabled
-    class:focused
-    class:list-open={listOpen}
-    class:show-chevron={showChevron}
-    class:error={hasError}
+    class={[
+        'svelte-select',
+        rest.class,
+        { multi: multiple, disabled, focused, 'list-open': listOpen, 'show-chevron': showChevron, error: hasError },
+    ]}
     style={containerStyles}
     onpointerup={handleClick}
     onmousedown={(ev) => {
@@ -1145,14 +1121,13 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
         if (ev.target !== input) ev.preventDefault();
     }}
     bind:this={container}
-    use:floatingRef
+    {@attach floating.reference}
     role="none">
     {#if listOpen}
         <div
-            use:floatingContent
+            {@attach floating.content}
             bind:this={list}
-            class="svelte-select-list"
-            class:prefloat
+            class={['svelte-select-list', { prefloat }]}
             style={listStyles}
             onscroll={hoverManager.handleListScroll}
             onscrollend={hoverManager.handleListScrollEnd}
@@ -1185,6 +1160,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                 {@render listSnippet(filteredItems as SelectRow<Item>[])}
             {:else if filteredItems?.length > 0}
                 {#snippet optionEntry(item: SelectItem, i: number)}
+                    {const presentational = isPresentationalHeader(item)}
                     <!-- Non-selectable group headers are aria-hidden rather than
                          role="presentation": a listbox may only own option/group children,
                          and groups are transparent for that check, so a presentational row
@@ -1204,20 +1180,24 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                         }}
                         class="list-item"
                         tabindex="-1"
-                        role={isPresentationalHeader(item) ? undefined : 'option'}
+                        role={presentational ? undefined : 'option'}
                         id="listbox-{_id}-item-{i}"
-                        aria-hidden={isPresentationalHeader(item) ? true : undefined}
-                        aria-selected={isPresentationalHeader(item) ? undefined : hoverManager.isItemActive(item)}
-                        aria-disabled={isPresentationalHeader(item) || isItemSelectableCheck(item) ? undefined : true}>
+                        aria-hidden={presentational ? true : undefined}
+                        aria-selected={presentational ? undefined : hoverManager.isItemActive(item)}
+                        aria-disabled={presentational || isItemSelectableCheck(item) ? undefined : true}>
                         <div
-                            class="item"
-                            class:list-group-title={item.groupHeader}
-                            class:active={hoverManager.isItemActive(item)}
-                            class:first={i === 0}
-                            class:last={i === filteredItems.length - 1}
-                            class:hover={hoverItemIndex === i}
-                            class:group-item={item.groupItem}
-                            class:not-selectable={item?.selectable === false}>
+                            class={[
+                                'item',
+                                {
+                                    'list-group-title': item.groupHeader,
+                                    active: hoverManager.isItemActive(item),
+                                    first: i === 0,
+                                    last: i === filteredItems.length - 1,
+                                    hover: hoverItemIndex === i,
+                                    'group-item': item.groupItem,
+                                    'not-selectable': item?.selectable === false,
+                                },
+                            ]}>
                             {#if itemSnippet}
                                 {@render itemSnippet(item as SelectRow<Item>, i)}
                             {:else}
@@ -1292,9 +1272,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                     <!-- tabindex and role="button" are set together under the same guard, so the
                          element is interactive exactly when it is focusable (the linter can't see this). -->
                     <div
-                        class="multi-item"
-                        class:active={selectState.activeValue === i}
-                        class:disabled
+                        class={['multi-item', { active: selectState.activeValue === i, disabled }]}
                         onclick={(ev) => {
                             ev.preventDefault();
                             // Gated like the keydown path below: a pointer must never
@@ -1365,7 +1343,7 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
                     </div>
                 {/each}
             {:else}
-                <div id="selected-{_id}" class="selected-item" class:hide-selected-item={hideSelectedItem}>
+                <div id="selected-{_id}" class={['selected-item', { 'hide-selected-item': hideSelectedItem }]}>
                     {#if selectionSnippet}
                         {@render selectionSnippet(value as Item)}
                     {:else}

@@ -117,12 +117,11 @@
         "dist"
     ],
     "peerDependencies": {
-        "svelte": "^5.55.2"
+        "svelte": "^5.57.0"
     },
     "dependencies": {
         "@floating-ui/dom": "^1.8.0",
-        "esm-env": "^1.2.2",
-        "svelte-floating-ui": "1.6.2"
+        "esm-env": "^1.2.2"
     },
     "packageManager": "pnpm@10.33.0"
 }

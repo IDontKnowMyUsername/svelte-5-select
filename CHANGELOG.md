@@ -7,6 +7,10 @@
 
 ## Unreleased
 
+### Changed
+
+* **Requires Svelte `^5.57.0`** (was `^5.55.2`). The component now uses current Svelte APIs throughout: `{@attach}` attachments for list positioning, the `class` attribute's object/array form instead of `class:` directives, and template declaration tags. Consumers on an older Svelte 5 must upgrade Svelte first
+
 ### Fixed
 
 * An empty-string `value` (`''`, or an `''` entry in a multiple-mode array — the shape a form field seeded with `$state('')` produces) is now treated as no selection, matching how `justValue` already reads `''`. It previously synthesized a blank item, so the control rendered an empty selected item, showed the clear button, posted `{"value":"","label":""}` through the hidden form input, and fired `onValueChange` on mount. Single mode normalizes `''` to `undefined`; multiple mode drops the empty entries without dispatching
@@ -15,6 +19,7 @@
 
 ### Internal
 
+* List positioning is now an in-house floating-ui attachment (`src/lib/floating.ts`) over `@floating-ui/dom` directly; the `svelte-floating-ui` dependency is gone. The three config effects collapsed into one `$derived` config the attachment reads live, and `autoUpdate` listeners are torn down synchronously with the list element (the previous action armed them one tick late, so a list that closed within that tick leaked them). `floatingConfig` accepts the same shape as before
 * Prerelease versions (`v2.2.0-beta.1`) now publish to the `next` npm dist-tag instead of `latest`, and their GitHub release is created with `--prerelease`. New `scripts/dist-tag.sh` derives the tag for both the dry-run and the real publish step
 * The GitHub release is created from `scripts/gh-release.mjs` (a release-it `after:release` hook) using the version's CHANGELOG section as the body, via the `gh` CLI rather than a token in the environment
 

@@ -33,7 +33,7 @@ cat > "$APP/package.json" <<EOF
     },
     "devDependencies": {
         "@sveltejs/vite-plugin-svelte": "^7.0.0",
-        "svelte": "^5.55.2",
+        "svelte": "^5.57.0",
         "typescript": "^5.9.3",
         "vite": "^8.0.7"
     }
