@@ -59,6 +59,15 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
         const { value, multiple } = state;
         if (value == null) return;
 
+        // An empty string is an empty representation, not a selection to
+        // resolve (justValue already reads '' as empty): a parent seeding a
+        // form field with $state('') must not get a blank selected item, a
+        // clear button, and a mount-time onValueChange for it.
+        if (value === '') {
+            state.value = undefined;
+            return;
+        }
+
         // A bare (non-array) value written while multiple is on gets the same
         // wrap setupMulti gives it on the mode transition — mount supported the
         // shape, so post-mount writes must too. The write re-runs this effect,
@@ -70,7 +79,23 @@ export function useValue<Item extends ItemLike = SelectItem>(state: SelectState<
 
         if (multiple && Array.isArray(value)) {
             if (value.length === 0) return;
-            const resolved = (value as (Item | string)[]).map(resolveEntry);
+            // Drop empty-string entries first; the write re-runs this effect
+            // on the trimmed array, which then resolves the survivors
+            const entries = (value as (Item | string)[]).filter((entry) => entry !== '');
+            if (entries.length !== value.length) {
+                // Trimming is shape normalization, not a selection change: mirror
+                // it on the dispatch baseline so a mount seeded with an empty
+                // entry does not fire onValueChange for the survivors
+                const { prevValue } = state;
+                if (Array.isArray(prevValue)) {
+                    state.prevValue = (prevValue as (Item | string)[]).filter((entry) => entry !== '') as
+                        | Item[]
+                        | string[];
+                }
+                state.value = entries as Item[] | string[];
+                return;
+            }
+            const resolved = entries.map(resolveEntry);
             if (resolved.some((item, i) => item !== value[i])) {
                 state.value = resolved;
             }

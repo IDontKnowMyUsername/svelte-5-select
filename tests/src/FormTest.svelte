@@ -7,6 +7,8 @@
         name,
         multiple = false,
         useJustValue = false,
+        required = false,
+        disabled = false,
         value = $bindable(undefined),
         justValue = $bindable(undefined),
     }: {
@@ -14,11 +16,13 @@
         name: string;
         multiple?: boolean;
         useJustValue?: boolean;
+        required?: boolean;
+        disabled?: boolean;
         value?: SelectItem | SelectItem[] | string | null;
         justValue?: JustValue;
     } = $props();
 </script>
 
 <form>
-    <Select {items} {name} {multiple} {useJustValue} bind:value bind:justValue />
+    <Select {items} {name} {multiple} {useJustValue} {required} {disabled} bind:value bind:justValue />
 </form>

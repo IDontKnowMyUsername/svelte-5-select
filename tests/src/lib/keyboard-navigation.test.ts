@@ -45,6 +45,25 @@ describe('useKeyboardNavigation', () => {
         return { state, writes, actions };
     }
 
+    // 16th audit: the handler table was a plain object literal, so a synthetic
+    // keydown whose key names an Object.prototype member looked the handler up
+    // on the prototype — '__proto__' yielded a non-callable object and
+    // 'hasOwnProperty' a function invoked with `this === undefined`, both
+    // throwing from the window-level listener. Same class of input as the
+    // 2.1.1 undefined-key guard.
+    it.each(['__proto__', 'constructor', 'hasOwnProperty', 'valueOf', 'toString'])(
+        'ignores a keydown whose key is the prototype member %s',
+        (key) => {
+            const { state, actions } = createMock({ listOpen: true });
+            const { handleKeyDown } = useKeyboardNavigation(state, actions);
+
+            const event = new KeyboardEvent('keydown', { key });
+            expect(() => handleKeyDown(event)).not.toThrow();
+            expect(actions.closeList).not.toHaveBeenCalled();
+            expect(actions.handleSelect).not.toHaveBeenCalled();
+        },
+    );
+
     it('handles Escape key when the list is open', () => {
         const { state, actions } = createMock({ listOpen: true });
         const { handleKeyDown } = useKeyboardNavigation(state, actions);

@@ -1444,7 +1444,8 @@ Bind `value` (and optionally `justValue`, `filterText`, `listOpen`, `focused`).
             <!-- Constraint validation focuses the first invalid control — this one.
                  An aria-hidden element must never hold focus (and this one is
                  invisible), so forward it to the real combobox input immediately. -->
-            <select class="required" required tabindex="-1" aria-hidden="true" onfocus={() => handleFocus()}></select>
+            <select class="required" required {disabled} tabindex="-1" aria-hidden="true" onfocus={() => handleFocus()}
+            ></select>
         {/if}
     {/if}
 </div>

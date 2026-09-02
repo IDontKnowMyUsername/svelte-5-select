@@ -4933,6 +4933,84 @@ describe('Select Component', () => {
         });
     });
 
+    // 16th audit: an empty string is a legal `SelectValueProp` (a form field
+    // initialized with `$state('')`) but resolveEntry synthesized a fallback
+    // item for it, so the control rendered a blank selection, showed the clear
+    // button, posted {"value":"","label":""} and fired onValueChange on mount.
+    // `justValue` already reads '' as empty; `value` must agree.
+    describe('Empty-string value', () => {
+        it('treats a single-mode empty string as no selection', async () => {
+            const onValueChange = vi.fn();
+            render(FormTest, {
+                props: {
+                    items,
+                    name: 'food',
+                    value: '',
+                },
+            });
+            render(Select, { props: { items, value: '', clearable: true, onValueChange } });
+            await tick();
+
+            expect(document.querySelector('.selected-item')).toBeNull();
+            expect(document.querySelector('.clear-select')).toBeNull();
+            expect(onValueChange).not.toHaveBeenCalled();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            expect(new FormData(form).get('food')).toBe('');
+        });
+
+        it('drops empty-string entries from a multiple-mode value', async () => {
+            const onValueChange = vi.fn();
+            render(Select, {
+                props: {
+                    items,
+                    multiple: true,
+                    value: ['', { value: 'cake', label: 'Cake' }],
+                    onValueChange,
+                },
+            });
+            await tick();
+
+            const chips = Array.from(document.querySelectorAll('.multi-item-text')).map((n) => n.textContent?.trim());
+            expect(chips).toEqual(['Cake']);
+            expect(onValueChange).not.toHaveBeenCalled();
+        });
+
+        it('treats a bare empty string as an empty multiple-mode selection', async () => {
+            render(Select, { props: { items, multiple: true, value: '' } });
+            await tick();
+
+            expect(document.querySelector('.multi-item')).toBeNull();
+            expect(document.querySelector('.selected-item')).toBeNull();
+        });
+    });
+
+    // 16th audit: the constraint-validation fallback <select required> never
+    // received `disabled`, so a required Select that is disabled (while a form
+    // submits, or gated on another field) blocked form.checkValidity() with no
+    // operable control left to satisfy it. Native disabled controls are barred
+    // from constraint validation; the fallback must follow suit.
+    describe('Required while disabled', () => {
+        it('keeps the form invalid while required and enabled', async () => {
+            render(FormTest, { props: { items, name: 'food', required: true } });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            expect(form.checkValidity()).toBe(false);
+        });
+
+        it('does not block form validation while disabled', async () => {
+            render(FormTest, { props: { items, name: 'food', required: true, disabled: true } });
+            await tick();
+
+            const form = document.querySelector('form') as HTMLFormElement;
+            const fallback = form.querySelector('select.required') as HTMLSelectElement;
+            expect(fallback).toBeTruthy();
+            expect(fallback.disabled).toBe(true);
+            expect(form.checkValidity()).toBe(true);
+        });
+    });
+
     describe('ARIA', () => {
         // 10th audit: the listbox only carried aria-label={ariaLabel}, so on the
         // equally-recommended `id` + external `<label for>` naming path the open

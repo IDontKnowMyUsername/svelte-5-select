@@ -27,6 +27,8 @@ export type SelectValue<Item extends ItemLike = SelectItem, Multiple extends boo
  * tag, a `loadOptionsDeps` reload invalidating the value, a multiple→single switch).
  * `null` is accepted on the way in, so an existing `bind:value` initialized to `null`
  * keeps working; read an emptied value as falsy rather than testing `=== null`.
+ * An empty string is also read as empty (as `justValue` does): a single-mode `''`
+ * normalizes to `undefined` and `''` entries are dropped from a multiple-mode array.
  * (The `onValueChange`/`onSelectionChange` payload is a separate contract — see
  * {@link SelectValue} — and reports `null` in single mode and `[]` in multiple mode.)
  */

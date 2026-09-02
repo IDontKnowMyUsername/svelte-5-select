@@ -5,6 +5,19 @@
      computes the version bump and the GitHub release notes; it does not write
      to this file. -->
 
+## Unreleased
+
+### Fixed
+
+* An empty-string `value` (`''`, or an `''` entry in a multiple-mode array — the shape a form field seeded with `$state('')` produces) is now treated as no selection, matching how `justValue` already reads `''`. It previously synthesized a blank item, so the control rendered an empty selected item, showed the clear button, posted `{"value":"","label":""}` through the hidden form input, and fired `onValueChange` on mount. Single mode normalizes `''` to `undefined`; multiple mode drops the empty entries without dispatching
+* A `required` select that is also `disabled` no longer blocks `form.checkValidity()`: the constraint-validation fallback `<select required>` now carries `disabled` too, so a field disabled while its form submits (or gated on another field) does not leave the form permanently invalid with no operable control
+* Synthetic keydown events whose `key` names an `Object.prototype` member (`'__proto__'`, `'hasOwnProperty'`, `'valueOf'`) no longer throw from the keyboard handler; the handler table is looked up by own property only. Same class of input as the 2.1.1 undefined-key guard
+
+### Internal
+
+* Prerelease versions (`v2.2.0-beta.1`) now publish to the `next` npm dist-tag instead of `latest`, and their GitHub release is created with `--prerelease`. New `scripts/dist-tag.sh` derives the tag for both the dry-run and the real publish step
+* The GitHub release is created from `scripts/gh-release.mjs` (a release-it `after:release` hook) using the version's CHANGELOG section as the body, via the `gh` CLI rather than a token in the environment
+
 ## 2.1.1 (2026-08-11)
 
 ### Fixed

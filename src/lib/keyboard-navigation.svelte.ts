@@ -40,7 +40,10 @@ export function useKeyboardNavigation<Item extends ItemLike = SelectItem>(
             PageDown: handlePageDownKey,
         };
 
-        const handler = handlers[e.key];
+        // Own-property lookup only: a synthetic keydown can carry any string as
+        // its key, and '__proto__' / 'hasOwnProperty' would otherwise resolve
+        // to Object.prototype members and throw
+        const handler = Object.hasOwn(handlers, e.key) ? handlers[e.key] : undefined;
         if (handler) {
             handler(e);
             return;
