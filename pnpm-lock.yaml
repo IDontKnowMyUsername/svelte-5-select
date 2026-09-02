@@ -108,9 +108,6 @@ importers:
       svelte-highlight:
         specifier: ^7.15.0
         version: 7.15.0
-      svelte-virtual-list:
-        specifier: ^3.0.1
-        version: 3.0.1
       svelte2tsx:
         specifier: ^0.7.57
         version: 0.7.57(svelte@5.57.0(@typescript-eslint/types@8.64.0))(typescript@5.9.3)
@@ -2479,9 +2476,6 @@ packages:
 
   svelte-highlight@7.15.0:
     resolution: {integrity: sha512-jeEe/cnmaH+33mTlb2yO/3gRcKfXdHuDmMDLnsqU9wEQO7mHbEffNCCuEHb6kJQLqXHuz23vPp1vRb2jfaPNSw==}
-
-  svelte-virtual-list@3.0.1:
-    resolution: {integrity: sha512-e7e+jn8VDjmdD8A1oOVBWmUi7jg+uugmiihkK0Cuk35JeeCR8ja40/B6DpCTHJFsQAZg6EVPjetN2ibgr25YCA==}
 
   svelte2tsx@0.7.57:
     resolution: {integrity: sha512-nQo0xEfUpSVjfkxan2UmC6Wl9UZVe9+/pglUiyBNMJ7KDQ9DDooucmXdToBOvzSfgYjj/kMYwf6CTTDz/z048w==}
@@ -5077,8 +5071,6 @@ snapshots:
     dependencies:
       highlight.js: 11.11.1
       magic-string: 0.30.21
-
-  svelte-virtual-list@3.0.1: {}
 
   svelte2tsx@0.7.57(svelte@5.57.0(@typescript-eslint/types@8.64.0))(typescript@5.9.3):
     dependencies:

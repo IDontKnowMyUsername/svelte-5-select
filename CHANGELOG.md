@@ -20,6 +20,7 @@
 ### Docs
 
 * The examples app showed `import Select from 'svelte-5-select'` in every source panel — a default export the package does not have. All examples now import the named `Select` (plus their types) from the root barrel, and the source viewer rewrites every `$lib` specifier to the package name. The svelte-select migration section now lists the default→named import change first
+* The virtual-list example now follows the `listSnippet` row contract it is meant to demonstrate (`role="option"`, `id="listbox-{id}-item-{index}"`, `tabindex="-1"`, mousemove-driven hover, a predictable `id` prop) and windows 10,000 rows with a small in-page renderer that keeps the keyboard cursor inside the window. It previously rendered focusable buttons with none of the ids, so `aria-activedescendant` dangled and the component's dev warning fired. The `svelte-virtual-list` devDependency (Svelte 4, slot-based) is gone with it
 
 ### Internal
 
